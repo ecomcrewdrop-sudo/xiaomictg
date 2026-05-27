@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "node -e \"console.log('No build step required for Express API')\"",
+    "start": "node server/index.js",
     "dev": "vite",
     "test": "vitest",
     "test:run": "vitest run"
