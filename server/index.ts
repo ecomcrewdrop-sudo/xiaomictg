@@ -29,8 +29,7 @@ if (!ADMIN_USER || !ADMIN_PASSWORD) {
 
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
-  console.error('[server] MONGO_URI no definido en .env');
-  process.exit(1);
+  console.warn('[server] MONGO_URI no definido; la API arrancara sin base de datos');
 }
 
 let db: any;
@@ -47,6 +46,10 @@ function scheduleDbReconnect(delayMs = 15000) {
 }
 
 async function connectDB() {
+  if (!MONGO_URI) {
+    db = undefined;
+    return;
+  }
   if (dbConnecting) return;
   dbConnecting = true;
   try {
