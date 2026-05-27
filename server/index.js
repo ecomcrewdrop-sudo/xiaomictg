@@ -1,4 +1,3 @@
-// server/index.ts
 import express from "express";
 import cors from "cors";
 import { MongoClient, ObjectId } from "mongodb";
@@ -8,31 +7,31 @@ import { Resend } from "resend";
 import dotenv from "dotenv";
 import { createHash } from "crypto";
 dotenv.config();
-var app = express();
-var httpServer = createServer(app);
-var io = new Server(httpServer, {
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
   }
 });
-var PORT = process.env.PORT || 3001;
-var ADMIN_USER = process.env.ADMIN_USER;
-var ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-var RESEND_API_KEY = process.env.RESEND_API_KEY;
-var resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+const PORT = process.env.PORT || 3001;
+const ADMIN_USER = process.env.ADMIN_USER;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 if (!ADMIN_USER || !ADMIN_PASSWORD) {
   console.warn("[server] ADMIN_USER o ADMIN_PASSWORD no configurados en .env");
 }
-var MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
   console.error("[server] MONGO_URI no definido en .env");
   process.exit(1);
 }
-var db;
-var dbClient = null;
-var dbReconnectTimer = null;
-var dbConnecting = false;
+let db;
+let dbClient = null;
+let dbReconnectTimer = null;
+let dbConnecting = false;
 function scheduleDbReconnect(delayMs = 15e3) {
   if (dbReconnectTimer) return;
   dbReconnectTimer = setTimeout(() => {
@@ -66,7 +65,7 @@ async function setupIndexes() {
   await db.collection("products").createIndex({ id: 1 }, { unique: true });
   await db.collection("orders").createIndex({ createdAt: -1 });
 }
-var initialProducts = [
+const initialProducts = [
   {
     id: "1",
     name: "Xiaomi 13 Pro",
@@ -217,7 +216,7 @@ var initialProducts = [
     reviews: []
   }
 ];
-var initialBanners = [
+const initialBanners = [
   {
     title: "Innovaci\xF3n Sin L\xEDmites",
     subtitle: "Nuevos Lanzamientos",
@@ -413,6 +412,112 @@ app.use("/api", (req, res, next) => {
   if (req.path === "/login" || req.path === "/health") return next();
   return requireDb(req, res, next);
 });
+const MAX_STORED_IMAGE_BYTES = 700 * 1024;
+const SAFE_UPLOAD_FOLDERS = /* @__PURE__ */ new Set(["productos", "banners", "general"]);
+function parseBase64Image(image) {
+  const match = image.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
+  const raw = match ? match[2] : image.replace(/^data:image\/\w+;base64,/, "");
+  const mime = match?.[1] || "image/jpeg";
+  try {
+    const buffer = Buffer.from(raw, "base64");
+    if (!buffer.length) return null;
+    return { mime, buffer };
+  } catch {
+    return null;
+  }
+}
+function productQuery(id) {
+  const filters = [{ id }];
+  if (/^[a-f\d]{24}$/i.test(id)) {
+    try {
+      filters.push({ _id: new ObjectId(id) });
+    } catch {
+    }
+  }
+  return { $or: filters };
+}
+function rejectInlineBase64Image(image) {
+  if (typeof image !== "string" || !image.startsWith("data:image")) return null;
+  return 'La imagen debe subirse antes de guardar. Usa "Subir imagen" o una URL externa.';
+}
+async function tryVercelBlobUpload(buffer, path) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+  try {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(path, buffer, { access: "public", token });
+    return blob.url;
+  } catch (error) {
+    console.warn("[upload] Vercel Blob no disponible, usando Mongo media:", error);
+    return null;
+  }
+}
+function buildPublicUrl(req, mediaId) {
+  const proto = (req.get("x-forwarded-proto") || req.protocol || "https").split(",")[0].trim();
+  const host = (req.get("x-forwarded-host") || req.get("host") || "").split(",")[0].trim();
+  return `${proto}://${host}/api/media/${mediaId}`;
+}
+app.post("/api/upload", async (req, res) => {
+  try {
+    const { image, filename, productId, folder = "productos" } = req.body || {};
+    if (!image || typeof image !== "string") {
+      return res.status(400).json({ error: "image es requerida" });
+    }
+    const parsed = parseBase64Image(image);
+    if (!parsed) {
+      return res.status(400).json({ error: "Imagen inv\xE1lida" });
+    }
+    if (parsed.buffer.length > 4 * 1024 * 1024) {
+      return res.status(413).json({ error: "Imagen muy grande (m\xE1ximo 4MB antes de comprimir)" });
+    }
+    const ext = (String(filename || "image.jpg").split(".").pop() || "jpg").toLowerCase();
+    const safeFolder = SAFE_UPLOAD_FOLDERS.has(folder) ? folder : "productos";
+    const blobPath = `${safeFolder}/${productId || "item"}-${Date.now()}.${ext}`;
+    const blobUrl = await tryVercelBlobUpload(parsed.buffer, blobPath);
+    if (blobUrl) {
+      return res.json({ url: blobUrl, success: true });
+    }
+    if (parsed.buffer.length > MAX_STORED_IMAGE_BYTES) {
+      return res.status(413).json({
+        error: `Imagen muy pesada (${Math.round(parsed.buffer.length / 1024)}KB). Comprime m\xE1s o usa una URL externa.`
+      });
+    }
+    const mediaId = `${productId || "img"}-${Date.now()}`;
+    await db.collection("media").insertOne({
+      mediaId,
+      mime: parsed.mime,
+      data: parsed.buffer,
+      folder: safeFolder,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    return res.json({
+      url: buildPublicUrl(req, mediaId),
+      success: true,
+      mediaId
+    });
+  } catch (error) {
+    console.error("[upload]", error);
+    return res.status(500).json({ error: "Error al subir imagen" });
+  }
+});
+app.get("/api/media/:mediaId", async (req, res) => {
+  try {
+    const doc = await db.collection("media").findOne({ mediaId: req.params.mediaId });
+    if (!doc) return res.status(404).end();
+    res.setHeader("Content-Type", doc.mime || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    if (Buffer.isBuffer(doc.data)) {
+      return res.send(doc.data);
+    }
+    if (doc.data?.buffer) {
+      return res.send(Buffer.from(doc.data.buffer));
+    }
+    return res.send(Buffer.from(doc.data));
+  } catch (error) {
+    console.error("[media]", error);
+    return res.status(500).end();
+  }
+});
 app.get("/api/products", async (req, res) => {
   try {
     const products = await db.collection("products").find({}).toArray();
@@ -433,6 +538,10 @@ app.get("/api/products/:id", async (req, res) => {
 app.post("/api/products", async (req, res) => {
   try {
     const { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } = req.body;
+    const inlineImageError = rejectInlineBase64Image(image);
+    if (inlineImageError) {
+      return res.status(400).json({ error: inlineImageError });
+    }
     const id = Date.now().toString();
     const product = {
       id,
@@ -453,21 +562,73 @@ app.post("/api/products", async (req, res) => {
     res.status(500).json({ error: "Error creating product" });
   }
 });
+const PRODUCT_UPDATE_FIELDS = [
+  "name",
+  "category",
+  "price",
+  "description",
+  "image",
+  "stock",
+  "colorVariants",
+  "storageVariants",
+  "specifications",
+  "reviews"
+];
+async function updateProductRecord(id, body, res) {
+  const inlineImageError = rejectInlineBase64Image(body.image);
+  if (inlineImageError) {
+    return res.status(400).json({ error: inlineImageError });
+  }
+  const $set = {};
+  for (const key of PRODUCT_UPDATE_FIELDS) {
+    if (body[key] !== void 0) $set[key] = body[key];
+  }
+  if (Object.keys($set).length === 0) {
+    return res.status(400).json({ error: "No hay campos para actualizar" });
+  }
+  const result = await db.collection("products").updateOne(productQuery(id), { $set });
+  if (result.matchedCount === 0) {
+    return res.status(404).json({ error: "Producto no encontrado" });
+  }
+  const updated = await db.collection("products").findOne(productQuery(id));
+  return res.json(updated);
+}
 app.put("/api/products/:id", async (req, res) => {
   try {
-    const { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } = req.body;
-    await db.collection("products").updateOne(
-      { id: req.params.id },
-      { $set: { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } }
-    );
-    res.json({ id: req.params.id, name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews });
+    await updateProductRecord(req.params.id, req.body, res);
+  } catch (error) {
+    res.status(500).json({ error: "Error updating product" });
+  }
+});
+app.put("/api/products", async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: "id requerido" });
+    const { id: _removed, ...rest } = req.body;
+    await updateProductRecord(String(id), rest, res);
   } catch (error) {
     res.status(500).json({ error: "Error updating product" });
   }
 });
 app.delete("/api/products/:id", async (req, res) => {
   try {
-    await db.collection("products").deleteOne({ id: req.params.id });
+    const result = await db.collection("products").deleteOne(productQuery(req.params.id));
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error deleting product" });
+  }
+});
+app.delete("/api/products", async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: "id requerido" });
+    const result = await db.collection("products").deleteOne(productQuery(String(id)));
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error deleting product" });
@@ -555,12 +716,36 @@ app.post("/api/orders", async (req, res) => {
 });
 app.put("/api/orders/:id", async (req, res) => {
   try {
-    const { status } = req.body;
-    await db.collection("orders").updateOne(
-      { id: req.params.id },
-      { $set: { status } }
-    );
-    res.json({ id: req.params.id, status });
+    const { status, items, customerInfo, total } = req.body;
+    const $set = {};
+    if (status !== void 0) $set.status = status;
+    if (items !== void 0) $set.items = items;
+    if (customerInfo !== void 0) $set.customerInfo = customerInfo;
+    if (total !== void 0) $set.total = total;
+    if (Object.keys($set).length === 0) {
+      return res.status(400).json({ error: "No hay campos para actualizar" });
+    }
+    await db.collection("orders").updateOne({ id: req.params.id }, { $set });
+    res.json({ id: req.params.id, ...$set });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating order" });
+  }
+});
+app.put("/api/orders", async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: "id requerido" });
+    const { id: _removed, ...updates } = req.body;
+    const $set = {};
+    if (updates.status !== void 0) $set.status = updates.status;
+    if (updates.items !== void 0) $set.items = updates.items;
+    if (updates.customerInfo !== void 0) $set.customerInfo = updates.customerInfo;
+    if (updates.total !== void 0) $set.total = updates.total;
+    if (Object.keys($set).length === 0) {
+      return res.status(400).json({ error: "No hay campos para actualizar" });
+    }
+    await db.collection("orders").updateOne({ id: String(id) }, { $set });
+    res.json({ id: String(id), ...$set });
   } catch (error) {
     res.status(500).json({ error: "Error updating order" });
   }
@@ -584,7 +769,7 @@ app.put("/api/notifications/:id/read", async (req, res) => {
     res.status(500).json({ error: "Error marking notification as read" });
   }
 });
-var defaultTicketConfig = {
+const defaultTicketConfig = {
   storeName: "XIAOMI STORE",
   tagline: "Tecnolog\xEDa Premium",
   address: "Cl. 31 #61-64, Los \xC1ngeles",

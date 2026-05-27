@@ -447,6 +447,129 @@ app.use('/api', (req, res, next) => {
   return requireDb(req, res, next);
 });
 
+const MAX_STORED_IMAGE_BYTES = 700 * 1024;
+const SAFE_UPLOAD_FOLDERS = new Set(['productos', 'banners', 'general']);
+
+function parseBase64Image(image: string): { mime: string; buffer: Buffer } | null {
+  const match = image.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
+  const raw = match ? match[2] : image.replace(/^data:image\/\w+;base64,/, '');
+  const mime = match?.[1] || 'image/jpeg';
+  try {
+    const buffer = Buffer.from(raw, 'base64');
+    if (!buffer.length) return null;
+    return { mime, buffer };
+  } catch {
+    return null;
+  }
+}
+
+function productQuery(id: string) {
+  const filters: Record<string, unknown>[] = [{ id }];
+  if (/^[a-f\d]{24}$/i.test(id)) {
+    try {
+      filters.push({ _id: new ObjectId(id) });
+    } catch {
+      /* ignore invalid ObjectId */
+    }
+  }
+  return { $or: filters };
+}
+
+function rejectInlineBase64Image(image: unknown): string | null {
+  if (typeof image !== 'string' || !image.startsWith('data:image')) return null;
+  return 'La imagen debe subirse antes de guardar. Usa "Subir imagen" o una URL externa.';
+}
+
+async function tryVercelBlobUpload(buffer: Buffer, path: string): Promise<string | null> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+  try {
+    const { put } = await import('@vercel/blob');
+    const blob = await put(path, buffer, { access: 'public', token });
+    return blob.url;
+  } catch (error) {
+    console.warn('[upload] Vercel Blob no disponible, usando Mongo media:', error);
+    return null;
+  }
+}
+
+function buildPublicUrl(req: express.Request, mediaId: string) {
+  const proto = (req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+  return `${proto}://${host}/api/media/${mediaId}`;
+}
+
+app.post('/api/upload', async (req, res) => {
+  try {
+    const { image, filename, productId, folder = 'productos' } = req.body || {};
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({ error: 'image es requerida' });
+    }
+
+    const parsed = parseBase64Image(image);
+    if (!parsed) {
+      return res.status(400).json({ error: 'Imagen inválida' });
+    }
+    if (parsed.buffer.length > 4 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Imagen muy grande (máximo 4MB antes de comprimir)' });
+    }
+
+    const ext = (String(filename || 'image.jpg').split('.').pop() || 'jpg').toLowerCase();
+    const safeFolder = SAFE_UPLOAD_FOLDERS.has(folder) ? folder : 'productos';
+    const blobPath = `${safeFolder}/${productId || 'item'}-${Date.now()}.${ext}`;
+
+    const blobUrl = await tryVercelBlobUpload(parsed.buffer, blobPath);
+    if (blobUrl) {
+      return res.json({ url: blobUrl, success: true });
+    }
+
+    if (parsed.buffer.length > MAX_STORED_IMAGE_BYTES) {
+      return res.status(413).json({
+        error: `Imagen muy pesada (${Math.round(parsed.buffer.length / 1024)}KB). Comprime más o usa una URL externa.`,
+      });
+    }
+
+    const mediaId = `${productId || 'img'}-${Date.now()}`;
+    await db.collection('media').insertOne({
+      mediaId,
+      mime: parsed.mime,
+      data: parsed.buffer,
+      folder: safeFolder,
+      createdAt: new Date().toISOString(),
+    });
+
+    return res.json({
+      url: buildPublicUrl(req, mediaId),
+      success: true,
+      mediaId,
+    });
+  } catch (error) {
+    console.error('[upload]', error);
+    return res.status(500).json({ error: 'Error al subir imagen' });
+  }
+});
+
+app.get('/api/media/:mediaId', async (req, res) => {
+  try {
+    const doc = await db.collection('media').findOne({ mediaId: req.params.mediaId });
+    if (!doc) return res.status(404).end();
+
+    res.setHeader('Content-Type', doc.mime || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+    if (Buffer.isBuffer(doc.data)) {
+      return res.send(doc.data);
+    }
+    if (doc.data?.buffer) {
+      return res.send(Buffer.from(doc.data.buffer));
+    }
+    return res.send(Buffer.from(doc.data));
+  } catch (error) {
+    console.error('[media]', error);
+    return res.status(500).end();
+  }
+});
+
 // Products endpoints
 app.get('/api/products', async (req, res) => {
   try {
@@ -470,6 +593,11 @@ app.get('/api/products/:id', async (req, res) => {
 app.post('/api/products', async (req, res) => {
   try {
     const { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } = req.body;
+    const inlineImageError = rejectInlineBase64Image(image);
+    if (inlineImageError) {
+      return res.status(400).json({ error: inlineImageError });
+    }
+
     const id = Date.now().toString();
     const product = {
       id,
@@ -491,14 +619,48 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
+const PRODUCT_UPDATE_FIELDS = [
+  'name', 'category', 'price', 'description', 'image', 'stock',
+  'colorVariants', 'storageVariants', 'specifications', 'reviews',
+] as const;
+
+async function updateProductRecord(id: string, body: Record<string, unknown>, res: express.Response) {
+  const inlineImageError = rejectInlineBase64Image(body.image);
+  if (inlineImageError) {
+    return res.status(400).json({ error: inlineImageError });
+  }
+
+  const $set: Record<string, unknown> = {};
+  for (const key of PRODUCT_UPDATE_FIELDS) {
+    if (body[key] !== undefined) $set[key] = body[key];
+  }
+  if (Object.keys($set).length === 0) {
+    return res.status(400).json({ error: 'No hay campos para actualizar' });
+  }
+
+  const result = await db.collection('products').updateOne(productQuery(id), { $set });
+  if (result.matchedCount === 0) {
+    return res.status(404).json({ error: 'Producto no encontrado' });
+  }
+
+  const updated = await db.collection('products').findOne(productQuery(id));
+  return res.json(updated);
+}
+
 app.put('/api/products/:id', async (req, res) => {
   try {
-    const { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } = req.body;
-    await db.collection('products').updateOne(
-      { id: req.params.id },
-      { $set: { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } }
-    );
-    res.json({ id: req.params.id, name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews });
+    await updateProductRecord(req.params.id, req.body, res);
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating product' });
+  }
+});
+
+app.put('/api/products', async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: 'id requerido' });
+    const { id: _removed, ...rest } = req.body;
+    await updateProductRecord(String(id), rest, res);
   } catch (error) {
     res.status(500).json({ error: 'Error updating product' });
   }
@@ -506,7 +668,24 @@ app.put('/api/products/:id', async (req, res) => {
 
 app.delete('/api/products/:id', async (req, res) => {
   try {
-    await db.collection('products').deleteOne({ id: req.params.id });
+    const result = await db.collection('products').deleteOne(productQuery(req.params.id));
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error deleting product' });
+  }
+});
+
+app.delete('/api/products', async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: 'id requerido' });
+    const result = await db.collection('products').deleteOne(productQuery(String(id)));
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Error deleting product' });
@@ -608,12 +787,41 @@ app.post('/api/orders', async (req, res) => {
 
 app.put('/api/orders/:id', async (req, res) => {
   try {
-    const { status } = req.body;
-    await db.collection('orders').updateOne(
-      { id: req.params.id },
-      { $set: { status } }
-    );
-    res.json({ id: req.params.id, status });
+    const { status, items, customerInfo, total } = req.body;
+    const $set: Record<string, unknown> = {};
+    if (status !== undefined) $set.status = status;
+    if (items !== undefined) $set.items = items;
+    if (customerInfo !== undefined) $set.customerInfo = customerInfo;
+    if (total !== undefined) $set.total = total;
+
+    if (Object.keys($set).length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    await db.collection('orders').updateOne({ id: req.params.id }, { $set });
+    res.json({ id: req.params.id, ...$set });
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating order' });
+  }
+});
+
+app.put('/api/orders', async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: 'id requerido' });
+    const { id: _removed, ...updates } = req.body;
+    const $set: Record<string, unknown> = {};
+    if (updates.status !== undefined) $set.status = updates.status;
+    if (updates.items !== undefined) $set.items = updates.items;
+    if (updates.customerInfo !== undefined) $set.customerInfo = updates.customerInfo;
+    if (updates.total !== undefined) $set.total = updates.total;
+
+    if (Object.keys($set).length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    await db.collection('orders').updateOne({ id: String(id) }, { $set });
+    res.json({ id: String(id), ...$set });
   } catch (error) {
     res.status(500).json({ error: 'Error updating order' });
   }

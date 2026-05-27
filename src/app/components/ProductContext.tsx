@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, Re
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../lib/api-base';
+import { uploadProductImage } from '../lib/product-image';
 
 async function compressImage(imageString: string): Promise<string> {
   if (!imageString || !imageString.startsWith('data:image')) {
@@ -11,19 +12,16 @@ async function compressImage(imageString: string): Promise<string> {
   try {
     const response = await fetch(imageString);
     const blob = await response.blob();
-    
-    const options = {
-      maxSizeMB: 0.8,
-      maxWidthOrHeight: 1200,
+    const file = new File([blob], 'image.jpg', { type: blob.type });
+    const compressedFile = await imageCompression(file, {
+      maxSizeMB: 0.35,
+      maxWidthOrHeight: 1000,
       useWebWorker: true,
-    };
-    
-    const file = new File([blob], "image.jpg", { type: blob.type });
-    const compressedFile = await imageCompression(file, options);
+    });
     return await imageCompression.getDataUrlFromFile(compressedFile);
   } catch (error) {
     console.error('Error compressing image:', error);
-    return imageString;
+    throw new Error('No se pudo comprimir la imagen del banner');
   }
 }
 
@@ -371,115 +369,88 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   async function addProduct(product: Omit<Product, 'id'>) {
     try {
-      let imageUrl = product.image;
-      
-      if (product.image && product.image.startsWith('data:')) {
-        try {
-          const uploadRes = await fetch(`${API_BASE_URL}/upload`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              image: product.image,
-              filename: `${product.name.replace(/\s+/g, '-')}.jpg`,
-              productId: Date.now().toString()
-            })
-          });
-          
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            imageUrl = uploadData.url;
-          } else {
-            imageUrl = await compressImage(product.image);
-          }
-        } catch (uploadError) {
-          imageUrl = await compressImage(product.image);
-        }
-      }
+      const productId = Date.now().toString();
+      const safeName = product.name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 60) || 'producto';
+      const imageUrl = await uploadProductImage(
+        product.image,
+        productId,
+        `${safeName}.jpg`
+      );
 
-      const res = await fetch(`${API_BASE_URL}/products`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...product, image: imageUrl })
+        body: JSON.stringify({ ...product, image: imageUrl }),
       });
 
-      if (!res.ok) throw new Error('Error al crear producto');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || 'Error al crear producto');
+      }
       const newProduct = await res.json();
       setProducts(prev => [...prev, newProduct]);
       toast.success('Producto creado correctamente');
     } catch (error) {
       console.error('Error adding product:', error);
-      toast.error('No se pudo crear el producto. Inténtalo de nuevo.');
+      const message = error instanceof Error ? error.message : 'No se pudo crear el producto';
+      toast.error(message);
       throw error;
     }
   }
 
   async function updateProduct(id: string, updates: Partial<Product>) {
-    // Guardar estado previo para rollback
     const previousProducts = products;
 
     try {
-      let imageUrl = updates.image;
-      
-      if (updates.image && updates.image.startsWith('data:')) {
-        try {
-          const uploadRes = await fetch(`${API_BASE_URL}/upload`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              image: updates.image,
-              filename: `updated-${Date.now()}.jpg`,
-              productId: id
-            })
-          });
-          
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            imageUrl = uploadData.url;
-          } else {
-            imageUrl = await compressImage(updates.image);
-          }
-        } catch (uploadError) {
-          imageUrl = await compressImage(updates.image);
-        }
+      const finalUpdates = { ...updates };
+      if (updates.image !== undefined) {
+        finalUpdates.image = await uploadProductImage(
+          updates.image,
+          id,
+          `product-${id}.jpg`
+        );
       }
 
-      const finalUpdates = imageUrl ? { ...updates, image: imageUrl } : updates;
+      setProducts(prev =>
+        prev.map(p => (p._id === id || p.id === id) ? { ...p, ...finalUpdates } : p)
+      );
 
-      // Actualización optimista
-      setProducts(prev => prev.map(p => (p._id === id || p.id === id) ? { ...p, ...finalUpdates } : p));
-      
-      const res = await fetch(`${API_BASE_URL}/products`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/products/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...finalUpdates })
+        body: JSON.stringify(finalUpdates),
       });
 
-      if (!res.ok) throw new Error('Error al actualizar producto');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || 'Error al actualizar producto');
+      }
+
+      const updated = await res.json();
+      setProducts(prev =>
+        prev.map(p => (p._id === id || p.id === id) ? { ...p, ...updated } : p)
+      );
       toast.success('Producto actualizado correctamente');
     } catch (error) {
       console.error('Error updating product:', error);
-      // Revertir estado optimista
       setProducts(previousProducts);
-      toast.error('No se pudo actualizar el producto. Los cambios fueron revertidos.');
+      const message = error instanceof Error ? error.message : 'No se pudo actualizar el producto';
+      toast.error(message);
       throw error;
     }
   }
 
   async function deleteProduct(id: string) {
     const previousProducts = products;
-    // Actualización optimista
     setProducts(prev => prev.filter(p => p._id !== id && p.id !== id));
     try {
-      const res = await fetch(`${API_BASE_URL}/products`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/products/${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
       });
       if (!res.ok) throw new Error('Error al eliminar producto');
       toast.success('Producto eliminado');
     } catch (error) {
       console.error('Error deleting product:', error);
-      // Revertir
       setProducts(previousProducts);
       toast.error('No se pudo eliminar el producto.');
       throw error;
@@ -517,10 +488,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       };
       // Actualización optimista
       setBanners(prev => prev.map(b => b._id === id ? { ...b, ...compressedBanner } : b));
-      const res = await fetch(`${API_BASE_URL}/banners`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/banners/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...compressedBanner })
+        body: JSON.stringify(compressedBanner)
       });
       if (!res.ok) throw new Error('Error al actualizar banner');
       toast.success('Banner actualizado correctamente');
@@ -536,10 +507,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     const previousBanners = banners;
     setBanners(prev => prev.filter(b => b._id !== id));
     try {
-      const res = await fetch(`${API_BASE_URL}/banners`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/banners/${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
       });
       if (!res.ok) throw new Error('Error al eliminar banner');
       toast.success('Banner eliminado');
@@ -700,10 +669,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   async function updateOrderStatus(orderId: string, status: Order['status']) {
     try {
-      await fetch(`${API_BASE_URL}/orders`, {
+      await fetchWithTimeout(`${API_BASE_URL}/orders/${encodeURIComponent(orderId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, status })
+        body: JSON.stringify({ status })
       });
       setOrders(prev =>
         prev.map(order =>
@@ -734,10 +703,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   async function updateOrderDetails(orderId: string, updates: { items?: CartItem[], customerInfo?: any, total?: number }) {
     try {
-      await fetch(`${API_BASE_URL}/orders`, {
+      await fetchWithTimeout(`${API_BASE_URL}/orders/${encodeURIComponent(orderId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, ...updates })
+        body: JSON.stringify(updates)
       });
       setOrders(prev =>
         prev.map(order =>

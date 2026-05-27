@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useProducts, Product, Banner, ColorVariant, StorageVariant } from '../ProductContext';
 import { Plus, Pencil, Trash2, Save, X, Package, ImageIcon, Upload, Palette, HardDrive, Cpu } from 'lucide-react';
@@ -10,7 +10,9 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { OrdersManager } from '../OrdersManager';
+import { StatisticsDashboard } from '../StatisticsDashboard';
 import { toast } from 'sonner';
+import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
 const SOCKET_URL = '';
 
 export function AdminPanel() {
@@ -86,6 +88,9 @@ export function AdminPanel() {
     });
   };
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -180,10 +185,24 @@ export function AdminPanel() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingProduct(null);
+    setIsSavingProduct(false);
+    setImageUploading(false);
+    setFormData({
+      name: '',
+      category: 'moviles',
+      price: '',
+      description: '',
+      image: '',
+      stock: '',
+    });
     setColorVariants([]);
     setStorageVariants([]);
+    setSpecifications([]);
     setNewColor({ color: '', colorHex: '#000000', stock: '' });
     setNewStorage({ storage: '', price: '', stock: '' });
+    if (imageFileInputRef.current) {
+      imageFileInputRef.current.value = '';
+    }
   };
 
   const handleAddColor = () => {
@@ -255,34 +274,40 @@ export function AdminPanel() {
     setStorageVariants(updated);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validar que sea una imagen
-      if (!file.type.startsWith('image/')) {
-        toast.error('Por favor selecciona un archivo de imagen válido');
-        return;
-      }
+    if (!file) return;
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('La imagen es muy grande. El tamaño máximo es 5MB');
-        return;
-      }
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor selecciona un archivo de imagen válido');
+      e.target.value = '';
+      return;
+    }
 
-      // Convertir a base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setFormData({ ...formData, image: base64String });
-      };
-      reader.readAsDataURL(file);
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('La imagen es muy grande. El tamaño máximo es 8MB');
+      e.target.value = '';
+      return;
+    }
+
+    setImageUploading(true);
+    try {
+      const compressed = await compressImageFile(file);
+      setFormData(prev => ({ ...prev, image: compressed }));
+      toast.success('Imagen lista. Guarda el producto para subirla al servidor.');
+    } catch {
+      toast.error('No se pudo procesar la imagen. Prueba con otro archivo.');
+      e.target.value = '';
+    } finally {
+      setImageUploading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSavingProduct) return;
     
-    // Validar que haya una imagen
     if (!formData.image) {
       toast.error('Por favor selecciona una imagen o ingresa una URL');
       return;
@@ -328,16 +353,18 @@ export function AdminPanel() {
       productData.specifications = specsObj;
     }
 
+    setIsSavingProduct(true);
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct._id || editingProduct.id, productData);
+        await updateProduct(editingProduct.id, productData);
       } else {
         await addProduct(productData);
       }
-      // Cerrar el diálogo — ProductContext ya actualizó el estado local
       handleCloseDialog();
-    } catch (error) {
+    } catch {
       // El toast de error ya lo muestra addProduct/updateProduct del contexto
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
@@ -476,8 +503,9 @@ export function AdminPanel() {
         </div>
 
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-6 mb-8">
+        <TabsList className="grid w-full max-w-4xl grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 mb-8 h-auto gap-1">
           <TabsTrigger value="products">Productos</TabsTrigger>
+          <TabsTrigger value="stats">Estadísticas</TabsTrigger>
           <TabsTrigger value="orders" className="relative">
             Órdenes
             {unreadOrdersCount > 0 && (
@@ -495,6 +523,11 @@ export function AdminPanel() {
         {/* TAB DE ÓRDENES */}
         <TabsContent value="orders">
           <OrdersManager />
+        </TabsContent>
+
+        {/* TAB DE ESTADÍSTICAS */}
+        <TabsContent value="stats">
+          <StatisticsDashboard />
         </TabsContent>
 
         {/* TAB DE PRODUCTOS */}
@@ -1404,15 +1437,24 @@ export function AdminPanel() {
               <div className="space-y-3">
                 {/* Vista previa de la imagen */}
                 {formData.image && (
-                  <div className="relative w-full h-40 rounded-lg overflow-hidden border-2 border-gray-200">
-                    <img 
-                      src={formData.image} 
-                      alt="Vista previa" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Imagen+no+disponible';
-                      }}
-                    />
+                  <div className="space-y-1">
+                    <div className="relative w-full h-40 rounded-lg overflow-hidden border-2 border-gray-200">
+                      <img 
+                        src={formData.image} 
+                        alt="Vista previa" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Imagen+no+disponible';
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {formData.image.startsWith('data:')
+                        ? 'Imagen nueva (se subirá al guardar)'
+                        : isRemoteImageUrl(formData.image)
+                          ? 'Imagen en servidor / URL externa'
+                          : 'Vista previa'}
+                    </p>
                   </div>
                 )}
 
@@ -1424,15 +1466,19 @@ export function AdminPanel() {
                   <div className="mt-1 flex items-center gap-2">
                     <Input
                       id="image-upload"
+                      ref={imageFileInputRef}
                       type="file"
                       accept="image/*"
+                      disabled={imageUploading || isSavingProduct}
                       onChange={handleImageUpload}
                       className="flex-1"
                     />
                     <Upload className="w-5 h-5 text-gray-400" />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Formatos: JPG, PNG, GIF. Máximo 5MB
+                    {imageUploading
+                      ? 'Comprimiendo imagen...'
+                      : 'Formatos: JPG, PNG, WEBP. Máximo 8MB (se comprime automáticamente)'}
                   </p>
                 </div>
 
@@ -1464,10 +1510,15 @@ export function AdminPanel() {
                 <div className="flex gap-3 pt-4 border-t flex-shrink-0">
                   <Button 
                     type="submit"
+                    disabled={isSavingProduct || imageUploading}
                     className="flex-1 bg-orange-400 hover:bg-orange-500"
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    {editingProduct ? 'Guardar Cambios' : 'Agregar Producto'}
+                    {isSavingProduct
+                      ? 'Guardando...'
+                      : editingProduct
+                        ? 'Guardar Cambios'
+                        : 'Agregar Producto'}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleCloseDialog}>
                     <X className="w-4 h-4 mr-2" />
