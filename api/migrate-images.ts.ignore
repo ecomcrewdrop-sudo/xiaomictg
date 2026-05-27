@@ -1,0 +1,66 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getDb } from './lib/db.js';
+import { put } from '@vercel/blob';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = await getDb();
+    const collection = db.collection('products');
+
+    const products = await collection.find({}).toArray();
+    
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const product of products) {
+      if (product.image && product.image.startsWith('data:')) {
+        try {
+          const base64Data = product.image.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          const filename = `productos/${product.id || Date.now()}-${product.name.replace(/\s+/g, '-')}.jpg`;
+          
+          const blob = await put(filename, buffer, {
+            access: 'public',
+            token: 'vercel_blob_rw_hNjl5zqnBdNx2l71_hTFydHL4JOdxeKZZT3CKSGOe2EXFR6'
+          });
+
+          await collection.updateOne(
+            { _id: product._id },
+            { $set: { image: blob.url } }
+          );
+
+          migrated++;
+          console.log(`Migrated: ${product.name} -> ${blob.url}`);
+        } catch (err) {
+          console.error(`Error migrating ${product.name}:`, err);
+          skipped++;
+        }
+      } else {
+        skipped++;
+      }
+    }
+
+    return res.json({ 
+      success: true, 
+      migrated, 
+      skipped,
+      message: `Migrated ${migrated} images, skipped ${skipped}`
+    });
+  } catch (error: any) {
+    console.error('Error:', error);
+    return res.status(500).json({ error: 'Migration failed: ' + error.message });
+  }
+}

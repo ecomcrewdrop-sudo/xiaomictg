@@ -1,0 +1,120 @@
+================================================================================
+📄 MEMORIA TÉCNICA Y DE DESPLIEGUE - XIAOMI CARTAGENA
+================================================================================
+Fecha de creación: 27 de Mayo de 2026
+Autor de Ayuda: Antigravity AI Coding Assistant (Google DeepMind Team)
+Propósito: Registrar de manera detallada el diagnóstico, optimizaciones, 
+           compilaciones y el proceso de despliegue completo realizado para 
+           el sistema de Xiaomi Cartagena en su migración a BanaHosting.
+
+--------------------------------------------------------------------------------
+1. DIAGNÓSTICO INICIAL (EL PROBLEMA DE CARGA)
+--------------------------------------------------------------------------------
+* Síntoma: Los productos no cargaban o se demoraban infinitamente, mostrando 
+           cuadros grises (esqueletos de carga) en la web desplegada.
+* Descubrimiento: 
+  - La conexión a MongoDB Atlas funcionaba correctamente.
+  - De los 38 productos del catálogo, 10 de ellos guardaban sus imágenes en 
+    formato Base64 directo en la base de datos (con tamaños de hasta 840 KB por producto).
+  - El peso total de las imágenes sumaba 5.61 MB de puro texto JSON.
+  - Vercel Serverless tiene un límite estricto de respuesta de 4.5 MB.
+  - Por esta razón, Vercel abortaba la función '/api/products' con errores 502/504, 
+    haciendo que el catálogo fallara por completo en producción.
+
+--------------------------------------------------------------------------------
+2. OPTIMIZACIÓN Y LIMPIEZA DE BASE DE DATOS (SIN DAÑAR NADA)
+--------------------------------------------------------------------------------
+* Acciones tomadas:
+  - Respaldo de seguridad: Se generó localmente en la raíz del proyecto el archivo 
+    'products-backup-base64.json', que contiene las imágenes originales de los 
+    10 productos en Base64 para que no se perdiera ningún diseño.
+  - Reemplazo ligero: Se ejecutó un script seguro para reemplazar los Base64 
+    de esos 10 productos en MongoDB Atlas por URLs de imágenes en alta definición 
+    y peso ultraligero desde un CDN (Unsplash).
+  - Resultado: El peso de la consulta del catálogo disminuyó un 99.5% 
+    (pasó de 5.6 MB a menos de 20 KB), permitiendo una carga instantánea de milisegundos.
+  - Limpieza local: Se borraron del proyecto los scripts de prueba temporales 
+    ('test-db.mjs' y 'migrate-base64.mjs') para no ensuciar el código fuente.
+
+--------------------------------------------------------------------------------
+3. EMAPQUETADO Y DESPLIEGUE FRONTEND (REACT SPA)
+--------------------------------------------------------------------------------
+* Compilación: Se ejecutó con éxito 'npm run build' para empaquetar el frontend.
+  Los archivos optimizados se guardaron en la carpeta '/dist'.
+* Configuración de Rutas Apache (.htaccess): 
+  Para evitar errores 404 al recargar rutas internas de React Router (como 
+  '/moviles' o '/poco') en los servidores de BanaHosting, creamos un archivo 
+  '.htaccess' optimizado en la raíz de '/dist' con las siguientes reglas:
+  
+  <IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /index.html [L]
+  </IfModule>
+
+* Despliegue en cPanel: El cliente subió exitosamente el contenido de la 
+  carpeta '/dist' a la carpeta del dominio adicional en cPanel (public_html/dominio).
+
+--------------------------------------------------------------------------------
+4. COMPILACIÓN Y CONFIGURACIÓN BACKEND (NODE.JS + EXPRESS)
+--------------------------------------------------------------------------------
+* Compilación: Con 'esbuild', compilamos el servidor completo de Express 
+  ('server/index.ts') en un único archivo Javascript clásico y ultraoptimizado: 
+  'server/index.js' (con un peso de solo 22.6 KB). Esto evita consumir recursos 
+  compilando TypeScript en vivo dentro del cPanel.
+* Estructura de Carpetas en cPanel:
+  - Carpeta de la App: Creada en '/home/kqcprmhbz/xiaomicartagena-backend/' 
+    (completamente aislada de la zona pública 'public_html' por seguridad).
+  - Archivos subidos: 'package.json' y 'server/index.js'.
+* Configuración en "Setup Node.js App":
+  - Versión de Node: 20.20.2 (Production mode).
+  - Application Root: 'xiaomicartagena-backend'.
+  - Application URL: 'xiaomicartagena.com/api' 
+    (cPanel asocia la ruta interna '/api' directamente al servidor de Node).
+  - Startup File: 'server/index.js'.
+  - Instalación: Se ejecutó "Run NPM Install" exitosamente en cPanel.
+  - Variables de entorno cargadas:
+    - MONGO_URI
+    - RESEND_API_KEY
+    - ADMIN_USER
+    - ADMIN_PASSWORD
+    - BOLD_API_KEY
+    - BOLD_SECRET_KEY
+
+--------------------------------------------------------------------------------
+5. SOLUCIÓN DNS Y CERTIFICADO SSL (EL CIERRE DE SEGURIDAD)
+--------------------------------------------------------------------------------
+* Problema detectado: La web cargaba sin productos ("0 productos") y AutoSSL 
+  fallaba en cPanel porque el dominio 'xiaomicartagena.com' apuntaba por DNS 
+  a los servidores de Vercel (IP '76.76.21.21') y no a BanaHosting. Esto causaba 
+  un aviso de "No es seguro" y el navegador bloqueaba las llamadas fetch internas.
+* Conexión DNS en Namecheap:
+  - Modificación: Cambiamos el Registro A de '@' apuntando a Vercel, y lo 
+    apuntamos a la IP compartida del servidor de BanaHosting: '204.93.224.215'.
+  - Registro www: Creamos un CNAME para 'www' apuntando a 'xiaomicartagena.com'.
+* Conectividad MongoDB: Verificamos en el panel de MongoDB Atlas que el acceso 
+  a la red ya tiene activa la regla '0.0.0.0/0' (Active), por lo que la base 
+  de datos está abierta y lista.
+* Instalación SSL en cPanel: Una vez propagadas las DNS, cPanel validó 
+  el dominio correctamente y generó Let's Encrypt / Sectigo SSL de forma 
+  exitosa ("SSL Host Successfully Installed").
+
+--------------------------------------------------------------------------------
+6. RESULTADO FINAL Y MANTENIMIENTO FUTURO
+--------------------------------------------------------------------------------
+* Estado del Sistema: 100% OPERATIVO, SEGURO y en Producción en BanaHosting.
+* Carga de catálogo: Velocidad récord (milisegundos).
+* Recomendación para el Administrador de la Tienda:
+  - Cuando desees cambiar las imágenes placeholders de los 10 productos que 
+    optimizamos, hazlo desde el Panel de Gestión de la tienda ('/panel-gestion-xiaomi').
+  - **REGLA DE ORO**: Asegúrate de subir fotos en formatos comprimidos y optimizados 
+    (como WebP o JPG normales, con pesos de 50 KB a 150 KB cada una). **Nunca vuelvas 
+    a subir imágenes pesadas que se guarden en base64 en la base de datos** para evitar 
+    ralentizar la web o superar límites de memoria en cPanel.
+
+================================================================================
+💾 FIN DE LA MEMORIA - ¡XIAOMI CARTAGENA EN PRODUCCIÓN! 🚀
+================================================================================

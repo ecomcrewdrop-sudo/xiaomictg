@@ -1,0 +1,32 @@
+{
+  "rewrites": [
+    { "source": "/api/blocking/:path*", "destination": "/api/blocking" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/admin/blocking/:path*", "destination": "/index.html" },
+    { "source": "/panel-gestion-xiaomi/:path*", "destination": "/index.html" },
+    { "source": "/login-admin", "destination": "/index.html" },
+    { "source": "/mi-cuenta/:path*", "destination": "/index.html" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

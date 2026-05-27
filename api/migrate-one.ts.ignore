@@ -1,0 +1,62 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getDb } from './lib/db.js';
+import { put } from '@vercel/blob';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = await getDb();
+    const collection = db.collection('products');
+
+    const product = await collection.findOne({ 
+      image: { $regex: '^data:' } 
+    });
+
+    if (!product) {
+      return res.json({ 
+        success: true, 
+        message: 'No products with base64 images found',
+        migrated: 0
+      });
+    }
+
+    console.log(`Migrating: ${product.name}`);
+
+    const base64Data = product.image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    const safeName = (product.name || 'product').replace(/[^a-zA-Z0-9]/g, '-');
+    const filename = `productos/${product.id || Date.now()}-${safeName}.jpg`;
+    
+    const blob = await put(filename, buffer, {
+      access: 'public',
+      token: 'vercel_blob_rw_hNjl5zqnBdNx2l71_hTFydHL4JOdxeKZZT3CKSGOe2EXFR6'
+    });
+
+    await collection.updateOne(
+      { _id: product._id },
+      { $set: { image: blob.url } }
+    );
+
+    return res.json({ 
+      success: true, 
+      migrated: 1,
+      productName: product.name,
+      newUrl: blob.url
+    });
+  } catch (error: any) {
+    console.error('Error:', error);
+    return res.status(500).json({ error: 'Migration failed: ' + error.message });
+  }
+}

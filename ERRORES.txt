@@ -1,0 +1,43 @@
+GET
+https://xiaomi-cartagena.vercel.app/favicon.ico
+[HTTP/2 404  0ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4burl7v
+[HTTP/2 404  91ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4d8osvf
+[HTTP/2 404  59ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4fbouw6
+[HTTP/2 404  257ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4j6iiv4
+[HTTP/2 404  74ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4n47kpd
+[HTTP/2 404  75ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4r1omae
+[HTTP/2 404  67ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4uyvmnk
+[HTTP/2 404  63ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p4yw0a5g
+[HTTP/2 404  66ms]
+
+XHRGET
+https://xiaomi-cartagena.vercel.app/socket.io/?EIO=4&transport=polling&t=p52u2c5s
+[HTTP/2 404  62ms]
+
+​
+
+

@@ -1,0 +1,27 @@
+.vercel
+node_modules
+dist
+products-backup-base64.json
+
+# Variables de entorno — NUNCA subir al repositorio
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Archivos sensibles
+*.db
+credenciales.txt
+mongodb_credentials.txt
+mongo_url.txt
+conexion_bd.txt
+
+# Logs
+*.log
+app.log
+server.log
+frontend.log
+
+# OS
+.DS_Store
+Thumbs.db

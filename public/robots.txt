@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://xiaomi-cartagena-ivory.vercel.app/sitemap.xml

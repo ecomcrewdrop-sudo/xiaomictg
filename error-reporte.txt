@@ -1,0 +1,75 @@
+========================================
+CREDENCIALES DEL SISTEMA
+========================================
+
+PANEL ADMIN (MDM - Mobile Device Management):
+- URL: https://xiaomicartagena.com/admin/blocking/login
+- Admin: admin@mdm.com / admin123
+- Supervisor: supervisor@mdm.com / super123
+- Usuario: user@mdm.com / user123
+
+PORTAL DEL CLIENTE:
+- URL Login: https://xiaomicartagena.com/mi-cuenta/login
+- URL Mi Cuenta: https://xiaomicartagena.com/mi-cuenta
+- Icono: Usuario en el menú principal (arriba derecha)
+
+FRONTEND:
+- URL Principal: https://xiaomicartagena.com
+- URL Vercel: https://xiaomi-cartagena.vercel.app
+
+BACKEND API:
+- API URL: https://xiaomicartagena.com/api
+
+DATABASE:
+- SQLite: xiaomi_cartagena.db (local)
+- MongoDB: configurado en .env
+
+========================================
+LINKS DEL SISTEMA
+========================================
+
+/                       - Página principal
+/login-admin            - Login Admin E-commerce
+/panel-gestion-xiaomi  - Panel Admin E-commerce
+/admin/blocking/login   - Login Admin MDM
+/admin/blocking/dashboard - Dashboard Admin
+/admin/blocking/devices - Gestión de dispositivos
+/mi-cuenta/login       - Login Cliente
+/mi-cuenta             - Portal del Cliente
+
+========================================
+CREAR CLIENTES
+========================================
+
+MÉTODO 1: Automático al registrar dispositivo
+-------------------------------------------------
+1. Ir al Panel Admin MDM: https://xiaomicartagena.com/admin/blocking/devices
+2. Click en "Agregar Dispositivo"
+3. Completar campos (IMEI, marca, modelo, teléfono, owner)
+4. Ingresar Email del Cliente y Teléfono del Cliente
+5. Click en "Agregar"
+6. El sistema muestra automáticamente:
+   - Email del cliente
+   - Password temporal (últimos 4 dígitos del teléfono + "123")
+7. Compartir credenciales con el cliente
+
+MÉTODO 2: Manual en MongoDB
+-------------------------------------------------
+Insertar en colección "blocking_clientes":
+{
+  "email": "cliente@email.com",
+  "password": "suPassword",
+  "nombre": "Nombre Cliente",
+  "telefono": "+57300...",
+  "createdAt": "2024-01-01T00:00:00Z"
+}
+
+========================================
+NOTAS
+========================================
+
+- El cliente debe tener un dispositivo registrado con el mismo email
+- Password temporal = últimos 4 dígitos del teléfono + "123"
+  Ejemplo: Teléfono +573001234567 → Password: 4567
+- Si no hay teléfono, el password será "xiao2024"
+- Portal Cliente muestra: estado del dispositivo, plan de pagos, historial
