@@ -4,7 +4,6 @@ import { Footer } from './components/Footer';
 
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { SocialProof } from './components/SocialProof';
-import { CompareComponent } from './components/CompareComponent';
 import { HomePage } from './components/pages/HomePage';
 import { CategoryPage } from './components/pages/CategoryPage';
 import { AdminPanel } from './components/pages/AdminPanel';
@@ -71,7 +70,6 @@ function MainLayout({ children }: { children?: React.ReactNode }) {
 
       <WhatsAppButton />
       <SocialProof />
-      <CompareComponent />
     </div>
   );
 }

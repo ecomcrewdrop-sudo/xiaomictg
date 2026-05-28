@@ -1,9 +1,8 @@
 import { Product, useProducts } from './ProductContext';
-import { Link, useNavigate } from 'react-router';
-import { ShoppingCart, Zap, Scale } from 'lucide-react';
+import { Link } from 'react-router';
+import { ShoppingCart, Zap } from 'lucide-react';
 import { useToast } from './ToastContext';
 import { useState } from 'react';
-import { useCompareStore } from './CompareStore';
 import { QuickBuyDialog } from './QuickBuyDialog';
 
 interface ProductCardProps {
@@ -15,8 +14,6 @@ const EXCHANGE_RATE = 1;
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useProducts();
   const { showToast } = useToast();
-  const navigate = useNavigate();
-  const { addItem } = useCompareStore();
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
     product.colorVariants?.[0]?.color
   );
@@ -224,28 +221,14 @@ export function ProductCard({ product }: ProductCardProps) {
 
               {/* CTAs — siempre visibles en móvil, hover en desktop */}
               <div className="mt-2 flex flex-col gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 relative z-30">
-                {/* Fila 1: Agregar al carrito + Comparar */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={availableStock === 0}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded"
-                  >
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                    Agregar
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      addItem(product);
-                    }}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-2.5 px-3 text-xs font-semibold transition-colors flex items-center justify-center rounded border border-gray-200"
-                    title="Comparar equipo"
-                  >
-                    <Scale className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={availableStock === 0}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  Agregar
+                </button>
 
                 {/* Fila 2: Comprar Ahora (compra impulsiva) */}
                 {availableStock > 0 && (

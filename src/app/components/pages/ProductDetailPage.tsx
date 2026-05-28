@@ -1,9 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router';
 import { useProducts } from '../ProductContext';
-import { Star, ShoppingCart, ArrowLeft, Package, Shield, Truck, Zap, CheckCircle, Scale } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Package, Shield, Truck, Zap, CheckCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '../ToastContext';
-import { useCompareStore } from '../CompareStore';
 import { QuickBuyDialog } from '../QuickBuyDialog';
 
 const EXCHANGE_RATE = 1; // Precios en COP
@@ -13,7 +12,6 @@ export function ProductDetailPage() {
   const { products, addToCart } = useProducts();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const { addItem } = useCompareStore();
   const [activeTab, setActiveTab] = useState<'specs' | 'reviews'>('specs');
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
@@ -289,29 +287,15 @@ export function ProductDetailPage() {
                 </button>
               </div>
 
-              <div className="flex flex-1 gap-2">
-                <button
-                  onClick={handleAddToCart}
-                  disabled={availableStock === 0}
-                  className="flex-[2] bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 font-semibold transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-base rounded"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  <span className="hidden sm:inline">{availableStock > 0 ? 'Agregar al Carrito' : 'Agotado'}</span>
-                  <span className="sm:hidden">{availableStock > 0 ? 'Agregar' : 'Agotado'}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    addItem(product);
-                    showToast('Equipo añadido a la balanza VS');
-                  }}
-                  className="flex-1 bg-gray-900 hover:bg-black text-white py-3 px-4 font-semibold transition-colors flex items-center justify-center gap-2 text-base rounded border border-gray-800"
-                  title="Comparar equipo"
-                >
-                  <Scale className="w-5 h-5 text-orange-500" />
-                  <span className="hidden md:inline">VS Comparar</span>
-                  <span className="md:hidden">VS</span>
-                </button>
-              </div>
+              <button
+                onClick={handleAddToCart}
+                disabled={availableStock === 0}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 font-semibold transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-base rounded"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span className="hidden sm:inline">{availableStock > 0 ? 'Agregar al Carrito' : 'Agotado'}</span>
+                <span className="sm:hidden">{availableStock > 0 ? 'Agregar' : 'Agotado'}</span>
+              </button>
             </div>
 
             {/* WhatsApp CTA + Comprar Ahora */}
