@@ -3,6 +3,10 @@ import { Link } from 'react-router';
 import { useProducts, Product } from './ProductContext';
 import { Search, X, Sparkles, AlertCircle, ShoppingCart, CornerDownLeft, Cpu, Palette, Tablet, Command, Info } from 'lucide-react';
 
+// Precios en la base de datos ya están en COP — NO multiplicar por exchangeRate
+const formatCOP = (price: number) =>
+  `$${(price || 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })} COP`;
+
 interface SmartSearchProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,11 +20,10 @@ interface ScoredProduct {
 }
 
 export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
-  const { products, ticketConfig, addToCart } = useProducts();
+  const { products, addToCart } = useProducts();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-  const exchangeRate = ticketConfig.exchangeRate || 4200;
 
   // Auto-focus input when modal opens
   useEffect(() => {
@@ -398,12 +401,11 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                     const theme = getCategoryTheme(product.category);
                     const isOutOfStock = product.stock <= 0;
                     const isLowStock = product.stock > 0 && product.stock <= 3;
-                    const priceCOP = (product.price || 0) * exchangeRate;
 
                     return (
                       <Link
                         key={product.id}
-                        to={`/producto/${product.id}`}
+                        to={`/product/${product.id}`}
                         onClick={onClose}
                         className="group flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white border border-slate-100 hover:border-orange-100 rounded-2xl hover:shadow-md transition-all duration-300 gap-4"
                       >
@@ -463,9 +465,8 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                         <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-100">
                           <div className="sm:text-right">
                             <div className="text-sm font-black text-slate-900 leading-tight">
-                              ${priceCOP.toLocaleString('es-CO', { minimumFractionDigits: 0 })} COP
+                              {formatCOP(product.price)}
                             </div>
-                            <div className="text-[10px] text-slate-400">${product.price || 0} USD</div>
                           </div>
                           
                           {/* Fast Action */}
