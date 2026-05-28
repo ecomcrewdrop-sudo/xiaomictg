@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useProducts, Product } from '../ProductContext';
 import { Button } from '../ui/button';
-import { Zap, Store, Truck, CreditCard, Loader2, ShoppingBag, ShieldCheck, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Zap, Store, Truck, CreditCard, Loader2, ShoppingBag, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ThermalTicket } from '../ThermalTicket';
 
@@ -15,9 +15,10 @@ export function DirectCheckoutPage() {
   const navigate = useNavigate();
   const { products, addOrder, ticketConfig, loading } = useProducts();
 
-  const productId = searchParams.get('productId');
-  const initialColor = searchParams.get('color');
-  const initialStorage = searchParams.get('storage');
+  // Soporta tanto los parámetros descriptivos como los abreviados generados por el Generador VIP
+  const productId = searchParams.get('productId') || searchParams.get('p');
+  const initialColor = searchParams.get('color') || searchParams.get('c');
+  const initialStorage = searchParams.get('storage') || searchParams.get('s');
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | undefined>(initialColor || undefined);
@@ -188,26 +189,34 @@ export function DirectCheckoutPage() {
     }
   };
 
+  const paymentMethods = [
+    { value: 'efectivo', label: 'Efectivo', sub: 'Contra entrega', icon: '💵' },
+    { value: 'nequi', label: 'Nequi', sub: 'Contra entrega', icon: '📱' },
+    { value: 'transferencia', label: 'Transferencia', sub: 'Bancaria Directa', icon: '🏦' },
+    { value: 'tarjeta', label: 'Datáfono físico', sub: 'Contra entrega (+5%)', icon: '💳' },
+    { value: 'bold', label: 'Pago Seguro Online', sub: 'Bold (+5%)', icon: '🌐' },
+  ];
+
   if (loading || !product) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50">
-        <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
-        <p className="text-gray-500 font-medium tracking-wide animate-pulse">Preparando tu compra segura...</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-slate-50/50">
+        <Loader2 className="w-12 h-12 text-sky-500 animate-spin mb-4" />
+        <p className="text-slate-500 font-black tracking-wider animate-pulse text-sm">PREPARANDO TU COMPRA SEGURA...</p>
       </div>
     );
   }
 
   if (orderSuccess) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 p-6">
-        <div className="bg-white rounded-3xl p-10 max-w-lg w-full shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-500">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-12 h-12 text-green-500" />
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-slate-50/50 p-6">
+        <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-lg w-full shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-500 border border-slate-100">
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h2 className="text-3xl font-black text-gray-900">¡Pedido Confirmado!</h2>
-          <p className="text-gray-500 text-lg">Tu número de orden es <strong className="text-gray-900">{orderSuccess.orderNumber}</strong></p>
-          <p className="text-gray-500">Hemos enviado los detalles a <b>{customerEmail}</b></p>
-          <Button onClick={() => navigate('/')} className="mt-8 w-full h-14 text-lg bg-orange-500 hover:bg-orange-600 rounded-xl">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">¡Pedido Confirmado!</h2>
+          <p className="text-slate-500 text-base md:text-lg">Tu número de orden es <strong className="text-slate-900 bg-slate-100 px-2 py-1 rounded">{orderSuccess.orderNumber}</strong></p>
+          <p className="text-slate-400 text-sm">Hemos enviado los detalles a <b className="text-slate-700">{customerEmail}</b></p>
+          <Button onClick={() => navigate('/')} className="mt-8 w-full h-14 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white rounded-2xl shadow-lg transition-all cursor-pointer">
             Volver a la tienda
           </Button>
         </div>
@@ -219,164 +228,201 @@ export function DirectCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <div className="min-h-screen bg-slate-50/50 pt-6 pb-28 lg:pb-16 px-4 md:px-6">
+      <div className="max-w-5xl mx-auto">
         
         {/* HEADER COMPRA SEGURA */}
-        <div className="mb-8 flex items-center justify-center gap-3">
-          <ShieldCheck className="w-8 h-8 text-green-500" />
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Checkout Seguro</h1>
+        <div className="mb-8 flex items-center justify-center gap-2.5">
+          <ShieldCheck className="w-7 h-7 text-sky-500" strokeWidth={2.5} />
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase">Checkout Seguro</h1>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
+        {/* TOP MOBILE SUMMARY CARD */}
+        <div className="lg:hidden bg-white p-4.5 rounded-[2rem] border border-slate-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex items-center gap-4.5 mb-6">
+          <div className="w-18 h-18 bg-slate-50 rounded-2xl p-1.5 border border-slate-100 shadow-inner shrink-0 flex items-center justify-center">
+            <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-black text-sky-600 uppercase tracking-wider block leading-none">Estás comprando</span>
+            <h3 className="font-black text-slate-900 text-sm leading-snug truncate mt-1">{product.name}</h3>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {selectedStorage && <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-500">{selectedStorage}</span>}
+              {selectedColor && <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-500">{selectedColor}</span>}
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wide">Total</span>
+            <span className="font-black text-slate-955 text-base block mt-0.5">${grandTotal.toLocaleString('es-CO')}</span>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-12 gap-8 items-start">
           
           {/* COLUMNA IZQUIERDA: FORMULARIOS */}
-          <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-left-4 duration-500">
+          <div className="lg:col-span-7 space-y-6">
             
             {/* Paso 1: Datos */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-              <h3 className="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm">1</span>
-                Tus Datos Personales
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-[0_15px_35px_rgba(0,0,0,0.02)]">
+              <h3 className="font-black text-slate-900 text-base md:text-lg mb-6 flex items-center gap-3 tracking-tight">
+                <span className="w-7.5 h-7.5 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">1</span>
+                DATOS PERSONALES
               </h3>
               <div className="grid sm:grid-cols-2 gap-5">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Nombre completo *</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Nombre completo *</label>
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Ej. Juan Pérez"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all font-medium" />
+                    className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all font-semibold text-slate-800 placeholder:text-slate-400 shadow-inner text-sm md:text-base" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Cédula *</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Cédula o NIT *</label>
                   <input type="text" value={customerIdNumber} onChange={e => setCustomerIdNumber(e.target.value)} placeholder="Documento"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all font-medium" />
+                    className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all font-semibold text-slate-800 placeholder:text-slate-400 shadow-inner text-sm md:text-base" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Teléfono *</label>
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Ej. 300 123 4567"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all font-medium" />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Teléfono *</label>
+                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Ej. 302 287 5280"
+                    className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all font-semibold text-slate-800 placeholder:text-slate-400 shadow-inner text-sm md:text-base" />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Correo Electrónico *</label>
-                  <input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Para enviarte el recibo"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all font-medium" />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Correo Electrónico *</label>
+                  <input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Para enviarte la factura digital"
+                    className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all font-semibold text-slate-800 placeholder:text-slate-400 shadow-inner text-sm md:text-base" />
                 </div>
               </div>
             </div>
 
             {/* Paso 2: Entrega */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-              <h3 className="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm">2</span>
-                Método de Entrega
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-[0_15px_35px_rgba(0,0,0,0.02)]">
+              <h3 className="font-black text-slate-900 text-base md:text-lg mb-6 flex items-center gap-3 tracking-tight">
+                <span className="w-7.5 h-7.5 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">2</span>
+                MÉTODO DE ENTREGA
               </h3>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 {([
-                  { value: 'delivery', label: 'Envío a Domicilio', sub: '+$10.000 COP', Icon: Truck },
-                  { value: 'pickup', label: 'Retirar en Tienda', sub: '¡Gratis!', Icon: Store },
+                  { value: 'delivery', label: 'A Domicilio', sub: '+$10.000 COP', Icon: Truck },
+                  { value: 'pickup', label: 'Retiro Tienda', sub: '¡Gratis!', Icon: Store },
                 ] as const).map(opt => (
                   <button key={opt.value} type="button" onClick={() => setDeliveryMethod(opt.value)}
-                    className={`p-4 border-2 rounded-2xl transition-all flex flex-col items-center text-center ${
-                      deliveryMethod === opt.value ? 'border-orange-500 bg-orange-50' : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                    className={`p-4 border-2 rounded-2xl transition-all flex flex-col items-center text-center cursor-pointer ${
+                      deliveryMethod === opt.value 
+                        ? 'border-sky-500 bg-sky-50/50 shadow-sm scale-[1.02] ring-4 ring-sky-500/5' 
+                        : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
                     }`}>
-                    <opt.Icon className={`w-8 h-8 mb-2 ${deliveryMethod === opt.value ? 'text-orange-500' : 'text-gray-400'}`} />
-                    <div className={`font-bold ${deliveryMethod === opt.value ? 'text-orange-900' : 'text-gray-700'}`}>{opt.label}</div>
-                    <div className={`text-sm font-semibold mt-1 ${deliveryMethod === opt.value ? 'text-orange-600' : 'text-gray-500'}`}>{opt.sub}</div>
+                    <opt.Icon className={`w-7 h-7 mb-1.5 ${deliveryMethod === opt.value ? 'text-sky-500' : 'text-slate-400'}`} />
+                    <div className={`font-black text-xs md:text-sm ${deliveryMethod === opt.value ? 'text-sky-950' : 'text-slate-700'}`}>{opt.label}</div>
+                    <div className={`text-[10px] font-black mt-0.5 ${deliveryMethod === opt.value ? 'text-sky-600' : 'text-slate-500'}`}>{opt.sub}</div>
                   </button>
                 ))}
               </div>
 
               {deliveryMethod === 'delivery' && (
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Barrio y Dirección Exacta *</label>
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Barrio y Dirección Exacta *</label>
                   <textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="Ej. Barrio Manga, Calle 24 # 17-50, Apto 302" rows={3}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all resize-none font-medium" />
-                  <p className="text-sm text-gray-500 mt-2 flex items-center gap-1.5 font-medium">
-                    <Zap className="w-4 h-4 text-orange-500" /> Entrega flash en ~1 hora (aplica Cartagena).
+                    className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all resize-none font-semibold text-slate-800 placeholder:text-slate-400 shadow-inner text-sm" />
+                  <p className="text-xs text-sky-800 mt-2.5 flex items-center gap-1.5 font-bold">
+                    <Zap className="w-4 h-4 text-sky-500 animate-pulse" /> Entrega flash en menos de 1 hora en Cartagena.
                   </p>
                 </div>
               )}
             </div>
 
             {/* Paso 3: Pago */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-              <h3 className="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm">3</span>
-                Método de Pago
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-[0_15px_35px_rgba(0,0,0,0.02)]">
+              <h3 className="font-black text-slate-900 text-base md:text-lg mb-6 flex items-center gap-3 tracking-tight">
+                <span className="w-7.5 h-7.5 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">3</span>
+                MÉTODO DE PAGO
               </h3>
-              <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all font-bold text-gray-800 cursor-pointer text-base">
-                <option value="efectivo">💵 Pago en Efectivo (Contra entrega)</option>
-                <option value="nequi">📱 Nequi (Contra entrega)</option>
-                <option value="transferencia">🏦 Transferencia Bancaria</option>
-                <option value="tarjeta">💳 Tarjeta con Datáfono (Contra entrega) (+5%)</option>
-                <option value="bold">🌐 Pago Seguro en Línea - BOLD (+5%)</option>
-              </select>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {paymentMethods.map(opt => {
+                  const isSelected = paymentMethod === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPaymentMethod(opt.value as PaymentMethod)}
+                      className={`p-4 border-2 rounded-2xl transition-all flex items-center gap-4 text-left cursor-pointer ${
+                        isSelected 
+                          ? 'border-sky-500 bg-sky-50/50 shadow-sm ring-4 ring-sky-500/5' 
+                          : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-2xl shrink-0">{opt.icon}</span>
+                      <div className="min-w-0">
+                        <div className={`font-black text-xs md:text-sm ${isSelected ? 'text-sky-950' : 'text-slate-700'}`}>{opt.label}</div>
+                        <div className={`text-[10px] font-bold mt-0.5 ${isSelected ? 'text-sky-600' : 'text-slate-400'}`}>{opt.sub}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
           </div>
 
-          {/* COLUMNA DERECHA: RESUMEN PRODUCTO */}
-          <div className="lg:col-span-5 animate-in slide-in-from-right-4 duration-500 delay-100">
-            <div className="sticky top-24 bg-white rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden">
+          {/* COLUMNA DERECHA: RESUMEN PRODUCTO (DESKTOP ONLY) */}
+          <div className="lg:col-span-5 sticky top-24 hidden lg:block">
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-[0_15px_35px_rgba(0,0,0,0.03)] overflow-hidden">
               
-              <div className="bg-gray-50 p-6 flex items-center gap-4 border-b border-gray-100">
-                <div className="w-20 h-20 bg-white rounded-2xl p-2 border border-gray-200 shadow-sm shrink-0">
+              <div className="bg-slate-50/60 p-6 flex items-center gap-4 border-b border-slate-100/55">
+                <div className="w-20 h-20 bg-white rounded-2xl p-2 border border-slate-100 shadow-sm shrink-0 flex items-center justify-center">
                   <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1">{product.name}</h3>
-                  <div className="flex flex-wrap gap-2 text-sm font-semibold text-gray-500">
-                    {selectedStorage && <span className="bg-white px-2 py-0.5 rounded-md border border-gray-200">{selectedStorage}</span>}
-                    {selectedColor && <span className="bg-white px-2 py-0.5 rounded-md border border-gray-200">{selectedColor}</span>}
+                <div className="min-w-0">
+                  <h3 className="font-black text-slate-900 text-base leading-tight mb-1 truncate">{product.name}</h3>
+                  <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-500 mt-1">
+                    {selectedStorage && <span className="bg-white px-2 py-0.5 rounded-lg border border-slate-200">{selectedStorage}</span>}
+                    {selectedColor && <span className="bg-white px-2 py-0.5 rounded-lg border border-slate-200">{selectedColor}</span>}
                   </div>
                 </div>
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="flex justify-between text-gray-600 font-medium">
+                <div className="flex justify-between text-slate-600 font-bold text-sm">
                   <span>Subtotal</span>
                   <span>${unitPrice.toLocaleString('es-CO')}</span>
                 </div>
                 {deliveryFee > 0 && (
-                  <div className="flex justify-between text-gray-600 font-medium">
+                  <div className="flex justify-between text-slate-600 font-bold text-sm">
                     <span>Envío a Domicilio</span>
                     <span>+${DELIVERY_FEE.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 {cardSurcharge > 0 && (
-                  <div className="flex justify-between text-blue-600 font-medium">
+                  <div className="flex justify-between text-sky-600 font-bold text-sm">
                     <span>Recargo Tarjeta (5%)</span>
                     <span>+${cardSurcharge.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 
-                <div className="border-t border-gray-100 pt-4 mt-2">
+                <div className="border-t border-slate-100 pt-4 mt-2">
                   <div className="flex justify-between items-end">
-                    <span className="text-gray-500 font-bold uppercase tracking-wider text-sm">Total a Pagar</span>
-                    <div className="text-4xl font-black text-gray-900 tracking-tight">
-                      <span className="text-2xl text-orange-500 mr-1">$</span>
+                    <span className="text-slate-400 font-black uppercase tracking-wider text-[10px]">Total a Pagar</span>
+                    <div className="text-3xl font-black text-slate-955 tracking-tight leading-none">
+                      <span className="text-lg text-sky-500 mr-0.5">$</span>
                       {grandTotal.toLocaleString('es-CO')}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 bg-gray-50 border-t border-gray-100">
+              <div className="p-6 bg-slate-50/60 border-t border-slate-100/55">
                 {paymentMethod === 'bold' ? (
                   <Button onClick={handleBoldPayment} disabled={boldLoading || availableStock === 0}
-                    className="w-full h-16 text-lg font-black bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-xl shadow-blue-500/30 rounded-2xl transition-all hover:scale-[1.02]">
-                    {boldLoading ? <Loader2 className="w-6 h-6 mr-2 animate-spin" /> : <CreditCard className="w-6 h-6 mr-2" />}
+                    className="w-full h-15 text-base font-black bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg shadow-blue-500/10 rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                    {boldLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
                     Pagar Seguro con BOLD
                   </Button>
                 ) : (
                   <Button onClick={handleCompleteOrder} disabled={isSubmitting || availableStock === 0}
-                    className="w-full h-16 text-lg font-black bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-xl shadow-orange-500/30 rounded-2xl transition-all hover:scale-[1.02]">
-                    {isSubmitting ? <Loader2 className="w-6 h-6 mr-2 animate-spin" /> : <ShoppingBag className="w-6 h-6 mr-2" />}
+                    className="w-full h-15 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white shadow-lg rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
                     Confirmar mi Pedido
                   </Button>
                 )}
-                {boldError && <p className="mt-4 text-sm text-red-600 font-medium text-center">{boldError}</p>}
-                {availableStock === 0 && <p className="mt-4 text-sm text-red-600 font-bold text-center bg-red-50 p-2 rounded-lg">Este producto se encuentra agotado</p>}
+                {boldError && <p className="mt-4 text-xs text-rose-600 font-bold text-center">{boldError}</p>}
+                {availableStock === 0 && <p className="mt-4 text-xs text-rose-600 font-black text-center bg-rose-50 p-2.5 rounded-xl border border-rose-100">Este producto se encuentra agotado en inventario</p>}
               </div>
 
             </div>
@@ -384,6 +430,46 @@ export function DirectCheckoutPage() {
 
         </div>
       </div>
+
+      {/* STICKY BOTTOM BAR FOR MOBILE */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-slate-100 px-5 shadow-[0_-12px_40px_rgba(15,23,42,0.08)] z-50 flex items-center justify-between gap-4"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', paddingTop: '12px' }}
+      >
+        <div className="flex flex-col">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block leading-none">Total a pagar</span>
+          <span className="text-xl font-black text-slate-955 leading-none mt-1.5 block">
+            ${grandTotal.toLocaleString('es-CO')}
+          </span>
+        </div>
+        
+        <div className="flex-1 max-w-[210px]">
+          {availableStock === 0 ? (
+            <div className="w-full h-13 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl flex items-center justify-center text-xs font-black">
+              AGOTADO
+            </div>
+          ) : paymentMethod === 'bold' ? (
+            <Button 
+              onClick={handleBoldPayment} 
+              disabled={boldLoading}
+              className="w-full h-13 text-sm font-black bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-md shadow-blue-500/10 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-in fade-in duration-300"
+            >
+              {boldLoading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <CreditCard className="w-4.5 h-4.5" />}
+              Pagar con BOLD
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleCompleteOrder} 
+              disabled={isSubmitting}
+              className="w-full h-13 text-sm font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white shadow-md rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-in fade-in duration-300"
+            >
+              {isSubmitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ShoppingBag className="w-4.5 h-4.5" />}
+              Confirmar Pedido
+            </Button>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }

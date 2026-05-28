@@ -261,6 +261,22 @@ async function sendOrderEmail(order) {
     return;
   }
   try {
+    const ticketConfig = await db.collection("ticketConfig").findOne({ type: "config" });
+    const config = ticketConfig || {
+      storeName: "XIAOMI STORE",
+      tagline: "Tecnolog\xEDa Premium",
+      address: "Cl. 31 #61-64, Los \xC1ngeles",
+      city: "Cartagena de Indias",
+      phone: "(605) 123-4567",
+      website: "www.xiaomi.com",
+      footerMessage: "\xA1Gracias por tu compra!",
+      warrantyMessage: "Conserva este ticket para tu garant\xEDa",
+      schedule: "Lun - Vie: 9:00 AM - 7:00 PM | Dom: 10:30 AM - 3:00 PM"
+    };
+    const deliveryFee = order.customerInfo?.deliveryFee || 0;
+    const isCard = order.paymentMethod?.toLowerCase().includes("tarjeta") || order.paymentMethod?.toLowerCase().includes("bold");
+    const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
+    const grandTotal = order.total + cardFee + deliveryFee;
     const itemsHtml = order.items.map((item) => {
       const imageUrl = item.product?.image || "";
       const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${item.product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 10px;" />` : "";
@@ -275,84 +291,232 @@ async function sendOrderEmail(order) {
         </li>
       `;
     }).join("");
+    const emailHtml = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="background-color: #ff6900; padding: 30px 20px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: -0.5px;">\xA1Tu pedido ha sido confirmado! \u{1F389}</h1>
+          <p style="color: #fff3e0; margin: 10px 0 0 0; font-size: 16px;">Gracias por elegir Xiaomi Cartagena</p>
+        </div>
+        
+        <div style="padding: 30px;">
+          <p style="font-size: 16px; color: #333; line-height: 1.5; margin-top: 0;">Hola <strong>${order.customerInfo?.name || "Cliente"}</strong>,</p>
+          <p style="font-size: 16px; color: #555; line-height: 1.5;">Hemos recibido tu orden <strong>#${order.orderNumber}</strong> y estamos prepar\xE1ndola con mucho cuidado.</p>
+          
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #ff6900;">
+            <h3 style="margin-top: 0; color: #333; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px;">Resumen de tu Orden</h3>
+            <ul style="list-style: none; padding: 0; margin: 0;">${itemsHtml}</ul>
+            
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc; text-align: right;">
+              <p style="margin: 5px 0; font-size: 14px; color: #666;">Subtotal: $${order.total.toLocaleString("es-CO")} COP</p>
+              ${deliveryFee > 0 ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">Env\xEDo: $${deliveryFee.toLocaleString("es-CO")} COP</p>` : ""}
+              ${cardFee > 0 ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">Recargo Tarjeta (5%): $${cardFee.toLocaleString("es-CO")} COP</p>` : ""}
+              <h2 style="margin: 10px 0 0 0; color: #ff6900; font-size: 22px;">Total: $${grandTotal.toLocaleString("es-CO")} COP</h2>
+            </div>
+          </div>
+          
+          <div style="margin-top: 25px;">
+            <h4 style="color: #333; margin-bottom: 10px; font-size: 15px;">Detalles de Entrega</h4>
+            <p style="margin: 5px 0; color: #555; font-size: 14px;"><strong>M\xE9todo:</strong> ${order.customerInfo?.deliveryMethod === "delivery" ? "Domicilio" : "Retiro en tienda"}</p>
+            ${order.customerInfo?.deliveryMethod === "delivery" ? `<p style="margin: 5px 0; color: #555; font-size: 14px;"><strong>Direcci\xF3n:</strong> ${order.customerInfo?.address || ""}</p>` : ""}
+            <p style="margin: 5px 0; color: #555; font-size: 14px;"><strong>Pago:</strong> ${order.paymentMethod}</p>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+            <p style="color: #888; font-size: 13px; margin: 0;">\xBFTienes alguna pregunta? Cont\xE1ctanos a nuestro WhatsApp: ${config.phone}</p>
+          </div>
+        </div>
+      </div>
+    `;
+    const toEmails = ["xiaomi.cartagenaventas@gmail.com"];
+    if (order.customerInfo?.email) {
+      toEmails.push(order.customerInfo.email);
+    }
+    try {
+      await resend.emails.send({
+        from: "Xiaomi Cartagena <ventas@xiaomicartagena.com>",
+        to: toEmails,
+        subject: `Confirmaci\xF3n de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+        html: emailHtml
+      });
+      console.log("[server] Email sent successfully using custom domain");
+    } catch (domainError) {
+      console.warn("[server] Error sending with custom domain, trying fallback with onboarding@resend.dev:", domainError.message || domainError);
+      await resend.emails.send({
+        from: "Xiaomi Cartagena <onboarding@resend.dev>",
+        to: ["xiaomi.cartagenaventas@gmail.com"],
+        subject: `[FALLBACK] Nuevo Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+        html: emailHtml
+      });
+      console.log("[server] Fallback email sent to admin");
+    }
+  } catch (error) {
+    console.error("[server] Error sending email:", error);
+  }
+}
+async function sendInvoiceEmail(order) {
+  if (!resend) {
+    console.log("[server] RESEND_API_KEY no configurado, email omitido");
+    return;
+  }
+  try {
+    const ticketConfig = await db.collection("ticketConfig").findOne({ type: "config" });
+    const config = ticketConfig || {
+      storeName: "XIAOMI STORE",
+      tagline: "Tecnolog\xEDa Premium",
+      address: "Cl. 31 #61-64, Los \xC1ngeles",
+      city: "Cartagena de Indias",
+      phone: "302 287 5280",
+      nit: "1043345642-7",
+      website: "www.xiaomicartagena.com",
+      footerMessage: "\xA1Gracias por tu compra!",
+      warrantyMessage: "Conserva este ticket para tu garant\xEDa",
+      schedule: "Lun - Vie: 9:00 AM - 7:00 PM | Dom: 10:30 AM - 3:00 PM"
+    };
+    const deliveryFee = order.customerInfo?.deliveryFee || 0;
+    const isCard = order.paymentMethod?.toLowerCase().includes("tarjeta") || order.paymentMethod?.toLowerCase().includes("bold");
+    const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
+    const grandTotal = order.total + cardFee + deliveryFee;
+    const nitValue = config.nit || "1043345642-7";
     const ticketHtml = `
-      <div style="border: 2px solid #333; padding: 20px; max-width: 300px; font-family: monospace; font-size: 12px; background: #fff;">
-        <div style="text-align: center; border-bottom: 1px dashed #333; padding-bottom: 10px; margin-bottom: 10px;">
-          <h2 style="margin: 0; font-size: 18px;">XIAOMI STORE</h2>
-          <p style="margin: 5px 0;">Tecnolog\xEDa Premium</p>
-          <p style="margin: 5px 0;">Cl. 31 #61-64, Los \xC1ngeles</p>
-          <p style="margin: 5px 0;">Cartagena de Indias</p>
-          <p style="margin: 5px 0;">Tel: (605) 123-4567</p>
+      <div style="border: 2px solid #333; padding: 20px; max-width: 320px; font-family: 'Courier New', Courier, monospace; font-size: 12px; background: #fff; margin: 0 auto; color: #000;">
+        <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 12px; margin-bottom: 16px;">
+          <h2 style="margin: 0 0 4px 0; font-size: 22px; text-transform: uppercase;">${config.storeName}</h2>
+          <p style="margin: 0 0 6px 0; font-size: 11px;">${config.tagline}</p>
+          <p style="margin: 0 0 4px 0; font-weight: bold; font-size: 12px;">NIT: ${nitValue}</p>
+          <p style="margin: 8px 0 0 0; font-size: 10px;">${config.address}</p>
+          <p style="margin: 0; font-size: 10px;">${config.city}</p>
+          <p style="margin: 4px 0 0 0; font-size: 10px; font-weight: bold;">Tel: ${config.phone}</p>
+          <p style="margin: 4px 0 0 0; font-size: 10px;">${config.website}</p>
         </div>
         
-        <div style="border-bottom: 1px dashed #333; padding-bottom: 10px; margin-bottom: 10px;">
-          <p style="margin: 5px 0;"><strong>Orden:</strong> ${order.orderNumber}</p>
-          <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(order.date).toLocaleString()}</p>
+        <div style="margin-bottom: 12px; font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <strong>ORDEN:</strong> <span style="font-weight: bold;">#${order.orderNumber}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+            <strong>FECHA:</strong> <span>${new Date(order.date).toLocaleDateString("es-CO")}</span>
+          </div>
         </div>
         
-        <div style="border-bottom: 1px dashed #333; padding-bottom: 10px; margin-bottom: 10px;">
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <div style="margin-bottom: 12px; font-size: 11px;">
+          <div style="margin-bottom: 4px; font-weight: bold;">CLIENTE</div>
+          <div>Nombre: <span style="text-transform: uppercase;">${order.customerInfo?.name || "N/A"}</span></div>
+          <div>C\xE9dula/NIT: ${order.customerInfo?.idNumber || "N/A"}</div>
+          <div>Tel: ${order.customerInfo?.phone || "N/A"}</div>
+        </div>
+
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <div style="margin-bottom: 12px; font-size: 11px;">
+          <div style="margin-bottom: 4px; font-weight: bold;">ENTREGA</div>
+          <div style="text-transform: uppercase;">${order.customerInfo?.deliveryMethod === "delivery" ? "Env\xEDo a domicilio" : "Retiro en tienda"}</div>
+          ${order.customerInfo?.deliveryMethod === "delivery" ? `<div style="margin-top: 2px;">Dir: ${order.customerInfo?.address || ""}</div>` : ""}
+        </div>
+
+        <div style="border-top: 2px solid #000; margin: 10px 0;"></div>
+        
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">PRODUCTOS</div>
           ${order.items.map((item) => `
-            <div style="margin-bottom: 8px;">
-              <div>${item.product?.name || "Producto"} x${item.quantity}</div>
-              <div style="text-align: right;">$${((item.product?.price || 0) * item.quantity).toFixed(2)}</div>
+            <div style="margin-bottom: 10px; font-size: 11px;">
+              <div style="font-weight: bold; text-transform: uppercase;">${item.product?.name || "Producto"}</div>
+              <div style="font-size: 10px; margin-bottom: 4px;">
+                ${item.selectedStorage ? `[${item.selectedStorage}]` : ""} 
+                ${item.selectedColor ? `- Color: ${item.selectedColor}` : ""}
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>${item.quantity} x $${(item.product?.price || 0).toLocaleString("es-CO")}</span>
+                <strong>$${((item.product?.price || 0) * item.quantity).toLocaleString("es-CO")}</strong>
+              </div>
+              ${item.serialNumber ? `<div style="font-size: 10px; margin-top: 4px;">SN: ${item.serialNumber}</div>` : ""}
+              ${item.invoiceNumber ? `<div style="font-size: 10px; margin-top: 2px;">Factura: ${item.invoiceNumber}</div>` : ""}
             </div>
           `).join("")}
         </div>
         
-        <div style="border-bottom: 1px dashed #333; padding-bottom: 10px; margin-bottom: 10px;">
-          <p style="margin: 5px 0;"><strong>Cliente:</strong> ${order.customerInfo?.name || "No especificado"}</p>
-          <p style="margin: 5px 0;"><strong>Tel:</strong> ${order.customerInfo?.phone || "No especificado"}</p>
-          <p style="margin: 5px 0;"><strong>Entrega:</strong> ${order.customerInfo?.deliveryMethod === "delivery" ? "Domicilio" : "Retiro en tienda"}</p>
-          ${order.customerInfo?.deliveryMethod === "delivery" ? `<p style="margin: 5px 0;"><strong>Direcci\xF3n:</strong> ${order.customerInfo?.address || ""}</p>` : ""}
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+        <div style="font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>Subtotal:</span>
+            <span>$${order.total.toLocaleString("es-CO")}</span>
+          </div>
+          ${deliveryFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>Domicilio:</span>
+            <span>$${deliveryFee.toLocaleString("es-CO")}</span>
+          </div>` : ""}
+          ${cardFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>Recargo Tarjeta (5%):</span>
+            <span>$${cardFee.toLocaleString("es-CO")}</span>
+          </div>` : ""}
+          
+          <div style="border-top: 2px solid #000; margin: 10px 0;"></div>
+          
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; font-weight: bold;">
+            <span>TOTAL:</span>
+            <span>$${grandTotal.toLocaleString("es-CO")} COP</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px; font-size: 11px; border-top: 1px dashed #000; padding-top: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <strong>M\xC9TODO DE PAGO:</strong>
+            <span style="text-transform: uppercase;">${order.paymentMethod}</span>
+          </div>
         </div>
         
-        <div style="text-align: center;">
-          <p style="margin: 5px 0;"><strong>TOTAL:</strong> $${order.total.toFixed(2)}</p>
-          <p style="margin: 5px 0;"><strong>Pago:</strong> ${order.paymentMethod}</p>
-        </div>
+        <div style="border-top: 2px dashed #000; margin: 16px 0;"></div>
         
-        <div style="border-top: 1px dashed #333; padding-top: 10px; margin-top: 10px; text-align: center;">
-          <p style="margin: 5px 0;">\xA1Gracias por tu compra!</p>
-          <p style="margin: 5px 0; font-size: 10px;">Conserva este ticket para tu garant\xEDa</p>
+        <div style="text-align: center; font-size: 10px; margin-top: 16px;">
+          <div style="margin-bottom: 12px; font-weight: bold; font-size: 14px; text-transform: uppercase;">${config.footerMessage}</div>
+          <div style="margin-top: 12px; line-height: 1.5; text-align: justify;">${config.warrantyMessage}</div>
+          <div style="margin-top: 12px;">
+            <div style="font-weight: bold; margin-bottom: 2px;">Horario de atenci\xF3n:</div>
+            <div>${config.schedule}</div>
+          </div>
         </div>
       </div>
     `;
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #e65100; text-align: center;">Nuevo Pedido #${order.orderNumber}</h1>
-        
-        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-          <h3 style="margin-top: 0;">Datos del Cliente</h3>
-          <p><strong>Nombre:</strong> ${order.customerInfo?.name || "No especificado"}</p>
-          <p><strong>Email:</strong> ${order.customerInfo?.email || "No especificado"}</p>
-          <p><strong>Tel\xE9fono:</strong> ${order.customerInfo?.phone || "No especificado"}</p>
-          <p><strong>Direcci\xF3n:</strong> ${order.customerInfo?.address || "Retiro en tienda"}</p>
-          <p><strong>M\xE9todo de pago:</strong> ${order.paymentMethod}</p>
-          <p><strong>Entrega:</strong> ${order.customerInfo?.deliveryMethod === "delivery" ? "Domicilio" : "Retiro en tienda"}</p>
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #333; margin-bottom: 10px;">Tu Factura Oficial</h1>
+          <p style="color: #666; font-size: 16px;">Hola <strong>${order.customerInfo?.name}</strong>, adjuntamos tu ticket de compra detallado de la orden #${order.orderNumber}.</p>
         </div>
         
-        <h2 style="color: #333;">Productos</h2>
-        <ul style="list-style: none; padding: 0;">${itemsHtml}</ul>
-        
-        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; text-align: center;">
-          <h2 style="margin: 0; color: #e65100;">Total: $${order.total.toFixed(2)}</h2>
-        </div>
-        
-        <div style="margin-top: 30px; text-align: center;">
-          <h3 style="color: #333;">Ticket de Compra</h3>
+        <div style="background-color: #f9f9f9; padding: 30px; border-radius: 12px;">
           ${ticketHtml}
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+          <p style="color: #888; font-size: 13px;">Si tienes alguna duda con tu factura, cont\xE1ctanos a nuestro WhatsApp: ${config.phone}</p>
         </div>
       </div>
     `;
-    await resend.emails.send({
-      from: "Xiaomi Cartagena <onboarding@resend.dev>",
-      to: ["xiaomi.cartagenaventas@gmail.com"],
-      subject: `Nuevo Pedido #${order.orderNumber} - Xiaomi Cartagena`,
-      html: emailHtml
-    });
-    console.log("Email sent successfully");
+    try {
+      await resend.emails.send({
+        from: "Xiaomi Cartagena <ventas@xiaomicartagena.com>",
+        to: [order.customerInfo.email],
+        subject: `Factura Oficial - Orden #${order.orderNumber} - Xiaomi Cartagena`,
+        html: emailHtml
+      });
+      console.log("[server] Invoice email sent successfully");
+    } catch (domainError) {
+      console.warn("[server] Error sending invoice with custom domain, sending copy to admin:", domainError.message || domainError);
+      await resend.emails.send({
+        from: "Xiaomi Cartagena <onboarding@resend.dev>",
+        to: ["xiaomi.cartagenaventas@gmail.com"],
+        subject: `[FALLBACK FACTURA CLIENTE] Factura Oficial #${order.orderNumber} - ${order.customerInfo.email}`,
+        html: emailHtml
+      });
+      console.log("[server] Fallback invoice email sent to admin");
+    }
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("[server] Error sending invoice email:", error);
   }
 }
 app.use(cors());
@@ -743,7 +907,21 @@ app.get("/api/orders", async (req, res) => {
 });
 app.post("/api/orders", async (req, res) => {
   try {
+    const { action, order: invoiceOrder } = req.body;
+    if (action === "send-invoice") {
+      if (!invoiceOrder || !invoiceOrder.customerInfo?.email) {
+        return res.status(400).json({ error: "Orden inv\xE1lida o falta email del cliente" });
+      }
+      await sendInvoiceEmail(invoiceOrder);
+      return res.json({ success: true });
+    }
     const { orderNumber: clientOrderNumber, date, createdAt, items, total, status, customerInfo, paymentMethod } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "La orden debe tener al menos un producto" });
+    }
+    if (total === void 0 || total === null || isNaN(Number(total)) || Number(total) < 0) {
+      return res.status(400).json({ error: "Total inv\xE1lido" });
+    }
     const id = Date.now().toString();
     const orderNumber = clientOrderNumber || `XM-${Date.now().toString().slice(-8)}`;
     const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -770,7 +948,7 @@ app.post("/api/orders", async (req, res) => {
     await db.collection("notifications").insertOne(notification);
     io.emit("newOrder", notification);
     const [hydratedOrder] = await hydrateOrdersWithProductImages([order]);
-    sendOrderEmail(hydratedOrder);
+    sendOrderEmail(hydratedOrder).catch((err) => console.error("Error sending email:", err));
     res.json(hydratedOrder);
   } catch (error) {
     res.status(500).json({ error: "Error creating order" });
