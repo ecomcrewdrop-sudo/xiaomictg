@@ -22,16 +22,50 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const exchangeRate = ticketConfig.exchangeRate || 4200;
 
-  // Curated popular search terms
-  const popularSearches = [
-    { label: 'Redmi Note', term: 'Redmi Note' },
-    { label: 'POCO F6 Pro', term: 'POCO' },
-    { label: 'Audífonos inalámbricos', term: 'audifonos' },
-    { label: 'Smartwatch', term: 'smartwatch' },
-    { label: 'Cargador rápido', term: 'cargador' },
-    { label: 'Cámaras de 108MP', term: '108MP' },
-    { label: 'Baterías 5000 mAh', term: '5000' },
-  ];
+  // Generate search chips DYNAMICALLY from actual in-stock products
+  const dynamicSearches = useMemo(() => {
+    const inStockProducts = products.filter(p => p.stock > 0);
+    if (inStockProducts.length === 0) {
+      return [
+        { label: 'Celulares', term: 'moviles' },
+        { label: 'Smartwatch', term: 'smartwatch' },
+        { label: 'Audífonos', term: 'audifonos' }
+      ];
+    }
+
+    const activeCategories = Array.from(new Set(inStockProducts.map(p => p.category)));
+    const categoryMapping: { [key: string]: string } = {
+      moviles: 'Celulares',
+      poco: 'POCO',
+      smartwatch: 'Smartwatches',
+      audifonos: 'Audífonos',
+      scooter: 'Scooters',
+      accesorios: 'Accesorios'
+    };
+
+    const chips: { label: string; term: string }[] = [];
+
+    // Add up to 3 active categories
+    activeCategories.slice(0, 3).forEach(cat => {
+      chips.push({
+        label: categoryMapping[cat] || cat.charAt(0).toUpperCase() + cat.slice(1),
+        term: cat
+      });
+    });
+
+    // Add names of top in-stock products (first 2 words of the name as a search term)
+    inStockProducts.slice(0, 5).forEach(p => {
+      const words = p.name.split(' ').slice(0, 2).join(' ');
+      if (words && !chips.some(c => c.label.toLowerCase() === words.toLowerCase())) {
+        chips.push({
+          label: words,
+          term: words
+        });
+      }
+    });
+
+    return chips.slice(0, 6); // Max 6 quick search chips
+  }, [products]);
 
   // Auto-focus input when modal opens
   useEffect(() => {
@@ -163,10 +197,11 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
       .slice(0, 8); // Return top 8 matches
   }, [query, products]);
 
-  // Curated recommended products (shown when query is empty)
+  // Curated recommended products (shown when query is empty, in stock only)
   const recommendedProducts = useMemo(() => {
-    // Show top 3 premium or high-value products
-    return [...products]
+    // Show top 3 in-stock premium products
+    return products
+      .filter((p) => p.stock > 0)
       .sort((a, b) => b.price - a.price)
       .slice(0, 3);
   }, [products]);
@@ -227,7 +262,7 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="¿Qué estás buscando hoy? (ej. POCO F6, Redmi Note, Audífonos...)"
+              placeholder="¿Qué estás buscando hoy? (ej. Celulares, Smartwatch, Audífonos...)"
               className="w-full pl-12 pr-10 py-3.5 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-2xl text-base text-slate-800 placeholder-slate-400 focus:outline-none transition-all"
             />
             {query && (
@@ -259,11 +294,11 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                   <span>Búsquedas Populares</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {popularSearches.map((s, idx) => (
+                  {dynamicSearches.map((s, idx) => (
                     <button
                       key={idx}
                       onClick={() => setQuery(s.term)}
-                      className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-orange-400 hover:bg-orange-50 text-slate-600 hover:text-orange-600 text-xs font-medium rounded-full cursor-pointer transition-all hover:scale-[1.02] shadow-xs active:scale-[0.98]"
+                      className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-orange-400 hover:bg-orange-50 text-slate-600 hover:text-orange-600 text-xs font-semibold rounded-full cursor-pointer transition-all hover:scale-[1.02] shadow-xs active:scale-[0.98]"
                     >
                       {s.label}
                     </button>
@@ -432,13 +467,13 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                       💡 Te sugerimos buscar:
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">
-                      {['Note', 'POCO', 'Smartwatch', 'Audífonos', 'Scooter'].map((t, i) => (
+                      {dynamicSearches.map((s, i) => (
                         <button
                           key={i}
-                          onClick={() => setQuery(t)}
+                          onClick={() => setQuery(s.term)}
                           className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-orange-400 hover:bg-orange-50 text-slate-600 text-orange-600 text-xs font-semibold rounded-full cursor-pointer transition-all hover:scale-105 shadow-xs"
                         >
-                          {t}
+                          {s.label}
                         </button>
                       ))}
                     </div>
