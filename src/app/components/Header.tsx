@@ -157,12 +157,9 @@ export function Header() {
               <button
                 onClick={() => setIsSearchOpen(true)}
                 className="flex items-center justify-center text-gray-700 hover:text-orange-500 hover:bg-orange-50/50 p-2 rounded-full cursor-pointer transition-all duration-300 group"
-                title="Buscar productos (Ctrl+K)"
+                title="Buscar productos"
               >
                 <Search className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110" />
-                <span className="hidden lg:inline-flex items-center text-[10px] font-black text-slate-400 border border-slate-200 bg-slate-50 px-1.5 py-0.5 rounded-lg ml-1.5 shadow-xs font-mono select-none">
-                  Ctrl K
-                </span>
               </button>
 
               {location.pathname === '/panel-gestion-xiaomi' && <NotificationBell />}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router';
 import { useProducts, Product } from './ProductContext';
 import { Search, X, Sparkles, AlertCircle, ShoppingCart, CornerDownLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Precios en la base de datos ya están en COP — NO multiplicar por exchangeRate
 const formatCOP = (price: number) =>
@@ -257,6 +258,7 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
       : undefined;
 
     addToCart(product, 1, defaultColor, defaultStorage);
+    toast.success(`${product.name} añadido al carrito`, { icon: '🛒' });
   };
 
   // Safe SVG rendering for broken images
@@ -484,21 +486,6 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
               )}
             </div>
           )}
-        </div>
-
-        {/* Modal Footer — hidden on mobile to save space */}
-        <div className="hidden md:flex bg-slate-50 border-t border-slate-100 py-3 px-6 items-center justify-between text-xs text-slate-400">
-          <div className="flex items-center gap-1">
-            <span className="font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-xs font-mono">Esc</span>
-            <span>para cerrar</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-0.5">
-              <span className="font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-xs font-mono">Enter</span>
-              <CornerDownLeft className="w-3 h-3 text-slate-400" />
-            </div>
-            <span>para ver detalles del producto</span>
-          </div>
         </div>
       </div>
     </div>
