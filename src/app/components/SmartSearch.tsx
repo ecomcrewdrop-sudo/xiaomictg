@@ -222,10 +222,25 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
       .slice(0, 8); // Return top 8 matches
   }, [query, products]);
 
-  // Top 5 trending products: in-stock, highest value, max 2 per category for variety
+  // Deep stock check: a product is available only if it has real units in any variant
+  const hasRealStock = (p: Product): boolean => {
+    if (!p) return false;
+    // If product has storage variants, at least one must have stock > 0
+    if (p.storageVariants && p.storageVariants.length > 0) {
+      return p.storageVariants.some(v => v && v.stock > 0);
+    }
+    // If product has color variants, at least one must have stock > 0
+    if (p.colorVariants && p.colorVariants.length > 0) {
+      return p.colorVariants.some(v => v && v.stock > 0);
+    }
+    // Fall back to root stock field
+    return (p.stock || 0) > 0;
+  };
+
+  // Top 5 trending: genuinely in-stock, with real image, highest value, max 2 per category
   const trendingProducts = useMemo(() => {
     if (!products || !Array.isArray(products)) return [];
-    const inStock = products.filter(p => p && p.stock > 0);
+    const inStock = products.filter(p => p && hasRealStock(p) && p.image && p.name);
     const categorySeen: Record<string, number> = {};
     const result: typeof inStock = [];
     // Sort by price desc (premium = most desired)
