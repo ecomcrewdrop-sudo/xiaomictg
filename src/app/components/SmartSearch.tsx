@@ -25,20 +25,25 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Auto-focus input when modal opens
+  // Auto-focus input when modal opens — delayed on mobile to avoid iOS keyboard jump
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
+      const isMobile = window.innerWidth < 768;
+      const delay = isMobile ? 350 : 100; // iOS needs extra time after sheet animation
+      const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 100);
-      document.body.style.overflow = 'hidden'; // Lock background scroll
+      }, delay);
+
+      // iOS Safari: use position sticky hack instead of overflow:hidden to prevent scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'relative';
+
+      return () => clearTimeout(timer);
     } else {
       document.body.style.overflow = '';
+      document.body.style.position = '';
       setQuery('');
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [isOpen]);
 
   // Handle ESC and keyboard navigation
@@ -264,29 +269,44 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[100] flex justify-center items-start pt-12 md:pt-24 px-4 overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[100] flex flex-col justify-end md:justify-start md:items-center md:pt-20 md:px-4 animate-in fade-in duration-200"
+      style={{ height: '100dvh' }}
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className="bg-white border border-slate-100 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] animate-in zoom-in-95 slide-in-from-top-6 duration-300"
+        className="bg-white w-full md:max-w-3xl shadow-2xl flex flex-col
+          rounded-t-3xl md:rounded-3xl
+          max-h-[92dvh] md:max-h-[84dvh]
+          animate-in slide-in-from-bottom duration-300 md:zoom-in-95 md:slide-in-from-top-4"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {/* Header Search Input */}
-        <div className="relative border-b border-slate-100 p-4 md:p-6 flex items-center gap-4 bg-white">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5.5 h-5.5 text-slate-400" />
+        <div className="relative border-b border-slate-100 px-4 py-3 md:p-6 flex items-center gap-3 bg-white"
+          style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' }}
+        >
+          {/* Mobile drag indicator */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-200 rounded-full md:hidden" />
+          <div className="relative flex-1 mt-2 md:mt-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               ref={inputRef}
               type="text"
+              inputMode="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="¿Qué estás buscando hoy? (ej. Celulares, Smartwatch, Audífonos...)"
-              className="w-full pl-12 pr-10 py-3.5 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-2xl text-base text-slate-800 placeholder-slate-400 focus:outline-none transition-all"
+              placeholder="Buscar producto, color, capacidad..."
+              className="w-full pl-11 pr-10 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none transition-all"
+              style={{ fontSize: '16px', lineHeight: '1.5', padding: '12px 40px 12px 44px' }}
             />
             {query && (
               <button
                 onClick={() => setQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-700 bg-slate-200/50 hover:bg-slate-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 bg-slate-200/70 hover:bg-slate-200 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -294,14 +314,18 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
           </div>
           <button
             onClick={onClose}
-            className="flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
+            className="w-10 h-10 mt-2 md:mt-0 flex-shrink-0 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all active:bg-slate-200"
+            aria-label="Cerrar buscador"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Dynamic content scrollable area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin bg-slate-50/50">
+        <div
+          className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50"
+          style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+        >
           {/* EMPTY QUERY STATE */}
           {!query.trim() ? (
             <div className="space-y-6 animate-in fade-in duration-200">
@@ -524,13 +548,13 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
           )}
         </div>
 
-        {/* Modal Footer (with shortcut indications) */}
-        <div className="bg-slate-50 border-t border-slate-100 py-3 px-6 flex items-center justify-between text-xs text-slate-400">
+        {/* Modal Footer — hidden on mobile to save space */}
+        <div className="hidden md:flex bg-slate-50 border-t border-slate-100 py-3 px-6 items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-1">
             <span className="font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-xs font-mono">Esc</span>
             <span>para cerrar</span>
           </div>
-          <div className="hidden sm:flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5">
               <span className="font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-xs font-mono">Enter</span>
               <CornerDownLeft className="w-3 h-3 text-slate-400" />
