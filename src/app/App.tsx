@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'rea
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 
-import { AiAssistant } from './components/AiAssistant';
+import { WhatsAppButton } from './components/WhatsAppButton';
 import { SocialProof } from './components/SocialProof';
 import { CompareComponent } from './components/CompareComponent';
 import { HomePage } from './components/pages/HomePage';
@@ -69,7 +69,7 @@ function MainLayout({ children }: { children?: React.ReactNode }) {
       </main>
       <Footer />
 
-      <AiAssistant />
+      <WhatsAppButton />
       <SocialProof />
       <CompareComponent />
     </div>
