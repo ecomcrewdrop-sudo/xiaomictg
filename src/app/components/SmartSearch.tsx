@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router';
 import { useProducts, Product } from './ProductContext';
-import { Search, X, Sparkles, AlertCircle, ShoppingCart, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { Search, X, Sparkles, AlertCircle, ShoppingCart, CornerDownLeft, Cpu, Palette, Tablet, Command, Info } from 'lucide-react';
 
 interface SmartSearchProps {
   isOpen: boolean;
@@ -21,51 +21,6 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const exchangeRate = ticketConfig.exchangeRate || 4200;
-
-  // Generate search chips DYNAMICALLY from actual in-stock products
-  const dynamicSearches = useMemo(() => {
-    const inStockProducts = products.filter(p => p.stock > 0);
-    if (inStockProducts.length === 0) {
-      return [
-        { label: 'Celulares', term: 'moviles' },
-        { label: 'Smartwatch', term: 'smartwatch' },
-        { label: 'Audífonos', term: 'audifonos' }
-      ];
-    }
-
-    const activeCategories = Array.from(new Set(inStockProducts.map(p => p.category)));
-    const categoryMapping: { [key: string]: string } = {
-      moviles: 'Celulares',
-      poco: 'POCO',
-      smartwatch: 'Smartwatches',
-      audifonos: 'Audífonos',
-      scooter: 'Scooters',
-      accesorios: 'Accesorios'
-    };
-
-    const chips: { label: string; term: string }[] = [];
-
-    // Add up to 3 active categories
-    activeCategories.slice(0, 3).forEach(cat => {
-      chips.push({
-        label: categoryMapping[cat] || cat.charAt(0).toUpperCase() + cat.slice(1),
-        term: cat
-      });
-    });
-
-    // Add names of top in-stock products (first 2 words of the name as a search term)
-    inStockProducts.slice(0, 5).forEach(p => {
-      const words = p.name.split(' ').slice(0, 2).join(' ');
-      if (words && !chips.some(c => c.label.toLowerCase() === words.toLowerCase())) {
-        chips.push({
-          label: words,
-          term: words
-        });
-      }
-    });
-
-    return chips.slice(0, 6); // Max 6 quick search chips
-  }, [products]);
 
   // Auto-focus input when modal opens
   useEffect(() => {
@@ -101,17 +56,74 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
     }
   };
 
-  // Smart Search logic
-  const searchResults = useMemo(() => {
-    if (!query.trim()) return [];
+  // Safe normalizer to prevent crashes on null/undefined database values
+  const normalize = (str: any) => {
+    if (str === null || str === undefined) return '';
+    const safeStr = typeof str === 'string' ? str : String(str);
+    return safeStr
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  };
 
-    // Normalize helper: lowercase, remove accents
-    const normalize = (str: string) =>
-      str
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim();
+  // Generate search chips DYNAMICALLY from actual in-stock products
+  const dynamicSearches = useMemo(() => {
+    if (!products || !Array.isArray(products)) {
+      return [
+        { label: 'Celulares', term: 'moviles' },
+        { label: 'Smartwatch', term: 'smartwatch' },
+        { label: 'Audífonos', term: 'audifonos' }
+      ];
+    }
+
+    const inStockProducts = products.filter(p => p && p.stock > 0);
+    if (inStockProducts.length === 0) {
+      return [
+        { label: 'Celulares', term: 'moviles' },
+        { label: 'Smartwatch', term: 'smartwatch' },
+        { label: 'Audífonos', term: 'audifonos' }
+      ];
+    }
+
+    const activeCategories = Array.from(new Set(inStockProducts.map(p => p.category).filter(Boolean)));
+    const categoryMapping: { [key: string]: string } = {
+      moviles: 'Celulares',
+      poco: 'POCO',
+      smartwatch: 'Smartwatches',
+      audifonos: 'Audífonos',
+      scooter: 'Scooters',
+      accesorios: 'Accesorios'
+    };
+
+    const chips: { label: string; term: string }[] = [];
+
+    // Add up to 3 active categories
+    activeCategories.slice(0, 3).forEach(cat => {
+      chips.push({
+        label: categoryMapping[cat] || cat.charAt(0).toUpperCase() + cat.slice(1),
+        term: cat
+      });
+    });
+
+    // Add names of top in-stock products (first 2 words of the name as a search term)
+    inStockProducts.slice(0, 5).forEach(p => {
+      if (!p || !p.name) return;
+      const words = p.name.split(' ').slice(0, 2).join(' ');
+      if (words && !chips.some(c => c.label.toLowerCase() === words.toLowerCase())) {
+        chips.push({
+          label: words,
+          term: words
+        });
+      }
+    });
+
+    return chips.slice(0, 6); // Max 6 quick search chips
+  }, [products]);
+
+  // Smart Search logic with comprehensive safety nets
+  const searchResults = useMemo(() => {
+    if (!query.trim() || !products || !Array.isArray(products)) return [];
 
     const cleanQuery = normalize(query);
     const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
@@ -121,42 +133,46 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
       let matchedSpec = '';
       let matchedColor = '';
 
+      if (!product) return { product, score: 0 };
+
       const nameNorm = normalize(product.name);
       const catNorm = normalize(product.category);
-      const descNorm = normalize(product.description || '');
+      const descNorm = normalize(product.description);
 
       // 1. Exact name match gets absolute priority
-      if (nameNorm === cleanQuery) {
+      if (nameNorm && nameNorm === cleanQuery) {
         score += 200;
       }
       // 2. Starts with clean query
-      else if (nameNorm.startsWith(cleanQuery)) {
+      else if (nameNorm && nameNorm.startsWith(cleanQuery)) {
         score += 100;
       }
       // 3. Category exact match
-      if (catNorm === cleanQuery) {
+      if (catNorm && catNorm === cleanQuery) {
         score += 80;
       }
 
       // 4. Word-by-word matches
       queryWords.forEach((word) => {
+        if (!word) return;
+
         // Name contains word
-        if (nameNorm.includes(word)) {
+        if (nameNorm && nameNorm.includes(word)) {
           score += 40;
         }
         // Category contains word
-        if (catNorm.includes(word)) {
+        if (catNorm && catNorm.includes(word)) {
           score += 20;
         }
         // Description contains word
-        if (descNorm.includes(word)) {
+        if (descNorm && descNorm.includes(word)) {
           score += 8;
         }
 
         // Color variants match (e.g. "Negro", "Azul")
-        if (product.colorVariants) {
+        if (product.colorVariants && Array.isArray(product.colorVariants)) {
           const colorMatch = product.colorVariants.find((c) =>
-            normalize(c.color).includes(word)
+            c && c.color && normalize(c.color).includes(word)
           );
           if (colorMatch) {
             score += 30;
@@ -165,9 +181,9 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
         }
 
         // Storage variants match (e.g. "128GB", "256GB")
-        if (product.storageVariants) {
+        if (product.storageVariants && Array.isArray(product.storageVariants)) {
           const storageMatch = product.storageVariants.find((s) =>
-            normalize(s.storage).includes(word)
+            s && s.storage && normalize(s.storage).includes(word)
           );
           if (storageMatch) {
             score += 35;
@@ -175,8 +191,9 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
         }
 
         // Technical Specifications map match
-        if (product.specifications) {
+        if (product.specifications && typeof product.specifications === 'object') {
           Object.entries(product.specifications).forEach(([key, val]) => {
+            if (!key) return;
             const keyNorm = normalize(key);
             const valNorm = normalize(val);
             if (valNorm.includes(word) || keyNorm.includes(word)) {
@@ -197,18 +214,9 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
       .slice(0, 8); // Return top 8 matches
   }, [query, products]);
 
-  // Curated recommended products (shown when query is empty, in stock only)
-  const recommendedProducts = useMemo(() => {
-    // Show top 3 in-stock premium products
-    return products
-      .filter((p) => p.stock > 0)
-      .sort((a, b) => b.price - a.price)
-      .slice(0, 3);
-  }, [products]);
-
   // Helpers for category colors
   const getCategoryTheme = (category: string) => {
-    const cat = category.toLowerCase();
+    const cat = category ? category.toLowerCase() : '';
     if (cat.includes('movil') || cat.includes('telefono')) {
       return { bg: 'bg-orange-50 text-orange-600 border-orange-100', name: '📱 Celular' };
     }
@@ -230,6 +238,7 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
   const handleQuickAdd = (product: Product, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!product) return;
 
     // Select default storage or color if available
     const defaultColor = product.colorVariants && product.colorVariants.length > 0
@@ -242,6 +251,12 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
     addToCart(product, 1, defaultColor, defaultStorage);
   };
 
+  // Safe SVG rendering for broken images
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.onerror = null; // Prevent infinite loop
+    e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%23cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>`;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -251,7 +266,7 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
     >
       <div
         ref={modalRef}
-        className="bg-white/95 border border-slate-100 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] animate-in zoom-in-95 slide-in-from-top-6 duration-300"
+        className="bg-white border border-slate-100 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] animate-in zoom-in-95 slide-in-from-top-6 duration-300"
       >
         {/* Header Search Input */}
         <div className="relative border-b border-slate-100 p-4 md:p-6 flex items-center gap-4 bg-white">
@@ -306,43 +321,65 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                 </div>
               </div>
 
-              {/* Recommended Catalog */}
+              {/* Advanced Search Info Box (Replaced recommended products) */}
               <div className="pt-2">
-                <div className="text-xs font-black uppercase text-slate-400 tracking-wider mb-4">
-                  🔥 Recomendados para ti
+                <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-400 tracking-wider mb-4">
+                  <Info className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Consejos para una Búsqueda Avanzada</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {recommendedProducts.map((p) => {
-                    const theme = getCategoryTheme(p.category);
-                    return (
-                      <Link
-                        key={p.id}
-                        to={`/producto/${p.id}`}
-                        onClick={onClose}
-                        className="group bg-white rounded-2xl border border-slate-100 hover:border-orange-200 p-4 transition-all duration-300 flex flex-col hover:shadow-lg hover:-translate-y-1"
-                      >
-                        <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-3 relative flex items-center justify-center">
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            className="max-h-[85%] max-w-[85%] object-contain group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <span className={`absolute top-2 left-2 text-[9px] font-black px-2 py-0.5 rounded-full border ${theme.bg}`}>
-                            {theme.name}
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-bold text-slate-800 line-clamp-1 group-hover:text-orange-600 transition-colors">
-                          {p.name}
-                        </h4>
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="text-xs font-black text-slate-900">
-                            ${(p.price * exchangeRate).toLocaleString('es-CO', { minimumFractionDigits: 0 })} COP
-                          </div>
-                          <span className="text-[10px] text-slate-400">${p.price} USD</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Item 1: Specs */}
+                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+                      <Cpu className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Características Técnicas</h4>
+                      <p className="text-xs font-light text-slate-500 leading-relaxed">
+                        Puedes buscar procesadores, megapíxeles, pantallas o baterías (ej: escribir <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Snapdragon</span> o <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">AMOLED</span>).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Item 2: Colors */}
+                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+                      <Palette className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Colores y Variantes</h4>
+                      <p className="text-xs font-light text-slate-500 leading-relaxed">
+                        Encuentra artículos escribiendo su color o capacidad (ej: escribir <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">azul</span>, <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">negro</span> o <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">256GB</span>).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Item 3: Navigation */}
+                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+                      <Tablet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Marcas e Inventario</h4>
+                      <p className="text-xs font-light text-slate-500 leading-relaxed">
+                        Todo está conectado a tiempo real con MongoDB. Busca líneas como <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">POCO</span>, <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Redmi</span> o categorías.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Item 4: Shortcut */}
+                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+                      <Command className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Acceso Rápido</h4>
+                      <p className="text-xs font-light text-slate-500 leading-relaxed">
+                        Presiona <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">Ctrl + K</span> en tu computadora en cualquier momento para abrir o cerrar este panel.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -350,17 +387,18 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
             /* ACTIVE RESULTS STATE */
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider px-1">
-                <span>Resultados de la búsqueda ({searchResults.length})</span>
+                <span>Resultados de la Búsqueda ({searchResults.length})</span>
                 <span className="font-mono text-[10px] hidden sm:block">Filtro inteligente activado</span>
               </div>
 
               {searchResults.length > 0 ? (
                 <div className="space-y-3">
                   {searchResults.map(({ product, matchedSpec, matchedColor }) => {
+                    if (!product) return null;
                     const theme = getCategoryTheme(product.category);
                     const isOutOfStock = product.stock <= 0;
                     const isLowStock = product.stock > 0 && product.stock <= 3;
-                    const priceCOP = product.price * exchangeRate;
+                    const priceCOP = (product.price || 0) * exchangeRate;
 
                     return (
                       <Link
@@ -373,8 +411,9 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                         <div className="flex items-center gap-4 flex-1">
                           <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">
                             <img
-                              src={product.image}
-                              alt={product.name}
+                              src={product.image || ''}
+                              alt={product.name || 'Xiaomi'}
+                              onError={handleImageError}
                               className="max-h-[85%] max-w-[85%] object-contain group-hover:scale-105 transition-transform duration-300"
                             />
                           </div>
@@ -426,7 +465,7 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                             <div className="text-sm font-black text-slate-900 leading-tight">
                               ${priceCOP.toLocaleString('es-CO', { minimumFractionDigits: 0 })} COP
                             </div>
-                            <div className="text-[10px] text-slate-400">${product.price} USD</div>
+                            <div className="text-[10px] text-slate-400">${product.price || 0} USD</div>
                           </div>
                           
                           {/* Fast Action */}
