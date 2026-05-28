@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { Settings, ShoppingCart, Bell, MessageCircle, Menu, X } from 'lucide-react';
+import { Settings, ShoppingCart, Bell, MessageCircle, Menu, X, Search } from 'lucide-react';
 import xiaomiLogo from '../../assets/logo-whatsapp.jpeg';
 import { useState, useEffect } from 'react';
 import { CartDialog } from './CartDialog';
@@ -7,6 +7,7 @@ import { useProducts } from './ProductContext';
 import { NotificationBell } from './NotificationBell';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerClose } from './ui/drawer';
 import { Button } from './ui/button';
+import { SmartSearch } from './SmartSearch';
 
 const carouselMessages = [
   "🔥 OFERTAS RELÁMPAGO: DISPONIBLES HOY",
@@ -54,10 +55,22 @@ export function Header() {
   const location = useLocation();
   const { cart, unreadOrdersCount } = useProducts();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -139,16 +152,27 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Right side - Cart */}
+            {/* Right side - Cart & Search */}
             <div className="flex items-center flex-shrink-0 gap-1 md:gap-2">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="flex items-center justify-center text-gray-700 hover:text-orange-500 hover:bg-orange-50/50 p-2 rounded-full cursor-pointer transition-all duration-300 group"
+                title="Buscar productos (Ctrl+K)"
+              >
+                <Search className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110" />
+                <span className="hidden lg:inline-flex items-center text-[10px] font-black text-slate-400 border border-slate-200 bg-slate-50 px-1.5 py-0.5 rounded-lg ml-1.5 shadow-xs font-mono select-none">
+                  Ctrl K
+                </span>
+              </button>
+
               {location.pathname === '/panel-gestion-xiaomi' && <NotificationBell />}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative flex items-center gap-2 text-gray-700 hover:text-black transition-colors p-2"
+                className="relative flex items-center gap-2 text-gray-700 hover:text-orange-500 p-2 rounded-full transition-colors"
               >
                 <ShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
                 {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black rounded-full w-4.5 h-4.5 flex items-center justify-center animate-in zoom-in">
                     {cartItemCount}
                   </span>
                 )}
@@ -159,6 +183,7 @@ export function Header() {
       </div>
       
       <CartDialog isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <SmartSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
       
       {/* Mobile Menu Drawer */}
       <Drawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
