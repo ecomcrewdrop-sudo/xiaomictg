@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { OrdersManager } from '../OrdersManager';
 import { StatisticsDashboard } from '../StatisticsDashboard';
+import { AdminLinkGenerator } from './AdminLinkGenerator';
 import { toast } from 'sonner';
 import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
 const SOCKET_URL = '';
@@ -503,7 +504,7 @@ export function AdminPanel() {
         </div>
 
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className="grid w-full max-w-4xl grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 mb-8 h-auto gap-1">
+        <TabsList className="grid w-full max-w-5xl grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 mb-8 h-auto gap-1">
           <TabsTrigger value="products">Productos</TabsTrigger>
           <TabsTrigger value="stats">Estadísticas</TabsTrigger>
           <TabsTrigger value="orders" className="relative">
@@ -518,11 +519,17 @@ export function AdminPanel() {
           <TabsTrigger value="ticket">Ticket</TabsTrigger>
           <TabsTrigger value="backup">Respaldo</TabsTrigger>
           <TabsTrigger value="blocking">Bloqueo</TabsTrigger>
+          <TabsTrigger value="links" className="font-bold text-orange-600 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600">Links VIP</TabsTrigger>
         </TabsList>
 
         {/* TAB DE ÓRDENES */}
         <TabsContent value="orders">
           <OrdersManager />
+        </TabsContent>
+
+        {/* TAB DE LINKS VIP */}
+        <TabsContent value="links">
+          <AdminLinkGenerator />
         </TabsContent>
 
         {/* TAB DE ESTADÍSTICAS */}

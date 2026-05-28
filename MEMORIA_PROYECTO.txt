@@ -1,0 +1,342 @@
+================================================================================
+MEMORIA DEL PROYECTO — XIAOMI CARTAGENA
+================================================================================
+Última actualización: 27 de mayo de 2026
+Propósito: Documento de contexto para continuidad del proyecto (humanos o IA).
+           Resume arquitectura, incidentes, soluciones y procedimientos.
+
+================================================================================
+1. RESUMEN DEL NEGOCIO Y DEL SISTEMA
+================================================================================
+
+Tienda en línea de productos Xiaomi en Cartagena, Colombia.
+- Sitio público: https://www.xiaomicartagena.com/
+- Panel admin: https://www.xiaomicartagena.com/panel-gestion-xiaomi
+- Login admin: https://www.xiaomicartagena.com/login-admin
+
+Stack principal:
+- Frontend: React + Vite + TypeScript + Tailwind
+- Backend API: Node.js + Express (ESM)
+- Base de datos: MongoDB Atlas (cluster Atlas, BD: xiaomi_cartagena)
+- Emails pedidos: Resend
+- Pagos en línea (tarjeta): Bold
+- Chat asistente: API /api/chat (Karol Garcia — asistente virtual)
+- Repo GitHub: https://github.com/ecomcrewdrop-sudo/xiaomictg.git (rama master)
+
+================================================================================
+2. ARQUITECTURA ACTUAL (IMPORTANTE — LEER PRIMERO)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  USUARIO → xiaomicartagena.com (cPanel / BanaHosting)                      │
+│            └── Carpeta public_html: contenido de /dist (build de Vite)      │
+│            └── .htaccess: SPA + no cache agresivo de index.html             │
+│                                                                             │
+│  FRONTEND en producción llama al API en RAILWAY (no a Vercel ni /api local) │
+│            └── src/app/lib/api-base.ts                                      │
+│                RAILWAY_API_ORIGIN = xiaomictg-production.up.railway.app     │
+│                                                                             │
+│  BACKEND → Railway (Node, server/index.js)                                  │
+│            └── npm start → node server/index.js                             │
+│            └── Conecta a MongoDB Atlas (puerto 27017 saliente OK)           │
+│                                                                             │
+│  MongoDB Atlas ← Railway ✅                                                 │
+│  MongoDB Atlas ← cPanel Node ❌ (BanaHosting bloquea salida puerto 27017)   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Por qué Railway y no solo cPanel para el backend:
+- En cPanel, Node podía arrancar pero dbReady quedaba false (ECONNREFUSED :27017).
+- Railway sí alcanza MongoDB Atlas.
+- El frontend en cPanel apunta explícitamente a Railway para todas las peticiones /api.
+
+DNS (Namecheap):
+- Registro A @ → IP BanaHosting (204.93.224.215) para servir el frontend.
+- www → CNAME a xiaomicartagena.com.
+- SSL: Let's Encrypt / AutoSSL en cPanel (después de propagar DNS).
+
+================================================================================
+3. ESTRUCTURA DEL REPOSITORIO (CARPETAS CLAVE)
+================================================================================
+
+/dist/                    → Build de producción del frontend (subir a cPanel)
+/public/.htaccess         → Reglas Apache; se copia a dist en el build
+/server/index.ts          → Código fuente del servidor Express
+/server/index.js          → Compilado con esbuild (Railway ejecuta este)
+/src/app/                 → Aplicación React
+  components/
+    ProductContext.tsx    → Estado global: productos, carrito, pedidos, banners
+    pages/
+      HomePage.tsx        → Página principal
+      CategoryPage.tsx    → Categorías (móviles, audífonos, etc.)
+      AdminPanel.tsx      → Panel de gestión
+      LoginPage.tsx       → Login admin
+    StatisticsDashboard.tsx → Estadísticas en panel admin
+    AiAssistant.tsx       → Widget flotante Karol Garcia (chat + WhatsApp)
+  lib/
+    api-base.ts           → URL del API (Railway en prod)
+    product-image.ts      → Compresión y subida de imágenes de productos
+    catalog-cache.ts      → Caché localStorage sin base64
+/api/                     → Funciones serverless Vercel (legado; chat, upload blob)
+package.json              → "start": "node server/index.js"
+
+================================================================================
+4. VARIABLES DE ENTORNO (RAILWAY Y LOCAL)
+================================================================================
+
+Obligatorias en Railway:
+- MONGO_URI          → Connection string MongoDB Atlas (ver conexion_bd.txt local)
+- ADMIN_USER         → Usuario admin (también puede validarse contra Mongo)
+- ADMIN_PASSWORD     → Contraseña admin
+
+Opcionales / recomendadas:
+- RESEND_API_KEY     → Envío de emails de pedidos nuevos
+- BOLD_API_KEY       → Pagos Bold en asistente
+- BOLD_SECRET_KEY
+- BLOB_READ_WRITE_TOKEN → Si existe, subida a Vercel Blob; si no, media en Mongo
+- PORT               → Railway lo asigna automáticamente
+
+Login admin:
+- Puede usar ADMIN_USER / ADMIN_PASSWORD de Railway.
+- También valida colección users en MongoDB (ej. usuario admin con contraseña en BD).
+- Si login 401: revisar variables Railway vs credenciales reales en Mongo.
+
+NUNCA subir a GitHub archivos con secretos:
+- credenciales.txt, mongo_url.txt, mongodb_credentials.txt, .env
+
+================================================================================
+5. ENDPOINTS DEL API (EXPRESS EN RAILWAY)
+================================================================================
+
+Salud:
+  GET  /api/health          → { ok, dbReady, uptimeSeconds }
+
+Auth:
+  POST /api/login           → { success, token }
+
+Catálogo (optimizado — sin base64 en listado):
+  GET  /api/products        → Lista; sanitiza imágenes data:; Cache-Control 60s
+  GET  /api/products/:id    → Un producto
+  POST /api/products
+  PUT  /api/products/:id    → También PUT /api/products con { id } en body (compat)
+  DELETE /api/products/:id
+
+Imágenes:
+  POST /api/upload          → Sube imagen (Blob o colección media en Mongo)
+  GET  /api/media/:mediaId  → Sirve imagen almacenada en Mongo
+
+Banners:
+  GET/POST/PUT/DELETE /api/banners
+
+Pedidos:
+  GET/POST /api/orders
+  PUT /api/orders/:id       → status, items, customerInfo, total
+
+Notificaciones:
+  GET  /api/notifications
+  PUT  /api/notifications/:id/read
+
+Ticket / factura:
+  GET/PUT /api/ticket-config
+
+Socket.io en servidor para nuevos pedidos (panel admin).
+
+================================================================================
+6. CRONOLOGÍA DE PROBLEMAS Y SOLUCIONES
+================================================================================
+
+--- 6.1 Productos no cargaban / panel vacío ---
+Síntomas: Esqueletos grises infinitos; 0 productos; pedidos no en admin.
+Causas múltiples:
+  a) Frontend apuntaba a API antigua (Vercel: xiaomi-cartagena.vercel.app).
+  b) Errores MIME: index-*.js devolvía HTML (faltaba .htaccess en dist).
+  c) Backend cPanel con dbReady: false (Mongo bloqueado).
+  d) Payload /api/products enorme (~770 KB, ~10 s) por imágenes base64 en Mongo.
+Solución:
+  - api-base.ts → Railway en producción.
+  - public/.htaccess → SPA + excluir /assets y /api.
+  - Backend principal en Railway.
+  - Sanitizar GET /products (quitar data:image); gzip; caché cliente; stale-while-revalidate.
+
+--- 6.2 Login admin colgado o timeout ---
+Causa: API incorrecta o servidor sin DB.
+Solución: fetchWithTimeout 10s en LoginPage; mensaje si AbortError; login en Railway con Mongo.
+
+--- 6.3 Edición de productos e imágenes no guardaban / "no se suben" ---
+Causas:
+  a) PUT /api/products con id en body; Express solo tenía PUT /api/products/:id.
+  b) No existía POST /api/upload en Express (solo en Vercel).
+  c) Fallback guardaba base64 en Mongo si fallaba upload.
+Solución (commit d35eac1d):
+  - /api/upload y /api/media en Express.
+  - Frontend PUT/DELETE con id en URL.
+  - product-image.ts: compresión ~350 KB + error claro, sin base64 en producto.
+  - AdminPanel: estados Guardando/Comprimiendo; usar product.id al editar.
+  - Servidor rechaza guardar productos con image data: en POST/PUT.
+
+--- 6.4 Rendimiento tienda lenta ---
+Medición: GET /api/products ~10 s, ~770 KB (un producto Redmi 15C con PNG base64 741 KB).
+Solución (commit 73ace5db):
+  - Servidor: sanitizeImageUrl, compression middleware, Cache-Control.
+  - Cliente: readProductsCache al iniciar; loading solo si no hay caché;
+    catalog-cache.ts; HomePage/CategoryPage skeleton solo sin productos.
+
+Pendiente operativo: Re-subir foto del producto "Redmi 15C + Obsequio" desde admin
+(su imagen quedó vacía en listado tras quitar base64).
+
+--- 6.5 Asistente IA bloqueaba clics en móvil ---
+Síntoma: Burbuja ancha "¿Te ayudo a elegir tu Xiaomi?" tapaba botones.
+Solución (commit 9e7c0778):
+  - pointer-events-none en contenedor; auto solo en botones.
+  - Móvil: solo FABs compactos (WhatsApp + KG); burbuja larga solo desktop.
+  - Teaser corto en móvil primera visita (8 s, localStorage).
+  - Chat casi pantalla completa en móvil; safe-area insets.
+
+--- 6.6 Estadísticas en panel admin ---
+StatisticsDashboard.tsx: KPIs, gráficas Recharts, filtros 7d/30d/90d/365d/all/custom.
+
+--- 6.7 Migración histórica base64 (antes de Railway) ---
+10 productos tenían imágenes base64 en Mongo (>5 MB total); Vercel limitaba 4.5 MB.
+Se hizo backup products-backup-base64.json y reemplazo por URLs CDN ligeras.
+REGLA: No volver a guardar imágenes en base64 en documentos de producto.
+
+================================================================================
+7. DESPLIEGUE — PASOS PARA ACTUALIZAR PRODUCCIÓN
+================================================================================
+
+A) BACKEND (Railway) — automático si repo conectado a GitHub
+   1. git add / commit / git push origin master
+   2. Railway redeploy en 2–5 min
+   3. Verificar: https://xiaomictg-production.up.railway.app/api/health
+      → dbReady: true
+
+B) FRONTEND (cPanel BanaHosting) — MANUAL cada vez que cambie React
+   1. En PC del proyecto: npm run build
+   2. Subir TODO el contenido de /dist a public_html del dominio
+      (incluye index.html, assets/, .htaccess)
+   3. Probar en incógnito: https://www.xiaomicartagena.com/
+   4. Si ves JS roto: Ctrl+F5 o vaciar caché; confirmar .htaccess en servidor
+
+C) Compilar servidor localmente (si Railway no compila):
+   npx esbuild server/index.ts --outfile=server/index.js --platform=node --format=esm --packages=external
+
+Scripts npm:
+   npm run dev     → Vite dev (frontend; API proxy local si configurado)
+   npm run build   → Genera dist/
+   npm start       → node server/index.js (backend)
+
+================================================================================
+8. COMMITS RECIENTES EN GITHUB (REFERENCIA)
+================================================================================
+
+9e7c0778 — Asistente IA optimizado para móvil
+73ace5db — Carga rápida catálogo (sanitize, gzip, caché)
+d35eac1d — Fix edición productos e imágenes (/api/upload, PUT rutas)
+d53aec34 — Merge Railway login y API
+a2a03e29 — API URL Railway, login Mongo, npm start
+920994a8 — Healthcheck sin Mongo
+376b2543 — Config Railway
+f7afb102 — Initial commit
+
+================================================================================
+9. RUTAS DEL FRONTEND (REACT ROUTER)
+================================================================================
+
+/                         → HomePage
+/moviles, /smartwatch, /audifonos, /tablet, /accesorios, /scooter, /poco
+/product/:id              → Detalle producto
+/login-admin              → Login
+/panel-gestion-xiaomi     → Admin (requiere adminToken en localStorage)
+/admin/blocking/*         → Módulo blocking (separado)
+
+================================================================================
+10. PANEL DE ADMINISTRACIÓN — FUNCIONES
+================================================================================
+
+- Gestión productos por categoría (CRUD)
+- Variantes color y almacenamiento
+- Especificaciones técnicas
+- Banners del home
+- Pedidos y notificaciones
+- Configuración ticket de compra
+- Estadísticas (ventas, inventario, gráficas, rango de fechas)
+
+Imágenes de productos:
+- Subir archivo → comprime en cliente → POST /api/upload → URL en producto
+- O URL externa https://...
+- NO usar imágenes pesadas sin subir (evitar pegar base64)
+
+================================================================================
+11. ASISTENTE VIRTUAL (AI)
+================================================================================
+
+Componente: src/app/components/AiAssistant.tsx
+- Persona: Karol Garcia, ventas Xiaomi Cartagena
+- Botón KG naranja + WhatsApp 302 287 5280
+- Chat usa POST /api/chat (puede estar en Vercel serverless según deploy)
+- Tokens especiales en respuestas: [PRODUCT:id:precio], [WHATSAPP_BUTTON],
+  [BOLD_BUTTON:monto], [ORDER_SUMMARY:...]
+- Oculto en /panel-gestion-xiaomi y /admin/*
+
+================================================================================
+12. CACHÉ Y ALMACENAMIENTO LOCAL (NAVEGADOR)
+================================================================================
+
+localStorage:
+- xiaomi-products      → Catálogo sin base64
+- xiaomi-banners
+- xiaomi-cart            → Carrito sin imágenes (solo productId, qty, variantes)
+- adminToken / adminUser
+- xiaomi-assistant-teaser-dismissed
+
+Si el carrito o productos se corrompen: borrar claves en DevTools → Application.
+
+================================================================================
+13. DIAGNÓSTICO RÁPIDO (CHECKLIST)
+================================================================================
+
+□ https://xiaomictg-production.up.railway.app/api/health → dbReady: true
+□ Red del navegador: peticiones a xiaomictg-production.up.railway.app/api/products
+□ Tamaño respuesta /products < 100 KB idealmente
+□ .htaccess presente en raíz del sitio en cPanel
+□ dist/ actualizado en cPanel tras cambios de frontend
+□ Variables MONGO_URI, ADMIN_* en Railway
+□ Producto con imagen vacía → re-subir foto en admin
+
+Errores frecuentes:
+- "Database unavailable" / 503 → Mongo caído o MONGO_URI mal en Railway
+- MIME type text/html en .js → falta .htaccess o dist viejo
+- Login infinito → API URL incorrecta o timeout red
+- Imagen no sube → revisar /api/upload en Network; comprimir < 4 MB
+
+================================================================================
+14. ARCHIVOS DE NOTAS EN EL PROYECTO (LOCAL)
+================================================================================
+
+MEMORIA_TECNICA.txt       → Memoria antigua (cPanel backend, mayo 2026); parcialmente obsoleta
+MEMORIA_PROYECTO.txt      → Este archivo (memoria actualizada y completa)
+cambios.txt               → Registro de cambios (poco usado)
+ERRORES.txt / error*.txt  → Logs de errores históricos
+conexion_bd.txt / mongo_url.txt → Credenciales locales (NO subir a Git)
+
+================================================================================
+15. SEGURIDAD Y BUENAS PRÁCTICAS
+================================================================================
+
+- Revocar tokens de GitHub si se expusieron en chat o commits.
+- No commitear .env ni archivos credenciales.txt.
+- Rotar contraseñas admin y Mongo si hubo filtración.
+- Imágenes de producto: JPG/WebP 50–200 KB vía /api/upload, nunca base64 en Mongo.
+- Mantener backup de MongoDB Atlas periódico.
+
+================================================================================
+16. CONTACTO Y DATOS DE TIENDA (REFERENCIA UI)
+================================================================================
+
+WhatsApp ventas: +57 302 287 5280 (wa.me/573022875280)
+Dirección ticket: Cl. 31 #61-64, Los Ángeles, Cartagena
+NIT en config: 1043345642-7
+
+================================================================================
+FIN DE MEMORIA — Actualizar este archivo cuando haya cambios de arquitectura
+o despliegue importantes.
+================================================================================

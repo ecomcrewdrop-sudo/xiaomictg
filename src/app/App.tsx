@@ -11,6 +11,8 @@ import { ProductDetailPage } from './components/pages/ProductDetailPage';
 import { ProductProvider, useProducts } from './components/ProductContext';
 import { ToastProvider } from './components/ToastContext';
 import { LoginPage } from './components/pages/LoginPage';
+import { AdminLinkGenerator } from './components/pages/AdminLinkGenerator';
+import { DirectCheckoutPage } from './components/pages/DirectCheckoutPage';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Toaster } from 'sonner';
 
@@ -100,9 +102,21 @@ function App() {
                 </MainLayout>
               </AdminRoute>
             } />
+            <Route path="/admin/gpedidos" element={
+              <AdminRoute>
+                <MainLayout>
+                  <AdminLinkGenerator />
+                </MainLayout>
+              </AdminRoute>
+            } />
             <Route path="/" element={
               <MainLayout>
                 <HomePage />
+              </MainLayout>
+            } />
+            <Route path="/comprar" element={
+              <MainLayout>
+                <DirectCheckoutPage />
               </MainLayout>
             } />
             <Route path="/moviles" element={
