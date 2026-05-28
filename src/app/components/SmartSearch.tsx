@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router';
 import { useProducts, Product } from './ProductContext';
-import { Search, X, Sparkles, AlertCircle, ShoppingCart, CornerDownLeft, Cpu, Palette, Tablet, Command, Info } from 'lucide-react';
+import { Search, X, Sparkles, AlertCircle, ShoppingCart, CornerDownLeft, TrendingUp, Flame } from 'lucide-react';
 
 // Precios en la base de datos ya están en COP — NO multiplicar por exchangeRate
 const formatCOP = (price: number) =>
@@ -222,6 +222,25 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
       .slice(0, 8); // Return top 8 matches
   }, [query, products]);
 
+  // Top 5 trending products: in-stock, highest value, max 2 per category for variety
+  const trendingProducts = useMemo(() => {
+    if (!products || !Array.isArray(products)) return [];
+    const inStock = products.filter(p => p && p.stock > 0);
+    const categorySeen: Record<string, number> = {};
+    const result: typeof inStock = [];
+    // Sort by price desc (premium = most desired)
+    const sorted = [...inStock].sort((a, b) => (b.price || 0) - (a.price || 0));
+    for (const p of sorted) {
+      const cat = p.category || 'other';
+      if ((categorySeen[cat] || 0) < 2) {
+        categorySeen[cat] = (categorySeen[cat] || 0) + 1;
+        result.push(p);
+      }
+      if (result.length >= 5) break;
+    }
+    return result;
+  }, [products]);
+
   // Helpers for category colors
   const getCategoryTheme = (category: string) => {
     const cat = category ? category.toLowerCase() : '';
@@ -348,65 +367,90 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
                 </div>
               </div>
 
-              {/* Advanced Search Info Box (Replaced recommended products) */}
-              <div className="pt-2">
-                <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-400 tracking-wider mb-4">
-                  <Info className="w-3.5 h-3.5 text-orange-500" />
-                  <span>Consejos para una Búsqueda Avanzada</span>
+              {/* 🔥 MÁS BUSCADOS — Top productos en stock */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-400 tracking-wider">
+                    <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    <span>Más Buscados</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">Stock en tiempo real</span>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Item 1: Specs */}
-                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
-                      <Cpu className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 mb-1">Características Técnicas</h4>
-                      <p className="text-xs font-light text-slate-500 leading-relaxed">
-                        Puedes buscar procesadores, megapíxeles, pantallas o baterías (ej: escribir <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Snapdragon</span> o <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">AMOLED</span>).
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Item 2: Colors */}
-                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
-                      <Palette className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 mb-1">Colores y Variantes</h4>
-                      <p className="text-xs font-light text-slate-500 leading-relaxed">
-                        Encuentra artículos escribiendo su color o capacidad (ej: escribir <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">azul</span>, <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">negro</span> o <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">256GB</span>).
-                      </p>
-                    </div>
-                  </div>
+                {/* Horizontal scroll on mobile, grid on desktop */}
+                <div
+                  className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-5 md:overflow-x-visible"
+                  style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+                >
+                  {trendingProducts.map((p, index) => {
+                    const isLowStock = p.stock > 0 && p.stock <= 3;
+                    const rankColors = [
+                      'from-orange-500 to-amber-400',   // #1
+                      'from-slate-500 to-slate-400',    // #2
+                      'from-amber-700 to-amber-500',    // #3
+                      'from-slate-300 to-slate-200',    // #4
+                      'from-slate-300 to-slate-200',    // #5
+                    ];
+                    const rankTextColors = ['text-white', 'text-white', 'text-white', 'text-slate-500', 'text-slate-500'];
+                    const isTop3 = index < 3;
 
-                  {/* Item 3: Navigation */}
-                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
-                      <Tablet className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 mb-1">Marcas e Inventario</h4>
-                      <p className="text-xs font-light text-slate-500 leading-relaxed">
-                        Todo está conectado a tiempo real con MongoDB. Busca líneas como <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">POCO</span>, <span className="font-semibold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Redmi</span> o categorías.
-                      </p>
-                    </div>
-                  </div>
+                    return (
+                      <Link
+                        key={p.id}
+                        to={`/product/${p.id}`}
+                        onClick={onClose}
+                        className="group relative bg-white border border-slate-100 hover:border-orange-200 rounded-2xl p-3 flex-shrink-0 w-36 md:w-auto flex flex-col items-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.97]"
+                      >
+                        {/* Rank badge */}
+                        <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full bg-gradient-to-br ${rankColors[index]} flex items-center justify-center shadow-md z-10`}>
+                          <span className={`text-[9px] font-black ${rankTextColors[index]}`}>#{index + 1}</span>
+                        </div>
 
-                  {/* Item 4: Shortcut */}
-                  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex gap-4 shadow-2xs hover:border-orange-200 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
-                      <Command className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 mb-1">Acceso Rápido</h4>
-                      <p className="text-xs font-light text-slate-500 leading-relaxed">
-                        Presiona <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">Ctrl + K</span> en tu computadora en cualquier momento para abrir o cerrar este panel.
-                      </p>
-                    </div>
-                  </div>
+                        {/* Hot badge for top 3 */}
+                        {isTop3 && (
+                          <div className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md z-10">
+                            🔥 TOP
+                          </div>
+                        )}
+
+                        {/* Product image */}
+                        <div className="w-full aspect-square bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center mb-2 relative">
+                          <img
+                            src={p.image || ''}
+                            alt={p.name || 'Producto'}
+                            onError={handleImageError}
+                            className="max-h-[80%] max-w-[80%] object-contain group-hover:scale-110 transition-transform duration-300"
+                          />
+                        </div>
+
+                        {/* Name */}
+                        <h4 className="text-[11px] font-bold text-slate-800 text-center line-clamp-2 group-hover:text-orange-500 transition-colors w-full leading-tight mb-1">
+                          {p.name}
+                        </h4>
+
+                        {/* Price */}
+                        <div className="text-[11px] font-black text-slate-900 mt-auto">
+                          {formatCOP(p.price)}
+                        </div>
+
+                        {/* Low stock warning */}
+                        {isLowStock && (
+                          <div className="mt-1 text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-full">
+                            ¡Solo {p.stock}!
+                          </div>
+                        )}
+
+                        {/* Quick add button */}
+                        <button
+                          onClick={(e) => handleQuickAdd(p, e)}
+                          className="mt-2 w-full text-[10px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-500 hover:text-white border border-orange-100 hover:border-orange-500 py-1.5 rounded-xl flex items-center justify-center gap-1 transition-all active:scale-95"
+                        >
+                          <ShoppingCart className="w-3 h-3" />
+                          Añadir
+                        </button>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             </div>
