@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import { MongoClient, ObjectId } from "mongodb";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -355,6 +356,7 @@ async function sendOrderEmail(order) {
   }
 }
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.get("/api/health", (_req, res) => {
@@ -440,6 +442,34 @@ function rejectInlineBase64Image(image) {
   if (typeof image !== "string" || !image.startsWith("data:image")) return null;
   return 'La imagen debe subirse antes de guardar. Usa "Subir imagen" o una URL externa.';
 }
+function sanitizeImageUrl(image) {
+  if (typeof image !== "string" || !image) return "";
+  if (image.startsWith("data:")) return "";
+  if (image.length > 2048 && !image.startsWith("http") && !image.includes("/api/media/")) {
+    return "";
+  }
+  if (image.startsWith("http://") || image.startsWith("https://") || image.includes("/api/media/")) {
+    return image;
+  }
+  return "";
+}
+function sanitizeProductForCatalog(doc) {
+  const { _id, ...rest } = doc;
+  const id = typeof rest.id === "string" && rest.id || (typeof _id === "object" && _id && "toString" in _id ? String(_id) : typeof _id === "string" ? _id : "");
+  return {
+    ...rest,
+    id,
+    image: sanitizeImageUrl(rest.image)
+  };
+}
+function sanitizeBannerForCatalog(doc) {
+  const { _id, ...rest } = doc;
+  return {
+    ...rest,
+    backgroundImage: sanitizeImageUrl(rest.backgroundImage),
+    _id: _id ? String(_id) : void 0
+  };
+}
 async function tryVercelBlobUpload(buffer, path) {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) return null;
@@ -520,17 +550,18 @@ app.get("/api/media/:mediaId", async (req, res) => {
 });
 app.get("/api/products", async (req, res) => {
   try {
-    const products = await db.collection("products").find({}).toArray();
-    res.json(products);
+    const products = await db.collection("products").find({}).project({ image: 1, id: 1, name: 1, category: 1, price: 1, description: 1, stock: 1, colorVariants: 1, storageVariants: 1, specifications: 1 }).toArray();
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    res.json(products.map((p) => sanitizeProductForCatalog(p)));
   } catch (error) {
     res.status(500).json({ error: "Error fetching products" });
   }
 });
 app.get("/api/products/:id", async (req, res) => {
   try {
-    const product = await db.collection("products").findOne({ id: req.params.id });
+    const product = await db.collection("products").findOne(productQuery(req.params.id));
     if (!product) return res.status(404).json({ error: "Product not found" });
-    res.json(product);
+    res.json(sanitizeProductForCatalog(product));
   } catch (error) {
     res.status(500).json({ error: "Error fetching product" });
   }
@@ -637,7 +668,8 @@ app.delete("/api/products", async (req, res) => {
 app.get("/api/banners", async (req, res) => {
   try {
     const banners = await db.collection("banners").find({}).toArray();
-    res.json(banners.map((b) => ({ ...b, _id: void 0 })));
+    res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
+    res.json(banners.map((b) => sanitizeBannerForCatalog(b)));
   } catch (error) {
     res.status(500).json({ error: "Error fetching banners" });
   }

@@ -29,6 +29,7 @@ const categoryDescriptions: Record<string, string> = {
 
 export function CategoryPage({ category }: CategoryPageProps) {
   const { products, loading } = useProducts();
+  const showProductSkeleton = loading && products.length === 0;
   const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
 
   // Normalize category slugs so 'tablet' matches products saved as 'tablet' or 'tablets'
@@ -91,7 +92,7 @@ export function CategoryPage({ category }: CategoryPageProps) {
         </div>
 
         {/* Grid — 2 columnas en móvil, 3 en tablet, 4 en desktop */}
-        {loading ? (
+        {showProductSkeleton ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="animate-pulse bg-gray-100 rounded h-64 md:h-80" />

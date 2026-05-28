@@ -2,6 +2,14 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, Re
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../lib/api-base';
+import {
+  readBannersCache,
+  readProductsCache,
+  sanitizeBannerForCatalog,
+  sanitizeProductForCatalog,
+  writeBannersCache,
+  writeProductsCache,
+} from '../lib/catalog-cache';
 import { uploadProductImage } from '../lib/product-image';
 
 async function compressImage(imageString: string): Promise<string> {
@@ -164,12 +172,23 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 ProductContext.displayName = 'ProductContext';
 
+function getInitialCatalog() {
+  if (typeof window === 'undefined') {
+    return { products: [] as Product[], banners: [] as Banner[] };
+  }
+  return {
+    products: readProductsCache(),
+    banners: readBannersCache(),
+  };
+}
+
 export function ProductProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [banners, setBanners] = useState<Banner[]>([]);
+  const initialCatalog = getInitialCatalog();
+  const [products, setProducts] = useState<Product[]>(initialCatalog.products);
+  const [banners, setBanners] = useState<Banner[]>(initialCatalog.banners);
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialCatalog.products.length === 0);
   const [lastReadOrderTime, setLastReadOrderTime] = useState<number>(Date.now());
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const lastLoadTimeRef = useRef<number>(0);
@@ -271,13 +290,13 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   const cachedDataRef = useRef<{products?: any[], banners?: any[]} | null>(null);
 
-  async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  async function fetchWithRetry(url: string, retries = 1, timeoutMs = 15000): Promise<Response> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        return await fetchWithTimeout(url);
+        return await fetchWithTimeout(url, {}, timeoutMs);
       } catch (err) {
         if (attempt === retries) throw err;
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
       }
     }
     throw new Error(`Failed after ${retries} retries: ${url}`);
@@ -285,64 +304,50 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   async function loadData() {
     const now = Date.now();
-    // TTL interno: no recargar si los datos tienen menos de 60 segundos
     if (now - lastLoadTimeRef.current < 60_000 && products.length > 0) {
       return;
     }
-    try {
+
+    const cachedProducts = readProductsCache();
+    const cachedBanners = readBannersCache();
+    const hasCachedCatalog = cachedProducts.length > 0;
+
+    if (hasCachedCatalog) {
+      setProducts(cachedProducts);
+      setBanners(cachedBanners);
+      setLoading(false);
+    } else if (products.length === 0) {
       setLoading(true);
+    }
+
+    try {
       lastLoadTimeRef.current = now;
-
-      const cachedProducts = localStorage.getItem('xiaomi-products');
-      const cachedBanners = localStorage.getItem('xiaomi-banners');
-
-      if (cachedProducts) {
-        setProducts(JSON.parse(cachedProducts));
-        cachedDataRef.current = { ...(cachedDataRef.current || {}), products: JSON.parse(cachedProducts) };
-      }
-      if (cachedBanners) {
-        setBanners(JSON.parse(cachedBanners));
-        cachedDataRef.current = { ...(cachedDataRef.current || {}), banners: JSON.parse(cachedBanners) };
-      }
 
       const [productsRes, bannersRes] = await Promise.all([
         fetchWithRetry(`${API_BASE_URL}/products`),
-        fetchWithRetry(`${API_BASE_URL}/banners`)
+        fetchWithRetry(`${API_BASE_URL}/banners`),
       ]);
 
       if (productsRes.ok) {
-        const productsData = await productsRes.json();
-        setProducts(productsData);
-        // Guardar en localStorage sin base64 (evita QuotaExceededError)
-        try {
-          const productsForCache = productsData.map((p: any) => ({
-            ...p,
-            image: p.image?.startsWith('http') ? p.image : '',
-          }));
-          localStorage.setItem('xiaomi-products', JSON.stringify(productsForCache));
-        } catch (e) {
-          console.warn('No se pudo cachear productos:', e);
-        }
-        cachedDataRef.current = { ...(cachedDataRef.current || {}), products: productsData };
+        const productsData = (await productsRes.json()) as Product[];
+        const sanitized = productsData.map(sanitizeProductForCatalog);
+        setProducts(sanitized);
+        writeProductsCache(sanitized);
+        cachedDataRef.current = { ...(cachedDataRef.current || {}), products: sanitized };
       }
 
       if (bannersRes.ok) {
-        const bannersData = await bannersRes.json();
-        setBanners(bannersData);
-        // Guardar en localStorage sin base64
-        try {
-          const bannersForCache = bannersData.map((b: any) => ({
-            ...b,
-            backgroundImage: b.backgroundImage?.startsWith('http') ? b.backgroundImage : '',
-          }));
-          localStorage.setItem('xiaomi-banners', JSON.stringify(bannersForCache));
-        } catch (e) {
-          console.warn('No se pudo cachear banners:', e);
-        }
-        cachedDataRef.current = { ...(cachedDataRef.current || {}), banners: bannersData };
+        const bannersData = (await bannersRes.json()) as Banner[];
+        const sanitized = bannersData.map(sanitizeBannerForCatalog);
+        setBanners(sanitized);
+        writeBannersCache(sanitized);
+        cachedDataRef.current = { ...(cachedDataRef.current || {}), banners: sanitized };
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      if (!hasCachedCatalog && products.length === 0) {
+        toast.error('No se pudieron cargar los productos. Revisa tu conexión.');
+      }
     } finally {
       setLoading(false);
     }

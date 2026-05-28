@@ -8,6 +8,7 @@ import pocoLogo from '../../../assets/bdec62b928a5d05f5545dc61d6bdafc532853fc1.p
 
 export function HomePage() {
   const { products, banners, loading } = useProducts();
+  const showProductSkeleton = loading && products.length === 0;
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -190,7 +191,7 @@ export function HomePage() {
             </p>
           </div>
           
-          {loading ? (
+          {showProductSkeleton ? (
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse bg-gray-100 rounded h-64 md:h-80" />
