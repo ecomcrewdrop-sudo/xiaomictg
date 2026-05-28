@@ -470,6 +470,35 @@ function sanitizeBannerForCatalog(doc) {
     _id: _id ? String(_id) : void 0
   };
 }
+async function hydrateOrdersWithProductImages(orders) {
+  const productIds = /* @__PURE__ */ new Set();
+  for (const order of orders) {
+    for (const item of order.items || []) {
+      const pid = item.product?.id;
+      if (typeof pid === "string" && pid) productIds.add(pid);
+    }
+  }
+  const imageById = /* @__PURE__ */ new Map();
+  if (productIds.size > 0) {
+    const products = await db.collection("products").find({ id: { $in: [...productIds] } }).project({ id: 1, image: 1 }).toArray();
+    for (const p of products) {
+      const id = typeof p.id === "string" ? p.id : "";
+      if (id) imageById.set(id, sanitizeImageUrl(p.image));
+    }
+  }
+  return orders.map((order) => ({
+    ...order,
+    items: (order.items || []).map((item) => {
+      const product = item.product || {};
+      const stored = sanitizeImageUrl(product.image);
+      const fromCatalog = typeof product.id === "string" ? imageById.get(product.id) || "" : "";
+      return {
+        ...item,
+        product: { ...product, image: stored || fromCatalog }
+      };
+    })
+  }));
+}
 async function tryVercelBlobUpload(buffer, path) {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) return null;
@@ -707,7 +736,7 @@ app.delete("/api/banners/:id", async (req, res) => {
 app.get("/api/orders", async (req, res) => {
   try {
     const orders = await db.collection("orders").find({}).project({ "items.product.image": 0 }).sort({ createdAt: -1 }).toArray();
-    res.json(orders);
+    res.json(await hydrateOrdersWithProductImages(orders));
   } catch (error) {
     res.status(500).json({ error: "Error fetching orders" });
   }
@@ -740,8 +769,9 @@ app.post("/api/orders", async (req, res) => {
     };
     await db.collection("notifications").insertOne(notification);
     io.emit("newOrder", notification);
-    sendOrderEmail(order);
-    res.json(order);
+    const [hydratedOrder] = await hydrateOrdersWithProductImages([order]);
+    sendOrderEmail(hydratedOrder);
+    res.json(hydratedOrder);
   } catch (error) {
     res.status(500).json({ error: "Error creating order" });
   }

@@ -14,6 +14,72 @@ export const config = {
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
+function sanitizeImageUrl(image: unknown): string {
+  if (typeof image !== 'string' || !image) return '';
+  if (image.startsWith('data:')) return '';
+  if (image.length > 2048 && !image.startsWith('http') && !image.includes('/api/media/')) {
+    return '';
+  }
+  if (
+    image.startsWith('http://') ||
+    image.startsWith('https://') ||
+    image.includes('/api/media/')
+  ) {
+    return image;
+  }
+  return '';
+}
+
+type OrderItemDoc = {
+  product?: { id?: string; image?: string; [key: string]: unknown };
+  [key: string]: unknown;
+};
+
+type OrderDoc = {
+  items?: OrderItemDoc[];
+  [key: string]: unknown;
+};
+
+async function hydrateOrdersWithProductImages(
+  db: Awaited<ReturnType<typeof getDb>>,
+  orders: OrderDoc[]
+): Promise<OrderDoc[]> {
+  const productIds = new Set<string>();
+  for (const order of orders) {
+    for (const item of order.items || []) {
+      const pid = item.product?.id;
+      if (typeof pid === 'string' && pid) productIds.add(pid);
+    }
+  }
+
+  const imageById = new Map<string, string>();
+  if (productIds.size > 0) {
+    const products = await db
+      .collection('products')
+      .find({ id: { $in: [...productIds] } })
+      .project({ id: 1, image: 1 })
+      .toArray();
+    for (const p of products) {
+      const id = typeof p.id === 'string' ? p.id : '';
+      if (id) imageById.set(id, sanitizeImageUrl(p.image));
+    }
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    items: (order.items || []).map((item) => {
+      const product = item.product || {};
+      const stored = sanitizeImageUrl(product.image);
+      const fromCatalog =
+        typeof product.id === 'string' ? imageById.get(product.id) || '' : '';
+      return {
+        ...item,
+        product: { ...product, image: stored || fromCatalog },
+      };
+    }),
+  }));
+}
+
 async function sendOrderEmail(order: any) {
   if (!resend) {
     console.log('RESEND_API_KEY not configured, skipping email');
@@ -313,10 +379,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     try {
       const orders = await collection.find({})
-        .project({ "items.product.image": 0 })
+        .project({ 'items.product.image': 0 })
         .sort({ createdAt: -1 })
         .toArray();
-      return res.json(orders);
+      return res.json(await hydrateOrdersWithProductImages(db, orders as OrderDoc[]));
     } catch (error) {
       return res.status(500).json({ error: 'Error fetching orders' });
     }
@@ -371,9 +437,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       await db.collection('notifications').insertOne(notification);
 
-      sendOrderEmail(order).catch(err => console.error('Error sending email:', err));
+      const [hydratedOrder] = await hydrateOrdersWithProductImages(db, [order as OrderDoc]);
+      sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
 
-      return res.json(order);
+      return res.json(hydratedOrder);
     } catch (error) {
       return res.status(500).json({ error: 'Error creating order' });
     }

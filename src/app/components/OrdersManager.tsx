@@ -1,4 +1,6 @@
-import { useProducts, Order, CartItem } from './ProductContext';
+import { useProducts, Order, CartItem, Product } from './ProductContext';
+import { sanitizeProductImage } from '../lib/catalog-cache';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Package, Clock, CheckCircle2, XCircle, Search, Filter, Download, Receipt, Edit, Trash2, Mail, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
@@ -8,8 +10,15 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
 
+function resolveOrderItemImage(item: CartItem, products: Product[]): string {
+  const stored = sanitizeProductImage(item.product?.image);
+  if (stored) return stored;
+  const fromCatalog = products.find((p) => p.id === item.product?.id);
+  return fromCatalog?.image || '';
+}
+
 export function OrdersManager() {
-  const { orders, updateOrderStatus, updateOrderDetails, deleteOrder, unreadOrdersCount, markOrdersAsRead, ticketConfig } = useProducts();
+  const { orders, products, updateOrderStatus, updateOrderDetails, deleteOrder, unreadOrdersCount, markOrdersAsRead, ticketConfig } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
   const [showWelcome, setShowWelcome] = useState(true);
@@ -488,13 +497,10 @@ export function OrdersManager() {
                       className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        <img
-                          src={item.product.image}
+                        <ImageWithFallback
+                          src={resolveOrderItemImage(item, products)}
                           alt={item.product.name}
-                          className="w-12 h-12 object-cover rounded"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/48x48?text=P';
-                          }}
+                          className="w-12 h-12 object-cover rounded bg-gray-100"
                         />
                         <div>
                           <p className="font-medium text-gray-800">
@@ -784,13 +790,10 @@ export function OrdersManager() {
                 {editingItems.map((item, index) => (
                   <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="flex items-start gap-4 mb-4">
-                      <img
-                        src={item.product.image}
+                      <ImageWithFallback
+                        src={resolveOrderItemImage(item, products)}
                         alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded"
-                        onError={(e) => {
-                          e.currentTarget.src = 'https://via.placeholder.com/64x64?text=P';
-                        }}
+                        className="w-16 h-16 object-cover rounded bg-gray-100"
                       />
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-800">{item.product.name}</h4>

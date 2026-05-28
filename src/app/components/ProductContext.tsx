@@ -634,14 +634,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString();
     const orderNumber = `XM-${Date.now().toString().slice(-8)}`;
 
-    // Limpiar imágenes base64 de los items antes de enviar (evita 413 / timeout)
-    const cleanItems = (orderData.items || []).map(item => ({
-      ...item,
-      product: {
-        ...item.product,
-        image: item.product.image?.startsWith('data:') ? '' : (item.product.image || ''),
-      },
-    }));
+    // Solo URLs ligeras en el pedido (sin base64); el API rellena desde el catálogo si falta
+    const cleanItems = (orderData.items || []).map(item => {
+      const image = sanitizeProductForCatalog(item.product).image;
+      return {
+        ...item,
+        product: { ...item.product, image },
+      };
+    });
 
     const order = {
       ...orderData,
