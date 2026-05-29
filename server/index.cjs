@@ -19221,7 +19221,13 @@ var WhatsAppService = class {
   async _connect() {
     try {
       const { state, saveCreds } = await useMongoAuthState(this.dbRef);
-      const { version } = await (0, import_baileys.fetchLatestBaileysVersion)();
+      let version = [2, 3e3, 1015951307];
+      try {
+        const latest = await (0, import_baileys.fetchLatestBaileysVersion)();
+        version = latest.version;
+      } catch (e) {
+        console.warn("[WA] No se pudo obtener la ultima version de Baileys, usando version fallback:", e);
+      }
       const silentLogger = {
         level: "silent",
         trace: () => {
