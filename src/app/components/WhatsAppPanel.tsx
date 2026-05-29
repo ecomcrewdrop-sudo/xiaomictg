@@ -342,53 +342,92 @@ export function WhatsAppPanel() {
 
           {/* Estado: Conectado */}
           {status === 'connected' && (
-            <div className="space-y-6">
-              {/* Indicador de estado */}
-              <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-7 h-7 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-bold text-green-900">¡WhatsApp conectado y listo!</p>
-                  <p className="text-sm text-green-700">
-                    Las notificaciones se enviarán automáticamente a cada pedido que se realice.
-                  </p>
-                </div>
-                <Button
-                  onClick={handleDisconnect}
-                  disabled={isDisconnecting}
-                  variant="outline"
-                  className="ml-auto shrink-0 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
-                >
-                  {isDisconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unplug className="w-4 h-4" />}
-                  <span className="ml-2">Desconectar</span>
-                </Button>
+            <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
-
-              {/* Número del dueño */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#25D366]" />
-                  Tu número para recibir notificaciones de ventas
-                </label>
-                <div className="flex gap-3">
-                  <div className="flex-1 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">+57</span>
-                    <input
-                      type="tel"
-                      value={ownerPhone}
-                      onChange={e => setOwnerPhone(e.target.value)}
-                      placeholder="302 287 5280"
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-green-400 focus:ring-4 focus:ring-green-400/10 transition-all font-medium"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1.5">
-                  Ingresa el número sin el +57. Ej: 302 287 5280 → cada vez que llegue una venta, recibirás una notificación aquí.
+                <p className="font-bold text-green-900">¡WhatsApp conectado y listo!</p>
+                <p className="text-sm text-green-700">
+                  Las notificaciones automáticas se enviarán a clientes y administradores al procesar pedidos.
                 </p>
               </div>
+              <Button
+                onClick={handleDisconnect}
+                disabled={isDisconnecting}
+                variant="outline"
+                className="ml-auto shrink-0 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
+              >
+                {isDisconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unplug className="w-4 h-4" />}
+                <span className="ml-2">Desconectar</span>
+              </Button>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ======== SECCIÓN CONFIGURACIÓN DESTINATARIO ======== */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+            <Phone className="w-4 h-4 text-green-600" />
+          </div>
+          <h3 className="font-bold text-gray-850">
+            Receptor de Alertas de Ventas
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="max-w-2xl">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              Número de WhatsApp del Administrador/Dueño
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold border-r border-gray-200 pr-3">+57</span>
+                <input
+                  type="tel"
+                  value={ownerPhone}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9\s]/g, '').substring(0, 15);
+                    setOwnerPhone(val);
+                  }}
+                  placeholder="300 123 4567"
+                  className="w-full pl-16 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition-all font-mono font-bold text-base tracking-wide text-gray-800"
+                />
+              </div>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-gray-900 hover:bg-black text-white px-6 py-3.5 h-auto font-bold rounded-xl transition-all shadow-md active:scale-95 duration-200"
+              >
+                {isSaving ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Guardando...</>
+                ) : (
+                  <><Save className="w-4 h-4 mr-2" /> Guardar Receptor</>
+                )}
+              </Button>
+            </div>
+            
+            {/* Validación visual del número celular */}
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-gray-500 font-medium">
+                Ingresa los 10 dígitos del celular sin el código de país. Ej: 3001234567.
+              </p>
+              {ownerPhone.replace(/\s/g, '').length === 10 ? (
+                <span className="flex items-center gap-1.5 text-xs text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg border border-green-200 animate-fade-in">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Número Válido (10 dígitos)
+                </span>
+              ) : ownerPhone.replace(/\s/g, '').length > 0 ? (
+                <span className="flex items-center gap-1.5 text-xs text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  <AlertCircle className="w-3.5 h-3.5" /> Dígitos incompletos ({ownerPhone.replace(/\s/g, '').length}/10)
+                </span>
+              ) : (
+                <span className="text-xs text-red-500 font-bold bg-red-50 px-2.5 py-1 rounded-lg border border-red-200">
+                  Requerido para alertas de ventas
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
