@@ -428,7 +428,17 @@ class WhatsAppService {
         }
       });
     } catch (err) {
-      console.error('[WA] Error al inicializar:', err);
+      console.error('[WA] Error fatal al inicializar Baileys:', err);
+      // Blindaje supremo: si las credenciales en MongoDB estan corruptas o son incompatibles,
+      // limpiamos la coleccion whatsappAuth para forzar una sesion limpia en el siguiente reintento.
+      try {
+        if (this.dbRef) {
+          await this.dbRef.collection('whatsappAuth').deleteMany({});
+          console.log('[WA] 🧹 Colección whatsappAuth limpiada automáticamente por credenciales corruptas.');
+        }
+      } catch (cleanErr) {
+        console.error('[WA] Error al limpiar colección tras fallo:', cleanErr);
+      }
       this.status = 'disconnected';
     }
   }

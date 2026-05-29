@@ -19290,7 +19290,15 @@ var WhatsAppService = class {
         }
       });
     } catch (err) {
-      console.error("[WA] Error al inicializar:", err);
+      console.error("[WA] Error fatal al inicializar Baileys:", err);
+      try {
+        if (this.dbRef) {
+          await this.dbRef.collection("whatsappAuth").deleteMany({});
+          console.log("[WA] \u{1F9F9} Colecci\xF3n whatsappAuth limpiada autom\xE1ticamente por credenciales corruptas.");
+        }
+      } catch (cleanErr) {
+        console.error("[WA] Error al limpiar colecci\xF3n tras fallo:", cleanErr);
+      }
       this.status = "disconnected";
     }
   }
