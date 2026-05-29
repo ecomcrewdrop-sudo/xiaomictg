@@ -553,11 +553,16 @@ function processWhatsAppTemplate(template: string, order: any): string {
     ? `📍 *Dirección:* ${order.customerInfo.address}\n`
     : '';
 
+  const deliveryFee = order.customerInfo?.deliveryFee || 0;
+  const isCard = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
+  const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
+  const grandTotal = (order.total || 0) + cardFee + deliveryFee;
+
   const vars: Record<string, string> = {
     '{{nombre}}': order.customerInfo?.name || 'Cliente',
     '{{ordenNumero}}': order.orderNumber || '',
     '{{productos}}': productsList,
-    '{{total}}': (order.total || 0).toLocaleString('es-CO'),
+    '{{total}}': grandTotal.toLocaleString('es-CO'),
     '{{metodoPago}}': order.paymentMethod || order.customerInfo?.paymentMethod || '',
     '{{metodoEntrega}}': deliveryLabel,
     '{{linea_direccion}}': addressLine,
