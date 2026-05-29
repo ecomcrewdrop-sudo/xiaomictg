@@ -382,18 +382,11 @@ class WhatsAppService {
       } as any;
 
       const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger);
-      let version: any = [2, 3000, 1015951307];
-      try {
-        const latest = await fetchLatestBaileysVersion();
-        version = latest.version;
-      } catch (e) {
-        console.warn('[WA] No se pudo obtener la ultima version de Baileys, usando version fallback:', e);
-      }
 
       // Baileys puede ser un modulo CommonJS tradicional o ESM
+      // Omitimos la propiedad version para que use por defecto la version interna mas actualizada y compatible de la libreria
       const makeSocket = (makeWASocket as any).default || makeWASocket;
       this.sock = makeSocket({
-        version,
         auth: { creds: state.creds, keys: state.keys },
         logger: silentLogger,
         printQRInTerminal: false,

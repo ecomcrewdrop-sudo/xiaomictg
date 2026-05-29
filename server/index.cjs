@@ -19245,16 +19245,8 @@ var WhatsAppService = class {
         child: () => silentLogger
       };
       const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger);
-      let version = [2, 3e3, 1015951307];
-      try {
-        const latest = await (0, import_baileys.fetchLatestBaileysVersion)();
-        version = latest.version;
-      } catch (e) {
-        console.warn("[WA] No se pudo obtener la ultima version de Baileys, usando version fallback:", e);
-      }
       const makeSocket = import_baileys.default.default || import_baileys.default;
       this.sock = makeSocket({
-        version,
         auth: { creds: state.creds, keys: state.keys },
         logger: silentLogger,
         printQRInTerminal: false,
