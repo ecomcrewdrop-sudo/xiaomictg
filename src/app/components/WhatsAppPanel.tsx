@@ -108,10 +108,19 @@ export function WhatsAppPanel() {
       }
     });
 
+    // POLLING FALLBACK: Sondeo regular por HTTP cada 3.5 segundos si estamos conectando o esperando QR
+    // Esto asegura el funcionamiento incluso si Socket.io/WebSockets estan bloqueados por politicas de red.
+    const interval = setInterval(() => {
+      if (status === 'loading' || status === 'qr_ready' || isConnecting) {
+        fetchStatus();
+      }
+    }, 3500);
+
     return () => {
       socket.disconnect();
+      clearInterval(interval);
     };
-  }, [fetchStatus, fetchTemplates]);
+  }, [fetchStatus, fetchTemplates, status, isConnecting]);
 
   // --------------- ACCIONES ---------------
   const handleConnect = async () => {
@@ -126,7 +135,8 @@ export function WhatsAppPanel() {
       } else {
         setStatus('qr_ready');
         if (data.qr) setQrImage(data.qr);
-        // El QR llegará también via socket
+        // Intentar fetch inmediato tras iniciar conexion
+        setTimeout(fetchStatus, 1500);
       }
     } catch {
       toast.error('Error al iniciar WhatsApp. Verifica que el servidor esté activo.');
