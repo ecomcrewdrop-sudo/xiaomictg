@@ -19146,7 +19146,7 @@ async function seedData() {
     console.log("Banners seeded");
   }
 }
-async function useMongoAuthState(dbRef) {
+async function useMongoAuthState(dbRef, logger) {
   const col = dbRef.collection("whatsappAuth");
   const write = async (data, id) => {
     const value = JSON.stringify(data, import_baileys.BufferJSON.replacer);
@@ -19193,7 +19193,7 @@ async function useMongoAuthState(dbRef) {
             await Promise.all(tasks);
           }
         },
-        void 0
+        logger
       )
     },
     saveCreds: () => write(creds, "creds")
@@ -19220,13 +19220,13 @@ var WhatsAppService = class {
   }
   async _connect() {
     try {
-      const { state, saveCreds } = await useMongoAuthState(this.dbRef);
-      let version = [2, 3e3, 1015951307];
-      try {
-        const latest = await (0, import_baileys.fetchLatestBaileysVersion)();
-        version = latest.version;
-      } catch (e) {
-        console.warn("[WA] No se pudo obtener la ultima version de Baileys, usando version fallback:", e);
+      if (this.sock) {
+        try {
+          this.sock.ev.removeAllListeners();
+          if (this.sock.ws) this.sock.ws.close();
+          this.sock = null;
+        } catch {
+        }
       }
       const silentLogger = {
         level: "silent",
@@ -19244,6 +19244,14 @@ var WhatsAppService = class {
         },
         child: () => silentLogger
       };
+      const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger);
+      let version = [2, 3e3, 1015951307];
+      try {
+        const latest = await (0, import_baileys.fetchLatestBaileysVersion)();
+        version = latest.version;
+      } catch (e) {
+        console.warn("[WA] No se pudo obtener la ultima version de Baileys, usando version fallback:", e);
+      }
       const makeSocket = import_baileys.default.default || import_baileys.default;
       this.sock = makeSocket({
         version,

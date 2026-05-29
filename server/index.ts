@@ -287,7 +287,7 @@ async function seedData() {
 // ====================================================================
 
 /** Auth state de Baileys guardado en MongoDB (sin archivos en disco) */
-async function useMongoAuthState(dbRef: any) {
+async function useMongoAuthState(dbRef: any, logger: any) {
   const col = dbRef.collection('whatsappAuth');
 
   const write = async (data: any, id: string) => {
@@ -337,7 +337,7 @@ async function useMongoAuthState(dbRef: any) {
             await Promise.all(tasks);
           },
         },
-        undefined as any
+        logger
       ),
     },
     saveCreds: () => write(creds, 'creds'),
@@ -366,7 +366,22 @@ class WhatsAppService {
 
   private async _connect() {
     try {
-      const { state, saveCreds } = await useMongoAuthState(this.dbRef);
+      // 1. Desconectar y limpiar cualquier socket anterior para evitar colisiones en Railway
+      if (this.sock) {
+        try {
+          this.sock.ev.removeAllListeners();
+          if (this.sock.ws) this.sock.ws.close();
+          this.sock = null;
+        } catch {}
+      }
+
+      const silentLogger = {
+        level: 'silent', trace: () => {}, debug: () => {},
+        info: () => {}, warn: () => {}, error: () => {},
+        fatal: () => {}, child: () => silentLogger,
+      } as any;
+
+      const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger);
       let version: any = [2, 3000, 1015951307];
       try {
         const latest = await fetchLatestBaileysVersion();
@@ -374,11 +389,6 @@ class WhatsAppService {
       } catch (e) {
         console.warn('[WA] No se pudo obtener la ultima version de Baileys, usando version fallback:', e);
       }
-      const silentLogger = {
-        level: 'silent', trace: () => {}, debug: () => {},
-        info: () => {}, warn: () => {}, error: () => {},
-        fatal: () => {}, child: () => silentLogger,
-      } as any;
 
       // Baileys puede ser un modulo CommonJS tradicional o ESM
       const makeSocket = (makeWASocket as any).default || makeWASocket;
