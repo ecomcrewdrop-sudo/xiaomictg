@@ -287812,6 +287812,7 @@ async function sendWhatsAppNotifications(order) {
     if (customerPhone) {
       const msg = processWhatsAppTemplate(customerTemplate, order);
       await whatsappService.sendMessage(customerPhone, msg);
+      await new Promise((resolve) => setTimeout(resolve, 2500));
     }
     if (ownerPhone) {
       const msg = processWhatsAppTemplate(ownerTemplate, order);
@@ -287893,14 +287894,13 @@ async function sendOrderEmail(order) {
         </div>
       </div>
     `;
-    const toEmails = ["xiaomi.cartagenaventas@gmail.com"];
-    if (order.customerInfo?.email) {
-      toEmails.push(order.customerInfo.email);
-    }
+    const customerEmail = order.customerInfo?.email;
+    const adminEmail = "xiaomi.cartagenaventas@gmail.com";
     try {
       await resend.emails.send({
         from: "Xiaomi Cartagena <ventas@xiaomicartagena.com>",
-        to: toEmails,
+        to: customerEmail ? [customerEmail] : [adminEmail],
+        bcc: customerEmail ? [adminEmail] : void 0,
         subject: `Confirmaci\xF3n de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
         html: emailHtml
       });
