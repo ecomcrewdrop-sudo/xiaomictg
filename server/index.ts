@@ -374,7 +374,9 @@ class WhatsAppService {
         fatal: () => {}, child: () => silentLogger,
       } as any;
 
-      this.sock = makeWASocket({
+      // Baileys puede ser un modulo CommonJS tradicional o ESM
+      const makeSocket = (makeWASocket as any).default || makeWASocket;
+      this.sock = makeSocket({
         version,
         auth: { creds: state.creds, keys: state.keys },
         logger: silentLogger,
@@ -479,7 +481,7 @@ Hola *{{nombre}}*, gracias por tu compra. 🧡
 🛍️ *Tus productos:*
 {{productos}}
 
-💰 *Total:* ${{total}} COP
+💰 *Total:* $\{{total}} COP
 💳 *Pago:* {{metodoPago}}
 🚚 *Entrega:* {{metodoEntrega}}
 {{linea_direccion}}
@@ -501,7 +503,7 @@ const DEFAULT_OWNER_TEMPLATE =
 🛍️ *Productos:*
 {{productos}}
 
-💰 *Total:* ${{total}} COP
+💰 *Total:* $\{{total}} COP
 💳 *Pago:* {{metodoPago}}
 🚚 *Entrega:* {{metodoEntrega}}
 {{linea_direccion}}
