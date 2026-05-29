@@ -287811,12 +287811,28 @@ async function sendWhatsAppNotifications(order) {
     const customerPhone = order.customerInfo?.phone || "";
     if (customerPhone) {
       const msg = processWhatsAppTemplate(customerTemplate, order);
-      await whatsappService.sendMessage(customerPhone, msg);
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+      console.log(`[WA] Intentando enviar al cliente: ${customerPhone}`);
+      const success = await Promise.race([
+        whatsappService.sendMessage(customerPhone, msg),
+        new Promise((resolve) => setTimeout(() => {
+          console.error("[WA] Timeout al enviar mensaje al cliente");
+          resolve(false);
+        }, 1e4))
+      ]);
+      console.log(`[WA] Resultado env\xEDo cliente: ${success}`);
+      await new Promise((resolve) => setTimeout(resolve, 3e3));
     }
     if (ownerPhone) {
       const msg = processWhatsAppTemplate(ownerTemplate, order);
-      await whatsappService.sendMessage(ownerPhone, msg);
+      console.log(`[WA] Intentando enviar al administrador: ${ownerPhone}`);
+      const success = await Promise.race([
+        whatsappService.sendMessage(ownerPhone, msg),
+        new Promise((resolve) => setTimeout(() => {
+          console.error("[WA] Timeout al enviar mensaje al admin");
+          resolve(false);
+        }, 1e4))
+      ]);
+      console.log(`[WA] Resultado env\xEDo admin: ${success}`);
     }
   } catch (err) {
     console.error("[WA] Error al enviar notificaciones:", err);
