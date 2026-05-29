@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { io as socketIO, Socket } from 'socket.io-client';
+import { API_BASE_URL, API_ORIGIN } from '../lib/api-base';
+
 
 // --------------- VARIABLES DISPONIBLES ---------------
 const VARIABLES = [
@@ -54,7 +56,7 @@ export function WhatsAppPanel() {
   // --------------- FETCH INICIAL ---------------
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/whatsapp/status');
+      const res = await fetch(`${API_BASE_URL}/whatsapp/status`);
       const data = await res.json();
       setStatus(data.status || 'disconnected');
       if (data.qr) setQrImage(data.qr);
@@ -65,7 +67,7 @@ export function WhatsAppPanel() {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const res = await fetch('/api/whatsapp/templates');
+      const res = await fetch(`${API_BASE_URL}/whatsapp/templates`);
       const data = await res.json();
       setOwnerPhone(data.ownerPhone || '');
       setCustomerTemplate(data.customerTemplate || '');
@@ -80,7 +82,7 @@ export function WhatsAppPanel() {
     fetchTemplates();
 
     // Conectar Socket.io para actualizaciones en tiempo real
-    const socket = socketIO('/', {
+    const socket = socketIO(API_ORIGIN || '/', {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
     });
@@ -116,7 +118,7 @@ export function WhatsAppPanel() {
     setIsConnecting(true);
     setQrImage(null);
     try {
-      const res = await fetch('/api/whatsapp/connect', { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/whatsapp/connect`, { method: 'POST' });
       const data = await res.json();
       if (data.status === 'connected') {
         setStatus('connected');
@@ -136,7 +138,7 @@ export function WhatsAppPanel() {
     if (!window.confirm('¿Seguro que quieres desconectar WhatsApp? Tendrás que escanear el QR de nuevo.')) return;
     setIsDisconnecting(true);
     try {
-      await fetch('/api/whatsapp/disconnect', { method: 'POST' });
+      await fetch(`${API_BASE_URL}/whatsapp/disconnect`, { method: 'POST' });
       setStatus('disconnected');
       setQrImage(null);
       toast.success('WhatsApp desconectado');
@@ -154,7 +156,7 @@ export function WhatsAppPanel() {
     }
     setIsSaving(true);
     try {
-      const res = await fetch('/api/whatsapp/templates', {
+      const res = await fetch(`${API_BASE_URL}/whatsapp/templates`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerTemplate, ownerTemplate, ownerPhone }),
