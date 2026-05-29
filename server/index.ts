@@ -703,14 +703,30 @@ async function sendOrderEmail(order: any) {
     const adminEmail = 'xiaomi.cartagenaventas@gmail.com';
 
     try {
-      await resend.emails.send({
-        from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
-        to: customerEmail ? [customerEmail] : [adminEmail],
-        bcc: customerEmail ? [adminEmail] : undefined,
-        subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
-        html: emailHtml
-      });
-      console.log('[server] Email sent successfully using custom domain');
+      const promises = [];
+      if (customerEmail) {
+        promises.push(
+          resend.emails.send({
+            from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+            to: [customerEmail],
+            reply_to: adminEmail,
+            subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+            html: emailHtml
+          }).then(() => console.log(`[server] Email enviado al cliente: ${customerEmail}`))
+        );
+      }
+      
+      promises.push(
+        resend.emails.send({
+          from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+          to: [adminEmail],
+          subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+          html: emailHtml
+        }).then(() => console.log(`[server] Email enviado al admin: ${adminEmail}`))
+      );
+
+      await Promise.all(promises);
+      console.log('[server] Emails enviados correctamente usando custom domain');
     } catch (domainError: any) {
       console.warn('[server] Error sending with custom domain, trying fallback with onboarding@resend.dev:', domainError.message || domainError);
       await resend.emails.send({
