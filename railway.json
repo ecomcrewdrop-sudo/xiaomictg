@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "npm run build"
+    "buildCommand": "echo 'Skip building frontend on Railway'"
   },
   "deploy": {
     "startCommand": "npm start",

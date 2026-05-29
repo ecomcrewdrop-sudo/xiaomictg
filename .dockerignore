@@ -1,0 +1,15 @@
+node_modules
+dist
+src
+.git
+.gitignore
+.vercel
+products-backup-base64.json
+*.db
+*.log
+*.txt
+README.md
+ATTRIBUTIONS.md
+GUIA_RAPIDA.md
+PAYPAL_CONFIG.md
+SISTEMA_COMPLETO.md
