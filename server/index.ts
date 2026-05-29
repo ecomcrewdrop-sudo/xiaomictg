@@ -7,6 +7,16 @@ import { Server } from 'socket.io';
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 import { createHash } from 'crypto';
+// WhatsApp (Baileys + QR)
+import makeWASocket, {
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+  initAuthCreds,
+  BufferJSON,
+  proto,
+} from '@whiskeysockets/baileys';
+import QRCode from 'qrcode';
 
 dotenv.config();
 
@@ -63,6 +73,8 @@ async function connectDB() {
     await setupIndexes();
     await seedData();
     console.log('[server] MongoDB ready');
+    // Inicializar WhatsApp con sesión persistente en MongoDB
+    whatsappService.init(db, io).catch(err => console.error('[WA] Error en init:', err));
   } catch (error) {
     console.error('MongoDB connection error:', error);
     db = undefined;
@@ -267,6 +279,292 @@ async function seedData() {
   if (bannersCount === 0) {
     await db.collection('banners').insertMany(initialBanners);
     console.log('Banners seeded');
+  }
+}
+
+// ====================================================================
+// WHATSAPP SERVICE — Sesión en MongoDB + QR via Socket.io
+// ====================================================================
+
+/** Auth state de Baileys guardado en MongoDB (sin archivos en disco) */
+async function useMongoAuthState(dbRef: any) {
+  const col = dbRef.collection('whatsappAuth');
+
+  const write = async (data: any, id: string) => {
+    const value = JSON.stringify(data, BufferJSON.replacer);
+    await col.replaceOne({ _id: id as any }, { _id: id as any, value }, { upsert: true });
+  };
+
+  const read = async (id: string): Promise<any> => {
+    try {
+      const doc = await col.findOne({ _id: id as any });
+      return doc?.value ? JSON.parse(doc.value, BufferJSON.reviver) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const remove = async (id: string) => { await col.deleteOne({ _id: id as any }); };
+
+  const creds = (await read('creds')) || initAuthCreds();
+
+  return {
+    state: {
+      creds,
+      keys: makeCacheableSignalKeyStore(
+        {
+          get: async (type: any, ids: string[]) => {
+            const result: Record<string, any> = {};
+            await Promise.all(
+              ids.map(async (id) => {
+                let val = await read(`${type}-${id}`);
+                if (type === 'app-state-sync-key' && val) {
+                  val = proto.Message.AppStateSyncKeyData.fromObject(val);
+                }
+                result[id] = val;
+              })
+            );
+            return result;
+          },
+          set: async (data: any) => {
+            const tasks: Promise<void>[] = [];
+            for (const cat in data) {
+              for (const id in data[cat]) {
+                const val = data[cat][id];
+                tasks.push(val != null ? write(val, `${cat}-${id}`) : remove(`${cat}-${id}`));
+              }
+            }
+            await Promise.all(tasks);
+          },
+        },
+        undefined as any
+      ),
+    },
+    saveCreds: () => write(creds, 'creds'),
+  };
+}
+
+type WAStatus = 'disconnected' | 'qr_ready' | 'connected';
+
+class WhatsAppService {
+  private sock: ReturnType<typeof makeWASocket> | null = null;
+  private status: WAStatus = 'disconnected';
+  private qrDataUrl: string | null = null;
+  private ioRef: Server | null = null;
+  private dbRef: any = null;
+  private reconnecting = false;
+
+  getStatus(): WAStatus { return this.status; }
+  getQRDataUrl(): string | null { return this.qrDataUrl; }
+
+  async init(dbInstance: any, ioInstance: Server) {
+    this.dbRef = dbInstance;
+    this.ioRef = ioInstance;
+    if (this.reconnecting) return;
+    await this._connect();
+  }
+
+  private async _connect() {
+    try {
+      const { state, saveCreds } = await useMongoAuthState(this.dbRef);
+      const { version } = await fetchLatestBaileysVersion();
+      const silentLogger = {
+        level: 'silent', trace: () => {}, debug: () => {},
+        info: () => {}, warn: () => {}, error: () => {},
+        fatal: () => {}, child: () => silentLogger,
+      } as any;
+
+      this.sock = makeWASocket({
+        version,
+        auth: { creds: state.creds, keys: state.keys },
+        logger: silentLogger,
+        printQRInTerminal: false,
+        browser: ['Xiaomi Cartagena', 'Chrome', '126.0'],
+        connectTimeoutMs: 30000,
+      });
+
+      this.sock.ev.on('creds.update', saveCreds);
+
+      this.sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
+        if (qr) {
+          try {
+            const dataUrl = await QRCode.toDataURL(qr, { margin: 2, width: 280 });
+            this.qrDataUrl = dataUrl;
+            this.status = 'qr_ready';
+            this.ioRef?.emit('whatsapp-qr', { qr: dataUrl });
+            console.log('[WA] QR generado y emitido');
+          } catch (e) {
+            console.error('[WA] Error generando QR:', e);
+          }
+        }
+
+        if (connection === 'open') {
+          this.status = 'connected';
+          this.qrDataUrl = null;
+          this.reconnecting = false;
+          this.ioRef?.emit('whatsapp-status', { status: 'connected' });
+          console.log('[WA] ✅ Conectado exitosamente');
+        }
+
+        if (connection === 'close') {
+          const code = (lastDisconnect?.error as any)?.output?.statusCode;
+          const isLogout = code === DisconnectReason.loggedOut;
+          this.status = 'disconnected';
+          this.qrDataUrl = null;
+          this.ioRef?.emit('whatsapp-status', { status: 'disconnected' });
+          console.log('[WA] Conexión cerrada — código:', code, '| logout:', isLogout);
+          if (!isLogout) {
+            this.reconnecting = true;
+            setTimeout(() => { this.reconnecting = false; this._connect(); }, 8000);
+          }
+        }
+      });
+    } catch (err) {
+      console.error('[WA] Error al inicializar:', err);
+      this.status = 'disconnected';
+    }
+  }
+
+  async sendMessage(phone: string, text: string): Promise<boolean> {
+    if (!this.sock || this.status !== 'connected') return false;
+    try {
+      const jid = this._formatPhone(phone);
+      await this.sock.sendMessage(jid, { text });
+      console.log('[WA] Mensaje enviado a', phone);
+      return true;
+    } catch (err) {
+      console.error('[WA] Error al enviar mensaje:', err);
+      return false;
+    }
+  }
+
+  _formatPhone(phone: string): string {
+    let clean = String(phone).replace(/[\s\-\+\(\)\.]/g, '');
+    if (clean.startsWith('0')) clean = clean.slice(1);
+    if (clean.length === 10 && !clean.startsWith('57')) clean = '57' + clean;
+    if (clean.length === 12 && clean.startsWith('57')) { /* ok */ }
+    return clean + '@s.whatsapp.net';
+  }
+
+  async disconnect() {
+    try {
+      if (this.sock) {
+        this.sock.ev.removeAllListeners();
+        await this.sock.logout().catch(() => {});
+        this.sock = null;
+      }
+      if (this.dbRef) {
+        await this.dbRef.collection('whatsappAuth').deleteMany({});
+      }
+    } catch (e) {
+      console.error('[WA] Error al desconectar:', e);
+    }
+    this.status = 'disconnected';
+    this.qrDataUrl = null;
+    this.reconnecting = false;
+    this.ioRef?.emit('whatsapp-status', { status: 'disconnected' });
+  }
+}
+
+const whatsappService = new WhatsAppService();
+
+// ---- Plantillas por defecto ----
+const DEFAULT_CUSTOMER_TEMPLATE =
+`🎉 *¡Pedido Confirmado!* — Xiaomi Cartagena
+
+Hola *{{nombre}}*, gracias por tu compra. 🧡
+
+🔖 *Orden:* #{{ordenNumero}}
+
+🛍️ *Tus productos:*
+{{productos}}
+
+💰 *Total:* ${{total}} COP
+💳 *Pago:* {{metodoPago}}
+🚚 *Entrega:* {{metodoEntrega}}
+{{linea_direccion}}
+⏱️ En breve nuestro equipo se contactará contigo.
+¿Tienes dudas? Responde este mensaje 👋
+
+_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
+
+const DEFAULT_OWNER_TEMPLATE =
+`🔔 *NUEVA VENTA* 🎯 — Xiaomi Cartagena
+
+👤 *Cliente:* {{nombre}}
+📞 *Cel:* {{telefono}}
+📧 *Email:* {{email}}
+🪪 *Cédula:* {{cedula}}
+
+🔖 *Orden:* #{{ordenNumero}}
+
+🛍️ *Productos:*
+{{productos}}
+
+💰 *Total:* ${{total}} COP
+💳 *Pago:* {{metodoPago}}
+🚚 *Entrega:* {{metodoEntrega}}
+{{linea_direccion}}
+📅 {{fecha}}
+
+_Xiaomi Cartagena_`;
+
+function processWhatsAppTemplate(template: string, order: any): string {
+  const items: any[] = order.items || [];
+  const productsList = items
+    .map((item: any) => `  • ${item.product?.name || 'Producto'} x${item.quantity || 1} — $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP`)
+    .join('\n');
+
+  const isDelivery = order.customerInfo?.deliveryMethod === 'delivery';
+  const deliveryLabel = isDelivery ? 'Domicilio 🛵' : 'Retiro en tienda 🏪';
+  const addressLine = isDelivery && order.customerInfo?.address
+    ? `📍 *Dirección:* ${order.customerInfo.address}\n`
+    : '';
+
+  const vars: Record<string, string> = {
+    '{{nombre}}': order.customerInfo?.name || 'Cliente',
+    '{{ordenNumero}}': order.orderNumber || '',
+    '{{productos}}': productsList,
+    '{{total}}': (order.total || 0).toLocaleString('es-CO'),
+    '{{metodoPago}}': order.paymentMethod || order.customerInfo?.paymentMethod || '',
+    '{{metodoEntrega}}': deliveryLabel,
+    '{{linea_direccion}}': addressLine,
+    '{{telefono}}': order.customerInfo?.phone || '',
+    '{{email}}': order.customerInfo?.email || '',
+    '{{cedula}}': order.customerInfo?.idNumber || '',
+    '{{fecha}}': new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'full', timeStyle: 'short' }),
+  };
+
+  let result = template;
+  for (const [key, val] of Object.entries(vars)) {
+    result = result.split(key).join(val);
+  }
+  return result;
+}
+
+async function sendWhatsAppNotifications(order: any) {
+  if (whatsappService.getStatus() !== 'connected') {
+    console.log('[WA] Notificaciones omitidas — no conectado');
+    return;
+  }
+  try {
+    const config = await db.collection('ticketConfig').findOne({ type: 'config' }) || {};
+    const ownerPhone: string = config.ownerWhatsAppPhone || '';
+    const customerTemplate: string = config.whatsappCustomerTemplate || DEFAULT_CUSTOMER_TEMPLATE;
+    const ownerTemplate: string = config.whatsappOwnerTemplate || DEFAULT_OWNER_TEMPLATE;
+
+    const customerPhone: string = order.customerInfo?.phone || '';
+
+    if (customerPhone) {
+      const msg = processWhatsAppTemplate(customerTemplate, order);
+      await whatsappService.sendMessage(customerPhone, msg);
+    }
+    if (ownerPhone) {
+      const msg = processWhatsAppTemplate(ownerTemplate, order);
+      await whatsappService.sendMessage(ownerPhone, msg);
+    }
+  } catch (err) {
+    console.error('[WA] Error al enviar notificaciones:', err);
   }
 }
 
@@ -1069,6 +1367,7 @@ app.post('/api/orders', async (req, res) => {
 
     const [hydratedOrder] = await hydrateOrdersWithProductImages([order as OrderDoc]);
     sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
+    sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[WA] Error notificaciones:', err));
 
     res.json(hydratedOrder);
   } catch (error) {
@@ -1177,6 +1476,76 @@ app.put('/api/ticket-config', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Error updating ticket config' });
+  }
+});
+
+// ====================================================================
+// WHATSAPP ENDPOINTS
+// ====================================================================
+
+app.get('/api/whatsapp/status', (_req, res) => {
+  const status = whatsappService.getStatus();
+  const result: Record<string, any> = { status };
+  if (status === 'qr_ready') result.qr = whatsappService.getQRDataUrl();
+  res.json(result);
+});
+
+app.post('/api/whatsapp/connect', async (_req, res) => {
+  if (!db) return res.status(503).json({ error: 'Base de datos no disponible' });
+  try {
+    await whatsappService.init(db, io);
+    // Devolver el estado actual; si hay QR disponible, incluirlo
+    const status = whatsappService.getStatus();
+    const result: Record<string, any> = { success: true, status };
+    if (status === 'qr_ready') result.qr = whatsappService.getQRDataUrl();
+    res.json(result);
+  } catch (err) {
+    console.error('[WA] Error al conectar:', err);
+    res.status(500).json({ error: 'Error al inicializar WhatsApp' });
+  }
+});
+
+app.post('/api/whatsapp/disconnect', async (_req, res) => {
+  try {
+    await whatsappService.disconnect();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[WA] Error al desconectar:', err);
+    res.status(500).json({ error: 'Error al desconectar WhatsApp' });
+  }
+});
+
+app.get('/api/whatsapp/templates', async (_req, res) => {
+  try {
+    const config = await db.collection('ticketConfig').findOne({ type: 'config' }) || {};
+    res.json({
+      customerTemplate: config.whatsappCustomerTemplate || DEFAULT_CUSTOMER_TEMPLATE,
+      ownerTemplate: config.whatsappOwnerTemplate || DEFAULT_OWNER_TEMPLATE,
+      ownerPhone: config.ownerWhatsAppPhone || '',
+    });
+  } catch (err) {
+    console.error('[WA] Error al obtener plantillas:', err);
+    res.status(500).json({ error: 'Error al obtener configuración de WhatsApp' });
+  }
+});
+
+app.put('/api/whatsapp/templates', async (req, res) => {
+  try {
+    const { customerTemplate, ownerTemplate, ownerPhone } = req.body;
+    const $set: Record<string, any> = {};
+    if (customerTemplate !== undefined) $set.whatsappCustomerTemplate = customerTemplate;
+    if (ownerTemplate !== undefined) $set.whatsappOwnerTemplate = ownerTemplate;
+    if (ownerPhone !== undefined) $set.ownerWhatsAppPhone = String(ownerPhone).trim();
+    if (Object.keys($set).length === 0) return res.status(400).json({ error: 'Sin campos para actualizar' });
+    await db.collection('ticketConfig').updateOne(
+      { type: 'config' },
+      { $set },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[WA] Error al guardar plantillas:', err);
+    res.status(500).json({ error: 'Error al guardar configuración de WhatsApp' });
   }
 });
 

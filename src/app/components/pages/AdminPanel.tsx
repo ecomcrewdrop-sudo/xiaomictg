@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { OrdersManager } from '../OrdersManager';
 import { StatisticsDashboard } from '../StatisticsDashboard';
 import { AdminLinkGenerator } from './AdminLinkGenerator';
+import { WhatsAppPanel } from '../WhatsAppPanel';
 import { toast } from 'sonner';
 import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
 const SOCKET_URL = '';
@@ -504,7 +505,7 @@ export function AdminPanel() {
         </div>
 
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className="grid w-full max-w-5xl grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 mb-8 h-auto gap-1">
+      <TabsList className="grid w-full max-w-5xl grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 mb-8 h-auto gap-1">
           <TabsTrigger value="products">Productos</TabsTrigger>
           <TabsTrigger value="stats">Estadísticas</TabsTrigger>
           <TabsTrigger value="orders" className="relative">
@@ -520,6 +521,10 @@ export function AdminPanel() {
           <TabsTrigger value="backup">Respaldo</TabsTrigger>
           <TabsTrigger value="blocking">Bloqueo</TabsTrigger>
           <TabsTrigger value="links" className="font-bold text-orange-600 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600">Links VIP</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="font-bold text-green-700 data-[state=active]:bg-green-50 data-[state=active]:text-green-700 flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+            WhatsApp
+          </TabsTrigger>
         </TabsList>
 
         {/* TAB DE ÓRDENES */}
@@ -535,6 +540,11 @@ export function AdminPanel() {
         {/* TAB DE ESTADÍSTICAS */}
         <TabsContent value="stats">
           <StatisticsDashboard />
+        </TabsContent>
+
+        {/* TAB WHATSAPP */}
+        <TabsContent value="whatsapp">
+          <WhatsAppPanel />
         </TabsContent>
 
         {/* TAB DE PRODUCTOS */}
