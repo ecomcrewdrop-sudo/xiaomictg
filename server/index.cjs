@@ -287666,7 +287666,14 @@ var WhatsAppService = class {
           this.qrDataUrl = null;
           this.ioRef?.emit("whatsapp-status", { status: "disconnected" });
           console.log("[WA] Conexi\xF3n cerrada \u2014 c\xF3digo:", code, "| logout:", isLogout);
-          if (!isLogout) {
+          if (isLogout) {
+            console.log("[WA] \u{1F9F9} Sesi\xF3n caducada o inv\xE1lida. Limpiando credenciales en base de datos...");
+            try {
+              if (this.dbRef) await this.dbRef.collection("whatsappAuth").deleteMany({});
+            } catch (err) {
+              console.error("[WA] Error limpiando credenciales:", err);
+            }
+          } else {
             this.reconnecting = true;
             setTimeout(() => {
               this.reconnecting = false;

@@ -427,7 +427,15 @@ class WhatsAppService {
           this.qrDataUrl = null;
           this.ioRef?.emit('whatsapp-status', { status: 'disconnected' });
           console.log('[WA] Conexión cerrada — código:', code, '| logout:', isLogout);
-          if (!isLogout) {
+          
+          if (isLogout) {
+            console.log('[WA] 🧹 Sesión caducada o inválida. Limpiando credenciales en base de datos...');
+            try {
+              if (this.dbRef) await this.dbRef.collection('whatsappAuth').deleteMany({});
+            } catch (err) {
+              console.error('[WA] Error limpiando credenciales:', err);
+            }
+          } else {
             this.reconnecting = true;
             setTimeout(() => { this.reconnecting = false; this._connect(); }, 8000);
           }
