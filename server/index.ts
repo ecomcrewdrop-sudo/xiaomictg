@@ -344,7 +344,7 @@ async function useMongoAuthState(dbRef: any, logger: any) {
   };
 }
 
-type WAStatus = 'disconnected' | 'qr_ready' | 'connected';
+type WAStatus = 'disconnected' | 'loading' | 'qr_ready' | 'connected';
 
 class WhatsAppService {
   private sock: ReturnType<typeof makeWASocket> | null = null;
@@ -366,6 +366,9 @@ class WhatsAppService {
 
   private async _connect() {
     try {
+      this.status = 'loading';
+      this.ioRef?.emit('whatsapp-status', { status: 'loading' });
+      
       // 1. Desconectar y limpiar cualquier socket anterior para evitar colisiones en Railway
       if (this.sock) {
         try {

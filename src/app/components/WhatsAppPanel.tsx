@@ -129,13 +129,17 @@ export function WhatsAppPanel() {
     try {
       const res = await fetch(`${API_BASE_URL}/whatsapp/connect`, { method: 'POST' });
       const data = await res.json();
+      if (data.status) {
+        setStatus(data.status);
+      } else {
+        setStatus('loading');
+      }
+      
       if (data.status === 'connected') {
-        setStatus('connected');
         setIsConnecting(false);
       } else {
-        setStatus('qr_ready');
         if (data.qr) setQrImage(data.qr);
-        // Intentar fetch inmediato tras iniciar conexion
+        // Intentar fetch continuo mientras esta conectando
         setTimeout(fetchStatus, 1500);
       }
     } catch {

@@ -287604,6 +287604,8 @@ var WhatsAppService = class {
   }
   async _connect() {
     try {
+      this.status = "loading";
+      this.ioRef?.emit("whatsapp-status", { status: "loading" });
       if (this.sock) {
         try {
           this.sock.ev.removeAllListeners();
