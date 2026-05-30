@@ -487,6 +487,16 @@ export function AdminPanel() {
     products: products.filter(p => p.category === cat.value)
   }));
 
+  const todayDateStr = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+  const todayOrdersCount = orders?.filter(o => {
+    try {
+      const d = o.createdAt ? new Date(o.createdAt) : new Date(o.date);
+      return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) === todayDateStr;
+    } catch {
+      return false;
+    }
+  }).length || 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -510,9 +520,9 @@ export function AdminPanel() {
           <TabsTrigger value="stats">Estadísticas</TabsTrigger>
           <TabsTrigger value="orders" className="relative">
             Órdenes
-            {unreadOrdersCount > 0 && (
+            {todayOrdersCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadOrdersCount}
+                {todayOrdersCount}
               </span>
             )}
           </TabsTrigger>
