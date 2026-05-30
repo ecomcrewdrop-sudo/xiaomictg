@@ -41,6 +41,7 @@ export function AdminPanel() {
   });
   
   const [isTicketSaving, setIsTicketSaving] = useState(false);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
 
   useEffect(() => {
     if (ticketConfig && !isTicketSaving) {
@@ -487,6 +488,8 @@ export function AdminPanel() {
     products: products.filter(p => p.category === cat.value)
   }));
 
+  const lowStockProducts = products.filter(p => p.stock < 10);
+
   const todayDateStr = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
   const todayOrdersCount = orders?.filter(o => {
     try {
@@ -581,10 +584,23 @@ export function AdminPanel() {
             {products.reduce((sum, p) => sum + p.stock, 0)}
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-sm text-gray-500 mb-1">Stock Bajo</div>
-          <div className="text-3xl font-bold text-red-500">
-            {products.filter(p => p.stock < 10).length}
+        <div 
+          onClick={() => setShowLowStockModal(true)}
+          className="bg-white rounded-xl shadow-sm p-6 cursor-pointer hover:bg-red-50 hover:shadow-md transition-all duration-200 border border-transparent hover:border-red-100 group"
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="text-sm text-gray-500 mb-1 group-hover:text-red-600 transition-colors">Stock Bajo</div>
+              <div className="text-3xl font-bold text-red-500">
+                {lowStockProducts.length}
+              </div>
+            </div>
+            <div className="bg-red-100 p-2 rounded-lg text-red-500 group-hover:scale-110 transition-transform">
+              <Package size={24} />
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-red-500/80 font-medium flex items-center gap-1">
+            Ver detalles <span className="text-[10px]">▶</span>
           </div>
         </div>
           </div>
