@@ -712,7 +712,10 @@ async function sendOrderEmail(order: any) {
             reply_to: adminEmail,
             subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
             html: emailHtml
-          }).then(() => console.log(`[server] Email enviado al cliente: ${customerEmail}`))
+          }).then((res: any) => {
+            if (res.error) throw new Error(res.error.message || 'Error enviando correo al cliente');
+            console.log(`[server] Email enviado al cliente: ${customerEmail}`);
+          })
         );
       }
       
@@ -722,7 +725,10 @@ async function sendOrderEmail(order: any) {
           to: [adminEmail],
           subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
           html: emailHtml
-        }).then(() => console.log(`[server] Email enviado al admin: ${adminEmail}`))
+        }).then((res: any) => {
+          if (res.error) throw new Error(res.error.message || 'Error enviando correo al admin');
+          console.log(`[server] Email enviado al admin: ${adminEmail}`);
+        })
       );
 
       await Promise.all(promises);

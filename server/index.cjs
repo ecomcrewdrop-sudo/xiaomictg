@@ -287926,7 +287926,10 @@ async function sendOrderEmail(order) {
             reply_to: adminEmail,
             subject: `Confirmaci\xF3n de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
             html: emailHtml
-          }).then(() => console.log(`[server] Email enviado al cliente: ${customerEmail}`))
+          }).then((res) => {
+            if (res.error) throw new Error(res.error.message || "Error enviando correo al cliente");
+            console.log(`[server] Email enviado al cliente: ${customerEmail}`);
+          })
         );
       }
       promises.push(
@@ -287935,7 +287938,10 @@ async function sendOrderEmail(order) {
           to: [adminEmail],
           subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
           html: emailHtml
-        }).then(() => console.log(`[server] Email enviado al admin: ${adminEmail}`))
+        }).then((res) => {
+          if (res.error) throw new Error(res.error.message || "Error enviando correo al admin");
+          console.log(`[server] Email enviado al admin: ${adminEmail}`);
+        })
       );
       await Promise.all(promises);
       console.log("[server] Emails enviados correctamente usando custom domain");
