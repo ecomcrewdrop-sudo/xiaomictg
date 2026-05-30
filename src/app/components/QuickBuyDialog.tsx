@@ -634,6 +634,7 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
             totalCOP={unitPrice}
             finalTotalCOP={grandTotal}
             config={ticketConfig}
+            preview={true}
           />
         </div>
       )}

@@ -221,7 +221,7 @@ export function DirectCheckoutPage() {
           </Button>
         </div>
         <div id="quick-thermal-ticket" className="hidden">
-          <ThermalTicket order={orderSuccess} finalTotal={grandTotal} cardFee={cardSurcharge} totalCOP={unitPrice} finalTotalCOP={grandTotal} config={ticketConfig} />
+          <ThermalTicket order={orderSuccess} finalTotal={grandTotal} cardFee={cardSurcharge} totalCOP={unitPrice} finalTotalCOP={grandTotal} config={ticketConfig} preview={true} />
         </div>
       </div>
     );
