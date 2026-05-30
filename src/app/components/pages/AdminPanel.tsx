@@ -1572,6 +1572,51 @@ export function AdminPanel() {
               </form>
             </DialogContent>
           </Dialog>
+
+      {/* Modal de Stock Bajo */}
+      <Dialog open={showLowStockModal} onOpenChange={setShowLowStockModal}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Package size={20} />
+              Productos con Stock Bajo
+            </DialogTitle>
+            <DialogDescription>
+              Estos productos tienen menos de 10 unidades en inventario y requieren atención.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto flex-1 pr-2 mt-4 space-y-3">
+            {lowStockProducts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                ¡Excelente! No hay productos con stock bajo en este momento.
+              </div>
+            ) : (
+              lowStockProducts.map(product => (
+                <div key={product.id || product.name} className="flex items-center gap-4 p-3 bg-red-50/50 rounded-lg border border-red-100">
+                  <div className="w-12 h-12 rounded-md bg-white overflow-hidden flex-shrink-0 border border-gray-100">
+                    {product.image ? (
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-300">
+                        <ImageIcon size={16} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 truncate" title={product.name}>{product.name}</h4>
+                    <p className="text-xs text-gray-500 capitalize">{product.category}</p>
+                  </div>
+                  <div className="flex flex-col items-end flex-shrink-0 pl-2 border-l border-red-200/50">
+                    <span className="text-[10px] uppercase font-bold text-red-400 tracking-wider">Unidades</span>
+                    <span className="text-xl font-black text-red-600 leading-none">{product.stock}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
