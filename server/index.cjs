@@ -287807,6 +287807,10 @@ async function sendWhatsAppNotifications(order) {
     console.log("[WA] Notificaciones omitidas \u2014 no conectado");
     return;
   }
+  if (order.customerInfo?.deliveryMethod !== "delivery") {
+    console.log("[WA] Notificaciones omitidas \u2014 pedido es para retiro en tienda");
+    return;
+  }
   try {
     const config = await db.collection("ticketConfig").findOne({ type: "config" }) || {};
     const ownerPhone = config.ownerWhatsAppPhone || "";

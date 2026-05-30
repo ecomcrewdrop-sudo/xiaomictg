@@ -584,6 +584,12 @@ async function sendWhatsAppNotifications(order: any) {
     console.log('[WA] Notificaciones omitidas — no conectado');
     return;
   }
+  
+  if (order.customerInfo?.deliveryMethod !== 'delivery') {
+    console.log('[WA] Notificaciones omitidas — pedido es para retiro en tienda');
+    return;
+  }
+
   try {
     const config = await db.collection('ticketConfig').findOne({ type: 'config' }) || {};
     const ownerPhone: string = config.ownerWhatsAppPhone || '';
