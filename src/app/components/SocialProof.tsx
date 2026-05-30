@@ -88,7 +88,7 @@ export function SocialProof() {
   if (!notification) return null;
 
   return (
-    <div className={`fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-[60] transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] w-[300px] max-w-[calc(100vw-2rem)] ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+    <div className={`fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-[40] transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] w-[300px] max-w-[calc(100vw-2rem)] ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
       <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.1)] border border-gray-100 p-3 flex items-start gap-3 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
         <button onClick={() => setIsVisible(false)} className="absolute top-2 right-2 text-gray-300 hover:text-gray-600 bg-white rounded-full p-0.5 transition-colors">
