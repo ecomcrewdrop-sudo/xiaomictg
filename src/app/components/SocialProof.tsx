@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useProducts } from './ProductContext';
 import { CheckCircle2, X } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 const CITIES = ['Bocagrande', 'Manga', 'Crespo', 'Pie de la Popa', 'Centro Amurallado', 'Castillogrande', 'Los Alpes', 'Turbaco', 'El Recreo', 'Zaragocilla'];
 const NAMES = ['Carlos', 'María', 'José', 'Ana', 'Luis', 'Laura', 'Pedro', 'Marta', 'Andrés', 'Daniela', 'Jorge', 'Camila', 'Santiago', 'Valentina'];
@@ -10,6 +10,12 @@ export function SocialProof() {
   const { products } = useProducts();
   const [notification, setNotification] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const location = useLocation();
+
+  // Ocultar notificaciones de compras (SocialProof) en la página de checkout
+  if (location.pathname.startsWith('/checkout') || location.pathname.startsWith('/admin')) {
+    return null;
+  }
 
   useEffect(() => {
     // Only run if we have products
