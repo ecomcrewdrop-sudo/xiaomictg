@@ -1493,6 +1493,20 @@ app.put('/api/orders', async (req, res) => {
   }
 });
 
+app.delete('/api/orders', async (req, res) => {
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: 'id requerido' });
+    const result = await db.collection('orders').deleteOne({ id: String(id) });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.json({ message: 'Order deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error deleting order' });
+  }
+});
+
 app.get('/api/notifications', async (req, res) => {
   try {
     const notifications = await db.collection('notifications').find({}).sort({ createdAt: -1 }).limit(50).toArray();
