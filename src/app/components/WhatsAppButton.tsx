@@ -1,11 +1,20 @@
+import { useLocation } from 'react-router-dom';
+
 export function WhatsAppButton() {
+  const location = useLocation();
+
+  // Ocultar el botón flotante en la página de checkout para no tapar el botón de pago
+  if (location.pathname.startsWith('/checkout') || location.pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <a
       href="https://wa.me/573022875280?text=Hola%2C%20quiero%20información%20sobre%20un%20producto%20de%20Xiaomi%20Cartagena"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Contactar por WhatsApp"
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-full shadow-2xl transition-all duration-300 hover:scale-105 group"
+      className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-full shadow-2xl transition-all duration-300 hover:scale-105 group"
       style={{ padding: '14px 20px 14px 16px' }}
     >
       {/* WhatsApp SVG icon */}
