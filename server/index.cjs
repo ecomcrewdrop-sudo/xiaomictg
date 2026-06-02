@@ -288730,6 +288730,81 @@ app.put("/api/whatsapp/templates", async (req, res) => {
     res.status(500).json({ error: "Error al guardar configuraci\xF3n de WhatsApp" });
   }
 });
+app.get("/api/products/:id/reviews", async (req, res) => {
+  try {
+    const reviews = await db.collection("reviews").find({ productId: req.params.id, status: "approved" }).sort({ date: -1 }).toArray();
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching reviews" });
+  }
+});
+app.post("/api/products/:id/reviews", async (req, res) => {
+  try {
+    const { author, rating, comment } = req.body;
+    const review = {
+      productId: req.params.id,
+      author,
+      rating: Number(rating),
+      comment,
+      status: "pending",
+      verifiedPurchase: false,
+      date: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("reviews").insertOne(review);
+    res.json({ success: true, review });
+  } catch (error) {
+    res.status(500).json({ error: "Error submitting review" });
+  }
+});
+app.get("/api/admin/reviews", async (req, res) => {
+  try {
+    const reviews = await db.collection("reviews").find({}).sort({ date: -1 }).toArray();
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching reviews" });
+  }
+});
+app.patch("/api/admin/reviews/:id", async (req, res) => {
+  try {
+    const { status, verifiedPurchase } = req.body;
+    const $set = {};
+    if (status !== void 0) $set.status = status;
+    if (verifiedPurchase !== void 0) $set.verifiedPurchase = verifiedPurchase;
+    await db.collection("reviews").updateOne(
+      { _id: new import_mongodb.ObjectId(req.params.id) },
+      { $set }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating review" });
+  }
+});
+app.post("/api/admin/reviews", async (req, res) => {
+  try {
+    const { productId, author, rating, comment, date, verifiedPurchase } = req.body;
+    const review = {
+      productId,
+      author,
+      rating: Number(rating),
+      comment,
+      status: "approved",
+      verifiedPurchase: Boolean(verifiedPurchase),
+      date: date || (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("reviews").insertOne(review);
+    res.json({ success: true, review });
+  } catch (error) {
+    res.status(500).json({ error: "Error creating manual review" });
+  }
+});
+app.delete("/api/admin/reviews/:id", async (req, res) => {
+  try {
+    await db.collection("reviews").deleteOne({ _id: new import_mongodb.ObjectId(req.params.id) });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error deleting review" });
+  }
+});
 io2.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
   socket.on("disconnect", () => {
