@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useProducts, Product, Banner, ColorVariant, StorageVariant } from '../ProductContext';
-import { Plus, Pencil, Trash2, Save, X, Package, ImageIcon, Upload, Palette, HardDrive, Cpu } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Package, ImageIcon, Upload, Palette, HardDrive, Cpu, MessageCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -13,6 +13,7 @@ import { OrdersManager } from '../OrdersManager';
 import { StatisticsDashboard } from '../StatisticsDashboard';
 import { AdminLinkGenerator } from './AdminLinkGenerator';
 import { WhatsAppPanel } from '../WhatsAppPanel';
+import { ReviewsManager } from '../ReviewsManager';
 import { toast } from 'sonner';
 import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
 const SOCKET_URL = '';
@@ -535,9 +536,10 @@ export function AdminPanel() {
           <TabsTrigger value="blocking">Bloqueo</TabsTrigger>
           <TabsTrigger value="links" className="font-bold text-orange-600 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600">Links VIP</TabsTrigger>
           <TabsTrigger value="whatsapp" className="font-bold text-green-700 data-[state=active]:bg-green-50 data-[state=active]:text-green-700 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-            WhatsApp
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp Bot
           </TabsTrigger>
+          <TabsTrigger value="reviews" className="font-bold text-indigo-700 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">Reseñas</TabsTrigger>
         </TabsList>
 
         {/* TAB DE ÓRDENES */}
@@ -553,6 +555,10 @@ export function AdminPanel() {
         {/* TAB DE ESTADÍSTICAS */}
         <TabsContent value="stats">
           <StatisticsDashboard />
+        </TabsContent>
+
+        <TabsContent value="reviews">
+          <ReviewsManager />
         </TabsContent>
 
         {/* TAB WHATSAPP */}

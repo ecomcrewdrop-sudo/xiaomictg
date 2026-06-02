@@ -4,6 +4,7 @@ import { Star, ShoppingCart, ArrowLeft, Package, Shield, Truck, Zap, CheckCircle
 import { useState, useEffect } from 'react';
 import { useToast } from '../ToastContext';
 import { QuickBuyDialog } from '../QuickBuyDialog';
+import { ProductReviews } from '../ProductReviews';
 
 const EXCHANGE_RATE = 1; // Precios en COP
 
@@ -394,40 +395,8 @@ export function ProductDetailPage() {
 
           {/* Contenido de Opiniones */}
           {activeTab === 'reviews' && (
-            <div>
-              {product.reviews && product.reviews.length > 0 ? (
-                <div className="space-y-6">
-                  {product.reviews.map((review) => (
-                    <div key={review.id} className="border-b border-gray-200 pb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <div className="font-medium text-gray-900 mb-1">{review.author}</div>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-4 h-4 ${
-                                  star <= review.rating
-                                    ? 'fill-orange-500 text-orange-500'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <span className="text-sm text-gray-500">{review.date}</span>
-                      </div>
-                      <p className="text-gray-600 font-light leading-relaxed">
-                        {review.comment}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-600 text-center py-8">
-                  No hay opiniones todavía. ¡Sé el primero en opinar!
-                </p>
-              )}
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <ProductReviews productId={product.id} productName={product.name} />
             </div>
           )}
         </div>
