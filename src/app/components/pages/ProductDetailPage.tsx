@@ -18,6 +18,7 @@ export function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
   const [selectedStorage, setSelectedStorage] = useState<string | undefined>(undefined);
   const [quickBuyOpen, setQuickBuyOpen] = useState(false);
+  const [ratingSummary, setRatingSummary] = useState({ average: 0, count: 0 });
 
   // Scroll al top cuando se monta el componente o cambia el ID
   useEffect(() => {
@@ -26,7 +27,7 @@ export function ProductDetailPage() {
 
   const product = products.find(p => p.id === id);
   
-  // Inicializar selecciones por defecto
+  // Inicializar selecciones por defecto y cargar reseñas
   useEffect(() => {
     if (product) {
       if (product.storageVariants && product.storageVariants.length > 0 && !selectedStorage) {
@@ -35,8 +36,21 @@ export function ProductDetailPage() {
       if (product.colorVariants && product.colorVariants.length > 0 && !selectedColor) {
         setSelectedColor(product.colorVariants[0].color);
       }
+      
+      // Fetch dynamic reviews for the star badge
+      fetch(`/api/products/${product.id}/reviews`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const avg = data.reduce((acc, r) => acc + r.rating, 0) / data.length;
+            setRatingSummary({ average: avg, count: data.length });
+          } else {
+            setRatingSummary({ average: 5, count: 0 }); // Fallback visual
+          }
+        })
+        .catch(console.error);
     }
-  }, [product]);
+  }, [product, selectedStorage, selectedColor]);
 
   if (!product) {
     return (
@@ -75,10 +89,6 @@ export function ProductDetailPage() {
   };
   
   const availableStock = getAvailableStock();
-
-  const averageRating = product.reviews && product.reviews.length > 0
-    ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
-    : 0;
 
   const handleAddToCart = () => {
     if (product) {
@@ -147,30 +157,37 @@ export function ProductDetailPage() {
               {product.name}
             </h1>
 
+            {/* Rating Stars Badge */}
+            <div 
+              className="flex items-center gap-3 mb-6 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => {
+                setActiveTab('reviews');
+                document.getElementById('tabs-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-5 h-5 ${
+                      star <= Math.round(ratingSummary.average)
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-slate-200 fill-slate-100'
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="text-sm font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                {ratingSummary.average.toFixed(1)}
+              </div>
+              <span className="text-sm text-slate-500 underline decoration-slate-300 underline-offset-4">
+                {ratingSummary.count > 0 ? `${ratingSummary.count} reseñas` : 'Sé el primero en opinar'}
+              </span>
+            </div>
+
             <p className="text-gray-600 font-light leading-relaxed mb-6">
               {product.description}
             </p>
-
-            {/* Rating */}
-            {product.reviews && product.reviews.length > 0 && (
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-5 h-5 ${
-                        star <= averageRating
-                          ? 'fill-orange-500 text-orange-500'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">
-                  {averageRating.toFixed(1)} ({product.reviews.length} opiniones)
-                </span>
-              </div>
-            )}
 
             {/* Selector de Almacenamiento */}
             {product.storageVariants && product.storageVariants.length > 0 && (
