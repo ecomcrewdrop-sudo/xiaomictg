@@ -23,6 +23,7 @@ export function DirectCheckoutPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | undefined>(initialColor || undefined);
   const [selectedStorage, setSelectedStorage] = useState<string | undefined>(initialStorage || undefined);
+  const [quantity, setQuantity] = useState(1);
 
   // Estados de Checkout
   const [customerName, setCustomerName] = useState('');
@@ -73,14 +74,15 @@ export function DirectCheckoutPage() {
     }
 
     const dFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
-    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(currentPrice * 0.05) : 0;
+    const baseTotal = currentPrice * quantity;
+    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : 0;
     
     return {
       unitPrice: currentPrice,
       availableStock: currentStock,
       deliveryFee: dFee,
       cardSurcharge: surcharge,
-      grandTotal: currentPrice + dFee + surcharge
+      grandTotal: baseTotal + dFee + surcharge
     };
   }, [product, selectedStorage, selectedColor, deliveryMethod, paymentMethod]);
 
@@ -94,7 +96,7 @@ export function DirectCheckoutPage() {
   // Utils para orden
   const buildCartItem = () => ({
     product: { ...product!, price: unitPrice },
-    quantity: 1,
+    quantity: quantity,
     selectedColor,
     selectedStorage,
   });
@@ -129,7 +131,7 @@ export function DirectCheckoutPage() {
     try {
       const newOrder = await addOrder({
         items: [buildCartItem()],
-        total: unitPrice,
+        total: unitPrice * quantity,
         status: 'pending',
         createdAt: new Date().toISOString(),
         customerInfo: {
@@ -160,7 +162,7 @@ export function DirectCheckoutPage() {
     try {
       const newOrder = await addOrder({
         items: [buildCartItem()],
-        total: unitPrice,
+        total: unitPrice * quantity,
         status: 'pending_bold',
         createdAt: new Date().toISOString(),
         customerInfo: {
@@ -245,9 +247,21 @@ export function DirectCheckoutPage() {
           <div className="min-w-0 flex-1">
             <span className="text-[9px] font-black text-sky-600 uppercase tracking-wider block leading-none">Estás comprando</span>
             <h3 className="font-black text-slate-900 text-sm leading-snug truncate mt-1">{product.name}</h3>
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               {selectedStorage && <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-500">{selectedStorage}</span>}
               {selectedColor && <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-500">{selectedColor}</span>}
+              
+              <div className="flex items-center gap-2 bg-slate-100 rounded-lg ml-2">
+                <button 
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                  className="w-6 h-6 flex items-center justify-center font-bold text-slate-500"
+                >-</button>
+                <span className="text-xs font-black">{quantity}</span>
+                <button 
+                  onClick={() => setQuantity(Math.min(availableStock, quantity + 1))} 
+                  className="w-6 h-6 flex items-center justify-center font-bold text-slate-500"
+                >+</button>
+              </div>
             </div>
           </div>
           <div className="text-right shrink-0">
@@ -371,17 +385,29 @@ export function DirectCheckoutPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-black text-slate-900 text-base leading-tight mb-1 truncate">{product.name}</h3>
-                  <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-500 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500 mt-1">
                     {selectedStorage && <span className="bg-white px-2 py-0.5 rounded-lg border border-slate-200">{selectedStorage}</span>}
                     {selectedColor && <span className="bg-white px-2 py-0.5 rounded-lg border border-slate-200">{selectedColor}</span>}
+                    
+                    <div className="flex items-center gap-2 bg-slate-100 rounded-lg ml-auto">
+                      <button 
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                        className="w-7 h-7 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-200 rounded-l-lg transition-colors"
+                      >-</button>
+                      <span className="text-sm font-black w-4 text-center">{quantity}</span>
+                      <button 
+                        onClick={() => setQuantity(Math.min(availableStock, quantity + 1))} 
+                        className="w-7 h-7 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-200 rounded-r-lg transition-colors"
+                      >+</button>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="p-6 space-y-4">
                 <div className="flex justify-between text-slate-600 font-bold text-sm">
-                  <span>Subtotal</span>
-                  <span>${unitPrice.toLocaleString('es-CO')}</span>
+                  <span>Subtotal ({quantity}x)</span>
+                  <span>${(unitPrice * quantity).toLocaleString('es-CO')}</span>
                 </div>
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-slate-600 font-bold text-sm">
