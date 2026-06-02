@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Star, ShieldCheck, PenSquare, Loader2 } from 'lucide-react';
 import { ReviewModal } from './ReviewModal';
+import { API_ORIGIN } from '../lib/api-base';
 
 interface ProductReviewsProps {
   productId: string;
@@ -24,7 +25,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const res = await fetch(`/api/products/${productId}/reviews`);
+        const res = await fetch(`${API_ORIGIN}/api/products/${productId}/reviews`);
         if (res.ok) {
           const data = await res.json();
           setReviews(data);

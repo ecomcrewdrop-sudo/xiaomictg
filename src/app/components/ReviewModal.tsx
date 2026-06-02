@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Star, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_ORIGIN } from '../lib/api-base';
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -27,7 +28,7 @@ export function ReviewModal({ isOpen, onClose, productId, productName }: ReviewM
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/products/${productId}/reviews`, {
+      const res = await fetch(`${API_ORIGIN}/api/products/${productId}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ author, rating, comment }),

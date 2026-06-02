@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '../ToastContext';
 import { QuickBuyDialog } from '../QuickBuyDialog';
 import { ProductReviews } from '../ProductReviews';
+import { API_ORIGIN } from '../lib/api-base';
 
 const EXCHANGE_RATE = 1; // Precios en COP
 
@@ -38,7 +39,7 @@ export function ProductDetailPage() {
       }
       
       // Fetch dynamic reviews for the star badge
-      fetch(`/api/products/${product.id}/reviews`)
+      fetch(`${API_ORIGIN}/api/products/${product.id}/reviews`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {

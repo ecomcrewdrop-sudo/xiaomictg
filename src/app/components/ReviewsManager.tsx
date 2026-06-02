@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Star, CheckCircle, XCircle, Trash2, ShieldCheck, PenSquare, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_ORIGIN } from '../lib/api-base';
 
 interface Review {
   _id: string;
@@ -21,7 +22,7 @@ export function ReviewsManager() {
 
   const fetchReviews = async () => {
     try {
-      const res = await fetch('/api/admin/reviews');
+      const res = await fetch(`${API_ORIGIN}/api/admin/reviews`);
       if (res.ok) {
         const data = await res.json();
         setReviews(data);
@@ -39,7 +40,7 @@ export function ReviewsManager() {
 
   const updateReviewStatus = async (id: string, status: 'approved' | 'rejected') => {
     try {
-      const res = await fetch(`/api/admin/reviews/${id}`, {
+      const res = await fetch(`${API_ORIGIN}/api/admin/reviews/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -59,7 +60,7 @@ export function ReviewsManager() {
         label: 'Sí, eliminar',
         onClick: async () => {
           try {
-            const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_ORIGIN}/api/admin/reviews/${id}`, { method: 'DELETE' });
             if (res.ok) {
               toast.success('Reseña eliminada');
               fetchReviews();
@@ -76,7 +77,7 @@ export function ReviewsManager() {
   const submitManualReview = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/reviews', {
+      const res = await fetch(`${API_ORIGIN}/api/admin/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manualForm)
