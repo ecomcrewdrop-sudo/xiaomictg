@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Star, CheckCircle, XCircle, Trash2, ShieldCheck, PenSquare, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_ORIGIN } from '../lib/api-base';
+import { useProducts } from './ProductContext';
 
 interface Review {
   _id: string;
@@ -15,6 +16,7 @@ interface Review {
 }
 
 export function ReviewsManager() {
+  const { products } = useProducts();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [showManualForm, setShowManualForm] = useState(false);
@@ -76,6 +78,10 @@ export function ReviewsManager() {
 
   const submitManualReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!manualForm.productId) {
+      toast.error('Por favor, selecciona un producto');
+      return;
+    }
     try {
       const res = await fetch(`${API_ORIGIN}/api/admin/reviews`, {
         method: 'POST',
@@ -117,8 +123,13 @@ export function ReviewsManager() {
           </h3>
           <form onSubmit={submitManualReview} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-indigo-800 mb-1">ID del Producto</label>
-              <input required type="text" value={manualForm.productId} onChange={e => setManualForm({...manualForm, productId: e.target.value})} className="w-full p-2.5 rounded-xl border border-indigo-200" placeholder="Ej. redmi-note-13-pro" />
+              <label className="block text-xs font-bold text-indigo-800 mb-1">Producto</label>
+              <select required value={manualForm.productId} onChange={e => setManualForm({...manualForm, productId: e.target.value})} className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white">
+                <option value="" disabled>Selecciona el producto...</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-indigo-800 mb-1">Nombre del Autor</label>
