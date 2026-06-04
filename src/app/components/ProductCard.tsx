@@ -85,7 +85,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <Link to={`/product/${product.id}`}>
-        <div className="group bg-white overflow-hidden hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 relative flex flex-col h-full">
+        <div className="group bg-white overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer border border-transparent hover:border-gray-50 relative flex flex-col h-full rounded-[2rem]">
 
           {/* Badges Integrados (Optimizados para móvil) */}
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-col gap-1.5 items-start max-w-[90%]">
@@ -107,12 +107,13 @@ export function ProductCard({ product }: ProductCardProps) {
             )}
           </div>
 
-          {/* Imagen */}
-          <div className="aspect-square overflow-hidden bg-white">
+          {/* Imagen con Glow 2026 */}
+          <div className="aspect-square overflow-visible bg-transparent relative flex items-center justify-center p-6 mt-2">
+            <div className="absolute inset-0 bg-gradient-to-tr from-gray-100 to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-full blur-2xl scale-75"></div>
             <img
               src={product.image}
               alt={`${product.name} - Xiaomi Cartagena`}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              className="w-full h-full object-contain relative z-10 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-700 drop-shadow-xl"
               loading="lazy"
               onError={(e) => {
                 const target = e.currentTarget;
@@ -220,23 +221,23 @@ export function ProductCard({ product }: ProductCardProps) {
               </div>
 
               {/* CTAs — siempre visibles en móvil, hover en desktop */}
-              <div className="mt-2 flex flex-col gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 relative z-30">
+              <div className="mt-2 flex flex-col gap-2 md:opacity-0 md:group-hover:opacity-100 md:-translate-y-2 md:group-hover:translate-y-0 transition-all duration-500 relative z-30">
                 <button
                   onClick={handleAddToCart}
                   disabled={availableStock === 0}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:bg-gray-300 disabled:cursor-not-allowed rounded"
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white py-2.5 text-xs font-bold transition-all shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 flex items-center justify-center gap-1.5 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none disabled:cursor-not-allowed rounded-xl"
                 >
                   <ShoppingCart className="w-3.5 h-3.5" />
-                  Agregar
+                  Agregar al Carrito
                 </button>
 
                 {/* Fila 2: Comprar Ahora (compra impulsiva) */}
                 {availableStock > 0 && (
                   <button
                     onClick={handleQuickBuy}
-                    className="w-full bg-gray-900 hover:bg-black text-white py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 rounded"
+                    className="w-full bg-gradient-to-b from-gray-800 to-gray-900 hover:from-black hover:to-black text-white py-2.5 text-xs font-bold transition-all shadow-lg shadow-gray-900/20 hover:shadow-gray-900/40 flex items-center justify-center gap-1.5 rounded-xl border-t border-gray-700"
                   >
-                    <Zap className="w-3.5 h-3.5 text-orange-400" />
+                    <Zap className="w-3.5 h-3.5 text-orange-400 drop-shadow-md" />
                     Comprar Ahora
                   </button>
                 )}
