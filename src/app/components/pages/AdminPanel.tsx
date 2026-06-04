@@ -1426,17 +1426,6 @@ export function AdminPanel() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                required
-              />
-            </div>
-
             {/* Especificaciones del Producto */}
             <div className="border-2 border-gray-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-4">

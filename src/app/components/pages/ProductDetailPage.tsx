@@ -186,11 +186,6 @@ export function ProductDetailPage() {
               </span>
             </div>
 
-            {product.description && product.description.trim().toLowerCase() !== product.name.trim().toLowerCase() && (
-              <p className="text-gray-600 font-light leading-relaxed mb-6">
-                {product.description}
-              </p>
-            )}
 
             {/* Selector de Almacenamiento */}
             {product.storageVariants && product.storageVariants.length > 0 && (
