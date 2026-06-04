@@ -62,6 +62,7 @@ export interface Product {
   description: string;
   image: string;
   stock: number;
+  isFeatured?: boolean;
   colorVariants?: ColorVariant[];
   storageVariants?: StorageVariant[];
   specifications?: {

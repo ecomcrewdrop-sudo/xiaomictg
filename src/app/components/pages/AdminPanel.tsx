@@ -102,7 +102,8 @@ export function AdminPanel() {
     price: '',
     description: '',
     image: '',
-    stock: ''
+    stock: '',
+    isFeatured: false
   });
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
   const [newColor, setNewColor] = useState({ color: '', colorHex: '#000000', stock: '' });
@@ -157,7 +158,8 @@ export function AdminPanel() {
         price: product.price.toString(),
         description: product.description,
         image: product.image,
-        stock: product.stock.toString()
+        stock: product.stock.toString(),
+        isFeatured: product.isFeatured || false
       });
       setColorVariants(product.colorVariants || []);
       setStorageVariants(product.storageVariants || []);
@@ -175,7 +177,8 @@ export function AdminPanel() {
         price: '',
         description: '',
         image: '',
-        stock: ''
+        stock: '',
+        isFeatured: false
       });
       setColorVariants([]);
       setStorageVariants([]);
@@ -198,6 +201,7 @@ export function AdminPanel() {
       description: '',
       image: '',
       stock: '',
+      isFeatured: false,
     });
     setColorVariants([]);
     setStorageVariants([]);
@@ -335,7 +339,8 @@ export function AdminPanel() {
       price: parseFloat(formData.price),
       description: formData.description,
       image: formData.image,
-      stock: totalStock
+      stock: totalStock,
+      isFeatured: formData.isFeatured
     };
     
     // Agregar variantes de colores si existen
@@ -1226,6 +1231,20 @@ export function AdminPanel() {
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2 bg-orange-50 p-4 rounded-lg border border-orange-100 mb-6">
+              <input
+                type="checkbox"
+                id="isFeatured"
+                checked={formData.isFeatured}
+                onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                className="w-5 h-5 text-orange-500 rounded border-gray-300 focus:ring-orange-500"
+              />
+              <Label htmlFor="isFeatured" className="text-base font-medium cursor-pointer flex-1">
+                Marcar como Producto Destacado
+                <p className="text-sm font-normal text-gray-500 mt-1">Este producto aparecerá en la sección principal de "Productos Destacados" en la página de inicio.</p>
+              </Label>
             </div>
 
             {/* Sección de Variantes de Color */}
