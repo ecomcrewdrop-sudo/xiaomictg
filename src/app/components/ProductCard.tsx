@@ -80,7 +80,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const availableStock = getAvailableStock();
   const isLowStock = availableStock > 0 && availableStock < 5;
-  const isMediumStock = availableStock > 0 && availableStock <= 10;
+  const isMediumStock = availableStock >= 5 && availableStock <= 10;
 
   return (
     <>
@@ -124,11 +124,11 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
 
           <div className="p-3 md:p-5 text-center flex flex-col flex-1 relative z-20">
-            <h3 className="font-bold text-[12px] md:text-[13px] text-gray-900 leading-tight mb-1.5 md:mb-2 group-hover:text-orange-500 transition-colors line-clamp-2 min-h-[32px] md:min-h-[36px]">
+            <h3 className="font-bold text-[13px] md:text-[14px] text-gray-900 leading-tight mb-1 group-hover:text-orange-500 transition-colors line-clamp-2 min-h-[32px] md:min-h-[36px]">
               {product.name}
             </h3>
 
-            <p className="text-[10px] md:text-xs text-gray-500 mb-2 md:mb-3 line-clamp-2 font-light leading-relaxed min-h-[1.75rem] md:min-h-[2.5rem]">
+            <p className="hidden md:block text-xs text-gray-500 mb-3 line-clamp-2 font-light leading-relaxed min-h-[2.5rem]">
               {product.description}
             </p>
 
@@ -190,61 +190,47 @@ export function ProductCard({ product }: ProductCardProps) {
               </div>
             )}
 
-            <div className="mt-auto">
-              <div className="flex flex-col items-center gap-0.5 md:gap-1 mb-3 md:mb-4">
-                <span className="text-xl md:text-2xl font-normal text-gray-600">
+            <div className="mt-auto pt-2">
+              <div className="flex flex-col items-center gap-0.5 md:gap-1 mb-2 md:mb-4">
+                <span className="text-lg md:text-2xl font-semibold text-gray-800">
                   ${priceInCOP.toLocaleString('es-CO')}
-                  <span className="text-xs md:text-sm font-normal text-gray-600 ml-1">COP</span>
                 </span>
 
-                {isLowStock && (
-                  <span className="text-xs text-gray-800 font-semibold">
-                    Solo {availableStock} disponibles
-                  </span>
-                )}
-                {isMediumStock && (
-                  <span className="text-xs text-gray-500 font-medium">
-                    {availableStock} disponibles
-                  </span>
-                )}
-                {availableStock === 0 && (
-                  <span className="text-xs text-gray-400 font-medium">Agotado</span>
-                )}
-
-                {/* Envío badge */}
-                {availableStock > 0 && (
-                  <span className="text-xs text-green-600 font-medium flex items-center gap-1 mt-0.5">
-                    <Zap className="w-3 h-3" />
-                    Envío en 1 hora · Cartagena
-                  </span>
+                {/* Envío badge y stock unificados */}
+                {availableStock > 0 ? (
+                  <div className="flex flex-col items-center mt-0.5 md:mt-1">
+                    <span className="text-[10px] md:text-xs text-green-600 font-medium flex items-center gap-1">
+                      <Zap className="w-3 h-3" /> Envío en 1 hora
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[10px] md:text-xs text-gray-400 font-medium mt-1">Agotado</span>
                 )}
               </div>
 
-              {/* CTAs — Siempre visibles pero con efecto al hacer hover */}
+              {/* CTAs */}
               <div className="mt-1 md:mt-2 flex flex-col gap-1.5 md:gap-2 relative z-30 transition-transform duration-500 group-hover:-translate-y-1">
                 <button
                   onClick={handleAddToCart}
                   disabled={availableStock === 0}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white py-2 md:py-2.5 text-[11px] md:text-[13px] font-bold transition-all shadow-md shadow-orange-500/10 hover:shadow-orange-500/30 flex items-center justify-center gap-1 md:gap-1.5 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none disabled:cursor-not-allowed rounded-lg md:rounded-xl"
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white py-1.5 md:py-2.5 text-[10px] md:text-[13px] font-bold transition-all shadow-md flex items-center justify-center gap-1 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none disabled:cursor-not-allowed rounded-lg md:rounded-xl"
                 >
-                  <ShoppingCart className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                  Agregar al Carrito
+                  <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
+                  Al Carrito
                 </button>
 
-                {/* Fila 2: Comprar Ahora (compra impulsiva) */}
                 {availableStock > 0 && (
                   <button
                     onClick={handleQuickBuy}
-                    className="w-full bg-gradient-to-b from-gray-800 to-gray-900 hover:from-black hover:to-black text-white py-2 md:py-2.5 text-[11px] md:text-[13px] font-bold transition-all shadow-md shadow-gray-900/10 hover:shadow-gray-900/30 flex items-center justify-center gap-1 md:gap-1.5 rounded-lg md:rounded-xl border-t border-gray-700"
+                    className="w-full bg-gradient-to-b from-gray-800 to-gray-900 hover:from-black hover:to-black text-white py-1.5 md:py-2.5 text-[10px] md:text-[13px] font-bold transition-all shadow-md flex items-center justify-center gap-1 rounded-lg md:rounded-xl border-t border-gray-700"
                   >
-                    <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-400 drop-shadow" />
+                    <Zap className="w-3 h-3 md:w-4 md:h-4 text-orange-400" />
                     Comprar Ahora
                   </button>
                 )}
 
-                {/* Fila 3: Ver detalles */}
                 {availableStock === 0 && (
-                  <div className="w-full bg-gray-100 text-gray-500 py-2 md:py-2.5 text-[11px] md:text-[13px] font-semibold flex items-center justify-center rounded-lg md:rounded-xl cursor-default">
+                  <div className="w-full bg-gray-100 text-gray-500 py-1.5 md:py-2.5 text-[10px] md:text-[13px] font-semibold flex items-center justify-center rounded-lg md:rounded-xl cursor-default">
                     Sin stock
                   </div>
                 )}
