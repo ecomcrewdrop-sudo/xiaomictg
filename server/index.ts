@@ -1241,7 +1241,7 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews } = req.body;
+    const { name, category, price, description, image, stock, colorVariants, storageVariants, specifications, reviews, isFeatured } = req.body;
     const inlineImageError = rejectInlineBase64Image(image);
     if (inlineImageError) {
       return res.status(400).json({ error: inlineImageError });
@@ -1259,7 +1259,8 @@ app.post('/api/products', async (req, res) => {
       colorVariants: colorVariants || [],
       storageVariants: storageVariants || [],
       specifications: specifications || {},
-      reviews: reviews || []
+      reviews: reviews || [],
+      isFeatured: !!isFeatured
     };
     await db.collection('products').insertOne(product);
     res.json(product);
@@ -1270,7 +1271,7 @@ app.post('/api/products', async (req, res) => {
 
 const PRODUCT_UPDATE_FIELDS = [
   'name', 'category', 'price', 'description', 'image', 'stock',
-  'colorVariants', 'storageVariants', 'specifications', 'reviews',
+  'colorVariants', 'storageVariants', 'specifications', 'reviews', 'isFeatured'
 ] as const;
 
 async function updateProductRecord(id: string, body: Record<string, unknown>, res: express.Response) {
