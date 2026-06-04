@@ -125,18 +125,18 @@ export function Header() {
           : 'bg-white border-b border-gray-200'
       }`}>
         <div className="container mx-auto">
-          <div className={`flex items-center justify-between gap-2 md:gap-8 px-4 transition-all duration-500 ${isScrolled ? 'h-14 md:h-16' : 'h-16 md:h-20'}`}>
+          <div className={`flex items-center justify-between gap-1 md:gap-8 px-3 sm:px-4 md:px-6 transition-all duration-500 ${isScrolled ? 'h-12 sm:h-14 md:h-16' : 'h-14 sm:h-16 md:h-20'}`}>
             {/* Mobile Menu Button - Visible on mobile */}
             <button 
-              className={`md:hidden p-2 text-gray-700 hover:text-orange-500 bg-gray-100 transition-all duration-300 ${isScrolled ? 'rounded-full' : 'rounded-lg'}`}
+              className={`md:hidden p-1.5 sm:p-2 text-gray-700 hover:text-orange-500 bg-gray-100 transition-all duration-300 ${isScrolled ? 'rounded-full' : 'rounded-lg'}`}
               onClick={() => setMobileMenuOpen(true)}
             >
-              <Menu className="w-7 h-7" />
+              <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
 
             {/* Logo - Visible on all screens */}
             <Link to="/" className="flex items-center flex-shrink-0 transition-transform duration-500 hover:scale-105">
-              <img src={xiaomiLogo} alt="Xiaomi Logo" className={`w-auto max-w-[150px] md:max-w-[200px] object-contain transition-all duration-500 ${isScrolled ? 'h-10 md:h-12 drop-shadow-sm' : 'h-16'}`} />
+              <img src={xiaomiLogo} alt="Xiaomi Logo" className={`w-auto max-w-[120px] sm:max-w-[150px] md:max-w-[200px] object-contain transition-all duration-500 ${isScrolled ? 'h-8 sm:h-10 md:h-12 drop-shadow-sm' : 'h-10 sm:h-12 md:h-16'}`} />
             </Link>
 
             {/* Navigation - Hidden on mobile, shown on md+ */}
@@ -157,10 +157,10 @@ export function Header() {
             </nav>
 
             {/* Right side - Cart & Search */}
-            <div className="flex items-center flex-shrink-0 gap-1 md:gap-2">
+            <div className="flex items-center flex-shrink-0 gap-0.5 md:gap-2">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="flex items-center justify-center text-gray-700 hover:text-orange-500 hover:bg-orange-50/50 p-2 rounded-full cursor-pointer transition-all duration-300 group"
+                className="flex items-center justify-center text-gray-700 hover:text-orange-500 hover:bg-orange-50/50 p-1.5 md:p-2 rounded-full cursor-pointer transition-all duration-300 group"
                 title="Buscar productos"
               >
                 <Search className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110" />
@@ -169,11 +169,11 @@ export function Header() {
               {location.pathname === '/panel-gestion-xiaomi' && <NotificationBell />}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative flex items-center gap-2 text-gray-700 hover:text-orange-500 p-2 rounded-full transition-colors"
+                className="relative flex items-center gap-1.5 md:gap-2 text-gray-700 hover:text-orange-500 p-1.5 md:p-2 rounded-full transition-colors"
               >
                 <ShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
                 {cartItemCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black rounded-full w-4.5 h-4.5 flex items-center justify-center animate-in zoom-in">
+                  <span className="absolute top-0 right-0 md:-right-1 bg-orange-500 text-white text-[9px] md:text-[10px] font-black rounded-full w-4 h-4 md:w-4.5 md:h-4.5 flex items-center justify-center animate-in zoom-in border-2 border-white">
                     {cartItemCount}
                   </span>
                 )}
