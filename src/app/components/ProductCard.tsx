@@ -88,20 +88,20 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="group bg-white overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-500 cursor-pointer border border-transparent hover:border-gray-50 relative flex flex-col h-full rounded-[2rem]">
 
           {/* Badges Integrados (Optimizados para móvil) */}
-          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-col gap-1.5 items-start max-w-[90%]">
+          <div className="absolute top-4 left-4 sm:top-5 sm:left-5 z-20 flex flex-col gap-2 items-start max-w-[90%]">
             {/* Badge contra entrega */}
-            <span className="bg-white/95 backdrop-blur-sm border border-gray-200 text-gray-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 tracking-widest shadow-sm rounded-[2px]">
+            <span className="bg-black/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-3 py-1 tracking-widest shadow-lg rounded-full">
               CONTRA ENTREGA
             </span>
             
             {/* Badges de inventario */}
             {availableStock === 0 && (
-              <span className="bg-black/80 backdrop-blur-sm text-gray-100 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 tracking-widest shadow-sm rounded-[2px]">
+              <span className="bg-rose-500/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-3 py-1 tracking-widest shadow-lg rounded-full">
                 AGOTADO
               </span>
             )}
             {isLowStock && (
-              <span className="bg-black text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 tracking-widest shadow-sm rounded-[2px]">
+              <span className="bg-orange-500/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-3 py-1 tracking-widest shadow-lg rounded-full">
                 ÚLTIMAS {availableStock}
               </span>
             )}
@@ -220,14 +220,14 @@ export function ProductCard({ product }: ProductCardProps) {
                 )}
               </div>
 
-              {/* CTAs — siempre visibles en móvil, hover en desktop */}
-              <div className="mt-2 flex flex-col gap-2 md:opacity-0 md:group-hover:opacity-100 md:-translate-y-2 md:group-hover:translate-y-0 transition-all duration-500 relative z-30">
+              {/* CTAs — Siempre visibles pero con efecto al hacer hover */}
+              <div className="mt-2 flex flex-col gap-2 relative z-30 transition-transform duration-500 group-hover:-translate-y-1">
                 <button
                   onClick={handleAddToCart}
                   disabled={availableStock === 0}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white py-2.5 text-xs font-bold transition-all shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 flex items-center justify-center gap-1.5 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none disabled:cursor-not-allowed rounded-xl"
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white py-2.5 text-[13px] font-bold transition-all shadow-md shadow-orange-500/10 hover:shadow-orange-500/30 flex items-center justify-center gap-1.5 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none disabled:cursor-not-allowed rounded-xl"
                 >
-                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <ShoppingCart className="w-4 h-4" />
                   Agregar al Carrito
                 </button>
 
@@ -235,16 +235,16 @@ export function ProductCard({ product }: ProductCardProps) {
                 {availableStock > 0 && (
                   <button
                     onClick={handleQuickBuy}
-                    className="w-full bg-gradient-to-b from-gray-800 to-gray-900 hover:from-black hover:to-black text-white py-2.5 text-xs font-bold transition-all shadow-lg shadow-gray-900/20 hover:shadow-gray-900/40 flex items-center justify-center gap-1.5 rounded-xl border-t border-gray-700"
+                    className="w-full bg-gradient-to-b from-gray-800 to-gray-900 hover:from-black hover:to-black text-white py-2.5 text-[13px] font-bold transition-all shadow-md shadow-gray-900/10 hover:shadow-gray-900/30 flex items-center justify-center gap-1.5 rounded-xl border-t border-gray-700"
                   >
-                    <Zap className="w-3.5 h-3.5 text-orange-400 drop-shadow-md" />
+                    <Zap className="w-4 h-4 text-orange-400 drop-shadow" />
                     Comprar Ahora
                   </button>
                 )}
 
                 {/* Fila 3: Ver detalles */}
                 {availableStock === 0 && (
-                  <div className="w-full bg-gray-200 text-gray-500 py-2.5 text-xs font-semibold flex items-center justify-center rounded cursor-default">
+                  <div className="w-full bg-gray-100 text-gray-500 py-2.5 text-[13px] font-semibold flex items-center justify-center rounded-xl cursor-default">
                     Sin stock
                   </div>
                 )}
