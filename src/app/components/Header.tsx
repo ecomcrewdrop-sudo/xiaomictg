@@ -92,10 +92,10 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50">
+    <header className={`sticky top-0 z-50 transition-all duration-500 ease-in-out ${isScrolled ? 'pt-2 sm:pt-4 px-2 sm:px-4' : 'pt-0 px-0'}`}>
       {/* Top bar - Dynamic Carousel */}
-      <div className={`bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 text-white transition-all duration-300 overflow-hidden ${
-        isScrolled ? 'h-0 opacity-0' : 'h-10 opacity-100'
+      <div className={`bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 text-white transition-all duration-500 overflow-hidden ${
+        isScrolled ? 'h-0 opacity-0 scale-y-0 origin-top' : 'h-10 opacity-100 scale-y-100'
       }`}>
         <div className="container mx-auto h-full relative">
           <div className="flex items-center justify-between h-full px-4 text-xs font-bold w-full">
@@ -118,21 +118,25 @@ export function Header() {
         </div>
       </div>
 
-      {/* Main navigation - Blanco */}
-      <div className="bg-white border-b border-gray-200">
+      {/* Main navigation - Blanco / Glassmorphism */}
+      <div className={`transition-all duration-500 ease-in-out mx-auto max-w-7xl ${
+        isScrolled 
+          ? 'bg-white/80 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white/60 rounded-full' 
+          : 'bg-white border-b border-gray-200'
+      }`}>
         <div className="container mx-auto">
-          <div className="flex items-center justify-between gap-2 md:gap-8 px-2 md:px-4 h-16 md:h-20">
+          <div className={`flex items-center justify-between gap-2 md:gap-8 px-4 transition-all duration-500 ${isScrolled ? 'h-14 md:h-16' : 'h-16 md:h-20'}`}>
             {/* Mobile Menu Button - Visible on mobile */}
             <button 
-              className="md:hidden p-2 text-gray-700 hover:text-orange-500 bg-gray-100 rounded-lg"
+              className={`md:hidden p-2 text-gray-700 hover:text-orange-500 bg-gray-100 transition-all duration-300 ${isScrolled ? 'rounded-full' : 'rounded-lg'}`}
               onClick={() => setMobileMenuOpen(true)}
             >
               <Menu className="w-7 h-7" />
             </button>
 
             {/* Logo - Visible on all screens */}
-            <Link to="/" className="flex items-center flex-shrink-0">
-              <img src={xiaomiLogo} alt="Xiaomi Logo" className="h-16 w-auto max-w-[200px] object-contain" />
+            <Link to="/" className="flex items-center flex-shrink-0 transition-transform duration-500 hover:scale-105">
+              <img src={xiaomiLogo} alt="Xiaomi Logo" className={`w-auto max-w-[150px] md:max-w-[200px] object-contain transition-all duration-500 ${isScrolled ? 'h-10 md:h-12 drop-shadow-sm' : 'h-16'}`} />
             </Link>
 
             {/* Navigation - Hidden on mobile, shown on md+ */}
@@ -141,10 +145,10 @@ export function Header() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`text-sm font-bold whitespace-nowrap transition-colors relative py-1 ${
+                  className={`text-sm font-bold whitespace-nowrap transition-all duration-300 relative py-1 px-2 rounded-full ${
                     location.pathname === item.path
-                      ? 'text-black after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-orange-500'
-                      : 'text-gray-700 hover:text-black'
+                      ? 'text-black bg-gray-100/80 shadow-sm'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-50'
                   }`}
                 >
                   {item.label}
