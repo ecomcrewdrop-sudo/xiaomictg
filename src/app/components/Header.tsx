@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { Settings, ShoppingCart, Bell, MessageCircle, Menu, X, Search } from 'lucide-react';
-import xiaomiLogo from '../../assets/logo-whatsapp.jpeg';
+import xiaomiLogo from '../../assets/xiaomi-logo-oficial.svg';
 import { useState, useEffect } from 'react';
 import { CartDialog } from './CartDialog';
 import { useProducts } from './ProductContext';
@@ -136,7 +136,7 @@ export function Header() {
 
             {/* Logo - Visible on all screens */}
             <Link to="/" className="flex items-center flex-shrink-0 transition-transform duration-500 hover:scale-105">
-              <img src={xiaomiLogo} alt="Xiaomi Logo" className={`w-auto max-w-[120px] sm:max-w-[150px] md:max-w-[200px] object-contain transition-all duration-500 ${isScrolled ? 'h-8 sm:h-10 md:h-12 drop-shadow-sm' : 'h-10 sm:h-12 md:h-16'}`} />
+              <img src={xiaomiLogo} alt="Xiaomi Oficial" className={`w-auto object-contain transition-all duration-500 ${isScrolled ? 'h-8 sm:h-10 md:h-12 drop-shadow-sm' : 'h-10 sm:h-12 md:h-14'}`} />
             </Link>
 
             {/* Navigation - Hidden on mobile, shown on md+ */}
