@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { Settings, ShoppingCart, Bell, MessageCircle, Menu, X, Search } from 'lucide-react';
-import xiaomiLogo from '../../assets/xiaomi-logo-oficial.svg';
+import xiaomiLogo from '../../assets/xiaomi-logo-custom.png';
 import { useState, useEffect } from 'react';
 import { CartDialog } from './CartDialog';
 import { useProducts } from './ProductContext';
