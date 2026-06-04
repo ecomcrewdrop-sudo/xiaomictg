@@ -96,7 +96,7 @@ export function ProductCard({ product }: ProductCardProps) {
             
             {/* Badges de inventario */}
             {availableStock === 0 && (
-              <span className="bg-rose-500/90 backdrop-blur-md text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-3 sm:py-1 tracking-widest shadow-lg rounded-full">
+              <span className="bg-gray-900/90 backdrop-blur-md text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-3 sm:py-1 tracking-widest shadow-lg rounded-full">
                 AGOTADO
               </span>
             )}
@@ -124,13 +124,9 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
 
           <div className="p-3 md:p-5 text-center flex flex-col flex-1 relative z-20">
-            <h3 className="font-bold text-[13px] md:text-[14px] text-gray-900 leading-tight mb-1 group-hover:text-orange-500 transition-colors line-clamp-2 min-h-[32px] md:min-h-[36px]">
+            <h3 className="font-bold text-[13px] md:text-[14px] text-gray-900 leading-tight mb-3 group-hover:text-orange-500 transition-colors line-clamp-2 min-h-[32px] md:min-h-[36px]">
               {product.name}
             </h3>
-
-            <p className="hidden md:block text-xs text-gray-500 mb-3 line-clamp-2 font-light leading-relaxed min-h-[2.5rem]">
-              {product.description}
-            </p>
 
             {/* Selector almacenamiento */}
             {product.storageVariants && product.storageVariants.length > 0 && (
@@ -147,7 +143,7 @@ export function ProductCard({ product }: ProductCardProps) {
                       }}
                       className={`px-2.5 py-1 rounded border-2 text-xs font-medium transition-all ${
                         selectedStorage === variant.storage
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          ? 'border-orange-500 bg-orange-50 text-orange-700'
                           : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                       }`}
                     >
@@ -199,8 +195,8 @@ export function ProductCard({ product }: ProductCardProps) {
                 {/* Envío badge y stock unificados */}
                 {availableStock > 0 ? (
                   <div className="flex flex-col items-center mt-0.5 md:mt-1">
-                    <span className="text-[10px] md:text-xs text-green-600 font-medium flex items-center gap-1">
-                      <Zap className="w-3 h-3" /> Envío en 1 hora
+                    <span className="text-[10px] md:text-xs text-gray-600 font-medium flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-orange-500" /> Envío en 1 hora
                     </span>
                   </div>
                 ) : (

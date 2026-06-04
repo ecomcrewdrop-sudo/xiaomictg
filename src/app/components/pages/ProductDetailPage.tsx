@@ -262,7 +262,7 @@ export function ProductDetailPage() {
                 </span>
               )}
               {availableStock === 0 && (
-                <span className="text-sm text-red-500 font-medium mt-2 inline-block">
+                <span className="text-sm text-gray-500 font-medium mt-2 inline-block">
                   Producto agotado
                 </span>
               )}
@@ -270,9 +270,9 @@ export function ProductDetailPage() {
 
             {/* Urgencia stock bajo */}
             {availableStock > 0 && availableStock < 5 && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-red-500 flex-shrink-0" />
-                <span className="text-sm font-semibold text-red-700">
+              <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                <span className="text-sm font-semibold text-orange-700">
                   ¡Solo quedan {availableStock} unidades! Asegura el tuyo ahora.
                 </span>
               </div>
@@ -349,7 +349,7 @@ export function ProductDetailPage() {
                 <span><strong>Envío a domicilio $10.000</strong> · Todo Cartagena · ~1 hora</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-700">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <CheckCircle className="w-5 h-5 text-gray-900 flex-shrink-0" />
                 <span><strong>Pago contra entrega</strong> · Pagas al recibir el equipo</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-700">
