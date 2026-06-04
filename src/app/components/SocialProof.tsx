@@ -67,17 +67,17 @@ export function SocialProof() {
       }, 6000);
     };
 
-    // Initial delay before first popup
-    const initialTimer = setTimeout(generateNotification, 4000);
+    // Initial delay before first popup (15 segundos)
+    const initialTimer = setTimeout(generateNotification, 15000);
 
-    // Then random interval between 12s and 25s
+    // Then random interval between 60s and 90s (1 a 1.5 minutos)
     let timer: any;
     const intervalFunction = () => {
       generateNotification();
-      timer = setTimeout(intervalFunction, Math.random() * 13000 + 12000);
+      timer = setTimeout(intervalFunction, Math.random() * 30000 + 60000);
     };
     
-    timer = setTimeout(intervalFunction, 15000);
+    timer = setTimeout(intervalFunction, 60000);
 
     return () => {
       clearTimeout(initialTimer);
