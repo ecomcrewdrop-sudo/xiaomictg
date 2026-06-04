@@ -248,18 +248,19 @@ export function AdminPanel() {
       return;
     }
     if (!newStorage.price || parseFloat(newStorage.price) <= 0) {
-      toast.error('Por favor ingresa un precio válido');
+      toast.error('Por favor ingresa un precio válido mayor a 0');
       return;
     }
-    if (!newStorage.stock || parseInt(newStorage.stock) < 0) {
-      toast.error('Por favor ingresa una cantidad de stock válida');
+    const stockVal = newStorage.stock ? parseInt(newStorage.stock) : 0;
+    if (isNaN(stockVal) || stockVal < 0) {
+      toast.error('Por favor ingresa una cantidad de stock válida (0 o más)');
       return;
     }
     
     setStorageVariants([...storageVariants, {
       storage: newStorage.storage.trim(),
       price: parseFloat(newStorage.price),
-      stock: parseInt(newStorage.stock)
+      stock: stockVal
     }]);
     setNewStorage({ storage: '', price: '', stock: '' });
   };
@@ -1415,7 +1416,7 @@ export function AdminPanel() {
                     type="button"
                     onClick={handleAddStorage}
                     size="sm"
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
