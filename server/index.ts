@@ -730,24 +730,19 @@ async function sendOrderEmail(order: any) {
       });
       console.log(`[server] Email enviado a ${customerEmail} vía Nodemailer`);
     } else if (resend) {
-      try {
-        await resend.emails.send({
-          from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
-          to: [customerEmail],
-          reply_to: adminEmail,
-          subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
-          html: emailHtml
-        });
-      } catch (domainError: any) {
-        console.warn('[server] Error sending with custom domain, trying fallback with onboarding@resend.dev:', domainError.message || domainError);
-        await resend.emails.send({
-          from: 'Xiaomi Cartagena <onboarding@resend.dev>',
-          to: [customerEmail],
-          subject: `[FALLBACK] Nuevo Pedido #${order.orderNumber} - Xiaomi Cartagena`,
-          html: emailHtml
-        });
+      const { data, error } = await resend.emails.send({
+        from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+        to: [customerEmail],
+        reply_to: adminEmail,
+        subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+        html: emailHtml
+      });
+      
+      if (error) {
+        console.error('[server] Error de Resend al enviar a cliente:', error);
+      } else {
+        console.log(`[server] Email enviado a ${customerEmail} vía Resend`);
       }
-      console.log('[server] Email enviado a ${customerEmail} vía Resend');
     }
 
     // Admin copy
@@ -759,12 +754,13 @@ async function sendOrderEmail(order: any) {
           html: emailHtml
         });
     } else if (resend) {
-        await resend.emails.send({
+        const { error } = await resend.emails.send({
             from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
             to: [adminEmail],
             subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
             html: emailHtml
-          });
+        });
+        if (error) console.error('[server] Error de Resend al enviar copia admin:', error);
     }
 
   } catch (error) {
@@ -933,22 +929,17 @@ async function sendInvoiceEmail(order: any) {
     }
 
     if (resend) {
-      try {
-        await resend.emails.send({
-          from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
-          to: order.customerInfo.email,
-          subject: `Factura Digital - Pedido ${order.orderNumber}`,
-          html: emailHtml
-        });
-      } catch (domainError) {
-        await resend.emails.send({
-          from: 'Xiaomi Cartagena <onboarding@resend.dev>',
-          to: order.customerInfo.email,
-          subject: `Factura Digital - Pedido ${order.orderNumber}`,
-          html: emailHtml
-        });
+      const { error } = await resend.emails.send({
+        from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+        to: order.customerInfo.email,
+        subject: `Factura Oficial - Orden #${order.orderNumber} - Xiaomi Cartagena`,
+        html: emailHtml
+      });
+      if (error) {
+        console.error('[server] Error de Resend en factura:', error);
+      } else {
+        console.log('[server] Invoice email sent successfully');
       }
-      console.log(`[server] Factura enviada a ${order.customerInfo.email} vía Resend`);
     }
   } catch (error) {
     console.error('[server] Error sending invoice email:', error);
