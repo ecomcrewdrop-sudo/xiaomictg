@@ -5,6 +5,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { createHash } from 'crypto';
 // WhatsApp (Baileys + QR)
@@ -34,6 +35,18 @@ const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
+// Configuración de Nodemailer (Recomendado para GMAIL)
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
+
+const mailTransporter = GMAIL_USER && GMAIL_PASS ? nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_PASS
+  }
+}) : null;
 
 if (!ADMIN_USER || !ADMIN_PASSWORD) {
   console.warn('[server] ADMIN_USER o ADMIN_PASSWORD no configurados en .env');
@@ -630,8 +643,8 @@ async function sendWhatsAppNotifications(order: any) {
 }
 
 async function sendOrderEmail(order: any) {
-  if (!resend) {
-    console.log('[server] RESEND_API_KEY no configurado, email omitido');
+  if (!resend && !mailTransporter) {
+    console.log('[server] Ni RESEND_API_KEY ni GMAIL_USER/PASS configurados, email omitido');
     return;
   }
   try {
@@ -708,55 +721,60 @@ async function sendOrderEmail(order: any) {
     const customerEmail = order.customerInfo?.email;
     const adminEmail = 'xiaomi.cartagenaventas@gmail.com';
 
-    try {
-      const promises = [];
-      if (customerEmail) {
-        promises.push(
-          resend.emails.send({
-            from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
-            to: [customerEmail],
-            reply_to: adminEmail,
-            subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
-            html: emailHtml
-          }).then((res: any) => {
-            if (res.error) throw new Error(res.error.message || 'Error enviando correo al cliente');
-            console.log(`[server] Email enviado al cliente: ${customerEmail}`);
-          })
-        );
-      }
-      
-      promises.push(
-        resend.emails.send({
-          from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
-          to: [adminEmail],
-          subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
-          html: emailHtml
-        }).then((res: any) => {
-          if (res.error) throw new Error(res.error.message || 'Error enviando correo al admin');
-          console.log(`[server] Email enviado al admin: ${adminEmail}`);
-        })
-      );
-
-      await Promise.all(promises);
-      console.log('[server] Emails enviados correctamente usando custom domain');
-    } catch (domainError: any) {
-      console.warn('[server] Error sending with custom domain, trying fallback with onboarding@resend.dev:', domainError.message || domainError);
-      await resend.emails.send({
-        from: 'Xiaomi Cartagena <onboarding@resend.dev>',
-        to: ['xiaomi.cartagenaventas@gmail.com'],
-        subject: `[FALLBACK] Nuevo Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+    if (mailTransporter) {
+      await mailTransporter.sendMail({
+        from: `"Xiaomi Cartagena" <${GMAIL_USER}>`,
+        to: customerEmail,
+        subject: `Confirmación de Pedido ${order.orderNumber} - Xiaomi Cartagena`,
         html: emailHtml
       });
-      console.log('[server] Fallback email sent to admin');
+      console.log(`[server] Email enviado a ${customerEmail} vía Nodemailer`);
+    } else if (resend) {
+      try {
+        await resend.emails.send({
+          from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+          to: [customerEmail],
+          reply_to: adminEmail,
+          subject: `Confirmación de Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+          html: emailHtml
+        });
+      } catch (domainError: any) {
+        console.warn('[server] Error sending with custom domain, trying fallback with onboarding@resend.dev:', domainError.message || domainError);
+        await resend.emails.send({
+          from: 'Xiaomi Cartagena <onboarding@resend.dev>',
+          to: [customerEmail],
+          subject: `[FALLBACK] Nuevo Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+          html: emailHtml
+        });
+      }
+      console.log('[server] Email enviado a ${customerEmail} vía Resend');
     }
+
+    // Admin copy
+    if (mailTransporter) {
+        await mailTransporter.sendMail({
+          from: `"Xiaomi Cartagena" <${GMAIL_USER}>`,
+          to: adminEmail,
+          subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+          html: emailHtml
+        });
+    } else if (resend) {
+        await resend.emails.send({
+            from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+            to: [adminEmail],
+            subject: `NUEVA VENTA: Pedido #${order.orderNumber} - Xiaomi Cartagena`,
+            html: emailHtml
+          });
+    }
+
   } catch (error) {
     console.error('[server] Error sending email:', error);
   }
 }
 
 async function sendInvoiceEmail(order: any) {
-  if (!resend) {
-    console.log('[server] RESEND_API_KEY no configurado, email omitido');
+  if (!resend && !mailTransporter) {
+    console.log('[server] Ni RESEND_API_KEY ni GMAIL_USER/PASS configurados, email omitido');
     return;
   }
   
@@ -903,23 +921,34 @@ async function sendInvoiceEmail(order: any) {
       </div>
     `;
 
-    try {
-      await resend.emails.send({
-        from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
-        to: [order.customerInfo.email],
-        subject: `Factura Oficial - Orden #${order.orderNumber} - Xiaomi Cartagena`,
+    if (mailTransporter) {
+      await mailTransporter.sendMail({
+        from: `"Xiaomi Cartagena" <${GMAIL_USER}>`,
+        to: order.customerInfo.email,
+        subject: `Factura Digital - Pedido ${order.orderNumber}`,
         html: emailHtml
       });
-      console.log('[server] Invoice email sent successfully');
-    } catch (domainError: any) {
-      console.warn('[server] Error sending invoice with custom domain, sending copy to admin:', domainError.message || domainError);
-      await resend.emails.send({
-        from: 'Xiaomi Cartagena <onboarding@resend.dev>',
-        to: ['xiaomi.cartagenaventas@gmail.com'],
-        subject: `[FALLBACK FACTURA CLIENTE] Factura Oficial #${order.orderNumber} - ${order.customerInfo.email}`,
-        html: emailHtml
-      });
-      console.log('[server] Fallback invoice email sent to admin');
+      console.log(`[server] Factura enviada a ${order.customerInfo.email} vía Nodemailer`);
+      return;
+    }
+
+    if (resend) {
+      try {
+        await resend.emails.send({
+          from: 'Xiaomi Cartagena <ventas@xiaomicartagena.com>',
+          to: order.customerInfo.email,
+          subject: `Factura Digital - Pedido ${order.orderNumber}`,
+          html: emailHtml
+        });
+      } catch (domainError) {
+        await resend.emails.send({
+          from: 'Xiaomi Cartagena <onboarding@resend.dev>',
+          to: order.customerInfo.email,
+          subject: `Factura Digital - Pedido ${order.orderNumber}`,
+          html: emailHtml
+        });
+      }
+      console.log(`[server] Factura enviada a ${order.customerInfo.email} vía Resend`);
     }
   } catch (error) {
     console.error('[server] Error sending invoice email:', error);
