@@ -510,10 +510,17 @@ export function DirectCheckoutPage() {
                     <span>+${DELIVERY_FEE.toLocaleString('es-CO')}</span>
                   </div>
                 )}
-                {cardSurcharge > 0 && (
+                {(paymentMethod === 'tarjeta' || paymentMethod === 'bold') && (
                   <div className="flex justify-between text-sky-600 font-bold text-sm">
                     <span>Recargo Tarjeta (5%)</span>
                     <span>+${cardSurcharge.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                
+                {paymentMethod === 'addi' && (
+                  <div className="flex justify-between text-orange-500 font-bold text-sm">
+                    <span>Recargo Addi (25%)</span>
+                    <span>+${addiSurcharge.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 

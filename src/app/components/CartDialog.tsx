@@ -559,6 +559,13 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
                   </div>
                 )}
                 
+                {paymentMethod === 'addi' && (
+                  <div className="flex justify-between items-center text-sm text-gray-300">
+                    <span>Recargo Addi (25%)</span>
+                    <span>+${addiSurcharge.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-end pt-4 mt-2 border-t border-gray-700">
                   <span className="text-gray-400 text-sm mb-1">Total a Pagar</span>
                   <div className="text-3xl font-black text-white tracking-tight">

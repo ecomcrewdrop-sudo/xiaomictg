@@ -668,10 +668,16 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
                 <span>+${DELIVERY_FEE.toLocaleString('es-CO')}</span>
               </div>
             )}
-            {cardSurcharge > 0 && (
+            {(paymentMethod === 'tarjeta' || paymentMethod === 'bold') && (
               <div className="flex justify-between items-center text-sm text-gray-300">
                 <span>Recargo (5%)</span>
                 <span>+${cardSurcharge.toLocaleString('es-CO')}</span>
+              </div>
+            )}
+            {paymentMethod === 'addi' && (
+              <div className="flex justify-between items-center text-sm text-gray-300">
+                <span>Recargo Addi (25%)</span>
+                <span>+${addiSurcharge.toLocaleString('es-CO')}</span>
               </div>
             )}
             <div className="flex justify-between items-end pt-4 mt-2 border-t border-gray-700">
