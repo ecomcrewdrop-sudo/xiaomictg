@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Zap, Store, Truck, CreditCard, Loader2, ShoppingBag, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ThermalTicket } from '../ThermalTicket';
+import { API_ORIGIN } from '../../lib/api-base';
 
 const DELIVERY_FEE = 10000;
 type DeliveryMethod = 'delivery' | 'pickup';
@@ -221,7 +222,7 @@ export function DirectCheckoutPage() {
       const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
 
       // Llamar al endpoint de Addi
-      const addiRes = await fetch('/api/addi/create-transaction', {
+      const addiRes = await fetch(`${API_ORIGIN}/api/addi/create-transaction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Store, Truck, Loader2 } f
 import { useState, useRef } from 'react';
 import { ThermalTicket } from './ThermalTicket';
 import { toast } from 'sonner';
+import { API_ORIGIN } from '../lib/api-base';
 
 const DELIVERY_FEE = 10000; // $10.000 COP domicilio
 
@@ -247,7 +248,7 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
         unitPrice: item.product.price
       }));
 
-      const addiRes = await fetch('/api/addi/create-transaction', {
+      const addiRes = await fetch(`${API_ORIGIN}/api/addi/create-transaction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
