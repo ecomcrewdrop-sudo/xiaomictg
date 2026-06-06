@@ -35,7 +35,7 @@ export function AdminPanel() {
     website: 'www.xiaomi.com',
     footerMessage: '¡Gracias por tu compra!',
     warrantyMessage: 'Conserva este ticket para tu garantía',
-    schedule: 'Lunes a Viernes: 9:00 AM - 6:00 PM',
+    schedule: 'Lunes a Viernes: 9:00 AM - 7:00 PM',
     exchangeRate: 4200,
     showUSD: false,
     nit: '1043345642-7',
@@ -56,7 +56,7 @@ export function AdminPanel() {
         website: ticketConfig.website || 'www.xiaomi.com',
         footerMessage: ticketConfig.footerMessage || '¡Gracias por tu compra!',
         warrantyMessage: ticketConfig.warrantyMessage || 'Conserva este ticket para tu garantía',
-        schedule: ticketConfig.schedule || 'Lunes a Viernes: 9:00 AM - 6:00 PM',
+        schedule: ticketConfig.schedule || 'Lunes a Viernes: 9:00 AM - 7:00 PM',
         exchangeRate: ticketConfig.exchangeRate ?? 4200,
         showUSD: ticketConfig.showUSD ?? false,
         nit: ticketConfig.nit || '1043345642-7',
@@ -1047,7 +1047,7 @@ export function AdminPanel() {
                   id="ticket-schedule"
                   value={ticketForm.schedule}
                   onChange={(e) => setTicketForm({ ...ticketForm, schedule: e.target.value })}
-                  placeholder="Lunes a Viernes: 9:00 AM - 6:00 PM"
+                  placeholder="Lunes a Viernes: 9:00 AM - 7:00 PM"
                 />
               </div>
 

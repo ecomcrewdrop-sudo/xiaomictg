@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     q: '¿Tienen tienda física donde puedo ver los productos?',
-    a: 'Sí, estamos ubicados en la Cl. 31 #61-64, barrio Los Ángeles, Cartagena de Indias. Atendemos de lunes a viernes de 9:00 AM a 6:00 PM. Puedes venir a ver los equipos y hacer tu compra directamente en tienda.'
+    a: 'Sí, estamos ubicados en la Cl. 31 #61-64, barrio Los Ángeles, Cartagena de Indias. Atendemos de lunes a viernes de 9:00 AM a 7:00 PM. Puedes venir a ver los equipos y hacer tu compra directamente en tienda.'
   },
 ];
 
