@@ -42,18 +42,25 @@ export function HomePage() {
   }, [handleNextBanner, totalBanners]);
 
   // Productos destacados (marcados manualmente desde el admin)
-  let featuredProducts = products.filter(p => p.isFeatured);
+  const manuallyFeatured = products.filter(p => p.isFeatured);
+  let featuredProducts = [...manuallyFeatured];
 
-  // Fallback si no hay ninguno marcado: los más caros de cada categoría
-  if (featuredProducts.length === 0) {
+  // Fallback si hay menos de 6 marcados: rellenar con los más caros de cada categoría
+  if (featuredProducts.length < 6) {
     const categories = ['moviles', 'smartwatch', 'audifonos', 'scooter', 'poco', 'accesorios'];
-    featuredProducts = categories
+    const fallbackProducts = categories
       .map(cat =>
         products
-          .filter(p => p.category === cat)
+          .filter(p => p.category === cat && !p.isFeatured) // no repetir
           .sort((a, b) => b.price - a.price)[0]
       )
       .filter(Boolean);
+
+    // Rellenar hasta llegar a 6 o hasta que se acaben los de fallback
+    for (const fb of fallbackProducts) {
+      if (featuredProducts.length >= 6) break;
+      if (fb) featuredProducts.push(fb);
+    }
   }
 
 

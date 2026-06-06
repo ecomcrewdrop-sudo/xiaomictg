@@ -394,7 +394,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         throw new Error((err as { error?: string }).error || 'Error al crear producto');
       }
       const newProduct = await res.json();
-      setProducts(prev => [...prev, newProduct]);
+      setProducts(prev => {
+        const next = [...prev, newProduct];
+        localStorage.setItem('xiaomi-products', JSON.stringify(next));
+        return next;
+      });
       toast.success('Producto creado correctamente');
     } catch (error) {
       console.error('Error adding product:', error);
@@ -433,9 +437,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       }
 
       const updated = await res.json();
-      setProducts(prev =>
-        prev.map(p => (p._id === id || p.id === id) ? { ...p, ...updated } : p)
-      );
+      setProducts(prev => {
+        const next = prev.map(p => (p._id === id || p.id === id) ? { ...p, ...updated } : p);
+        localStorage.setItem('xiaomi-products', JSON.stringify(next));
+        return next;
+      });
       toast.success('Producto actualizado correctamente');
     } catch (error) {
       console.error('Error updating product:', error);
@@ -453,8 +459,16 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       const res = await fetchWithTimeout(`${API_BASE_URL}/products/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Error al eliminar producto');
-      toast.success('Producto eliminado');
+      if (!res.ok) {
+        throw new Error('Error al eliminar producto');
+      }
+
+      setProducts(prev => {
+        const next = prev.filter(p => p._id !== id && p.id !== id);
+        localStorage.setItem('xiaomi-products', JSON.stringify(next));
+        return next;
+      });
+      toast.success('Producto eliminado correctamente');
     } catch (error) {
       console.error('Error deleting product:', error);
       setProducts(previousProducts);
