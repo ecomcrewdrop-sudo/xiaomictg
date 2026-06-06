@@ -1460,9 +1460,9 @@ app.post('/api/addi/create-transaction', async (req, res) => {
           country: "CO"
         },
         allyUrlRedirection: {
-          logoUrl: "https://xiaomictg-production.up.railway.app/favicon.ico",
+          logoUrl: "https://xiaomicartagena.com/favicon.ico",
           callbackUrl: "https://xiaomictg-production.up.railway.app/api/addi/callback",
-          redirectionUrl: "https://xiaomictg-production.up.railway.app/"
+          redirectionUrl: "https://xiaomicartagena.com/?addi_success=true"
         }
       })
     });
@@ -1480,6 +1480,48 @@ app.post('/api/addi/create-transaction', async (req, res) => {
     console.error('Addi API Error:', error);
     res.status(500).json({ error: 'Error interno conectando con Addi' });
   }
+});
+
+// Webhook / Callback de Addi cuando la transacción es aprobada o rechazada
+app.post('/api/addi/callback', async (req, res) => {
+  try {
+    const addiPayload = req.body;
+    console.log('Addi Callback Payload:', JSON.stringify(addiPayload));
+
+    // El payload de Addi generalmente trae el status y el orderId
+    const { orderId, status } = addiPayload;
+    
+    if (orderId && status === 'APPROVED') {
+      const order = await db.collection('orders').findOne({ orderNumber: orderId });
+      
+      if (order && order.status === 'pending_addi') {
+        // Actualizamos a pagado
+        await db.collection('orders').updateOne(
+          { orderNumber: orderId },
+          { $set: { status: 'paid' } }
+        );
+
+        // Notificamos por WhatsApp y Correo ahora sí!
+        const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: 'paid' } as OrderDoc]);
+        sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
+        sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[WA] Error notificaciones:', err));
+        
+        io.emit('orderUpdated', { id: order.id, status: 'paid' });
+      }
+    }
+    
+    // Addi exige un 200 OK
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Addi Callback Error:', error);
+    res.status(500).send('Error');
+  }
+});
+
+// En caso de que Addi redirija al cliente por GET al callback
+app.get('/api/addi/callback', async (req, res) => {
+  // Redirigimos al inicio con un mensaje de éxito
+  res.redirect('/?addi_success=true');
 });
 
 
@@ -1535,8 +1577,14 @@ app.post('/api/orders', async (req, res) => {
     io.emit('newOrder', notification);
 
     const [hydratedOrder] = await hydrateOrdersWithProductImages([order as OrderDoc]);
-    sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
-    sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[WA] Error notificaciones:', err));
+    
+    // Solo enviamos notificaciones de confirmación de pedido
+    // si NO es un pago pendiente en pasarela externa (Addi, Bold).
+    // Para Addi/Bold, las enviaremos cuando el estado pase a 'paid' o 'approved'.
+    if (!status.startsWith('pending_')) {
+      sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
+      sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[WA] Error notificaciones:', err));
+    }
 
     res.json(hydratedOrder);
   } catch (error) {
