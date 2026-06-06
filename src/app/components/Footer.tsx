@@ -33,66 +33,34 @@ export function Footer() {
       {/* Bottom Section - White (Información Original) */}
       <div className="bg-white py-14 px-4 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-12 gap-x-6 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-12 gap-x-6 text-center">
             
             {/* Column 1: Pago */}
-            <div className="flex flex-col items-center justify-start">
+            <div className="flex flex-col items-center justify-center">
               <CreditCard className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-bold mb-3 uppercase tracking-wider">Formas de pago</h4>
-              <ul className="text-gray-500 text-[11px] space-y-2">
-                <li>Transferencia bancaria</li>
-                <li>Efectivo</li>
-                <li>Tarjetas débito y crédito — vía BOLD</li>
-                <li>Nequi · Llave bre-b</li>
-                <li className="font-semibold text-[#1a202c] pt-1">Pago contra entrega disponible</li>
-              </ul>
+              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Múltiples Formas de Pago</h4>
+              <p className="text-gray-400 text-[11px]">Contra entrega disponible</p>
             </div>
 
             {/* Column 2: Envío */}
-            <div className="flex flex-col items-center justify-start">
+            <div className="flex flex-col items-center justify-center">
               <Truck className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-bold mb-3 uppercase tracking-wider">Métodos de envío</h4>
-              <ul className="text-gray-500 text-[11px] space-y-2">
-                <li><span className="font-semibold text-gray-700">Domicilio</span> — $10.000 COP</li>
-                <li><span className="font-semibold text-gray-700">Retiro en tienda</span> — Gratis</li>
-                <li className="pt-2 leading-relaxed">
-                  Realiza el pedido y pagas cuando recibas el equipo.<br />
-                  Disponible en Cartagena y Turbaco.
-                </li>
-              </ul>
+              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Envíos a Domicilio</h4>
+              <p className="text-gray-400 text-[11px]">$10.000 COP - Todo Cartagena</p>
             </div>
 
             {/* Column 3: Contacto */}
-            <div className="flex flex-col items-center justify-start">
+            <div className="flex flex-col items-center justify-center">
               <Phone className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-bold mb-3 uppercase tracking-wider">Contacto</h4>
-              <ul className="text-gray-500 text-[11px] space-y-2">
-                <li>
-                  <a href="mailto:xiaomi.cartagenaventas@gmail.com" className="hover:text-black transition-colors">
-                    xiaomi.cartagenaventas@gmail.com
-                  </a>
-                </li>
-                <li>
-                  <a href="tel:+573022875280" className="hover:text-black transition-colors font-semibold text-gray-700">
-                    +57 302 287 5280
-                  </a>
-                </li>
-                <li className="pt-2 leading-relaxed">
-                  Cl. 31 #61-64, Los Ángeles<br />
-                  Cartagena de Indias, Bolívar
-                </li>
-              </ul>
+              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Línea de Atención</h4>
+              <p className="text-gray-400 text-[11px]">+57 302 287 5280</p>
             </div>
 
             {/* Column 4: Legal */}
-            <div className="flex flex-col items-center justify-start">
+            <div className="flex flex-col items-center justify-center">
               <ShieldCheck className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-bold mb-3 uppercase tracking-wider">Legal</h4>
-              <ul className="text-gray-500 text-[11px] space-y-2">
-                <li><a href="#" className="hover:text-black transition-colors">Política de privacidad</a></li>
-                <li><a href="#" className="hover:text-black transition-colors">Términos y condiciones</a></li>
-                <li><a href="#" className="hover:text-black transition-colors">Garantía de compra</a></li>
-              </ul>
+              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Garantía Oficial</h4>
+              <p className="text-gray-400 text-[11px]">Equipos 100% seguros</p>
             </div>
 
           </div>
