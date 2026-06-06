@@ -19,6 +19,7 @@ export function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
   const [selectedStorage, setSelectedStorage] = useState<string | undefined>(undefined);
   const [quickBuyOpen, setQuickBuyOpen] = useState(false);
+  const [quickBuyPaymentMethod, setQuickBuyPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi'>('efectivo');
   const [ratingSummary, setRatingSummary] = useState({ average: 0, count: 0 });
 
   // Scroll al top cuando se monta el componente o cambia el ID
@@ -266,7 +267,7 @@ export function ProductDetailPage() {
             </div>
 
             {/* Addi Widget */}
-            <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2 hover:border-[#4A3BFA] transition-colors cursor-pointer group" onClick={() => window.open('https://addi.com', '_blank')}>
+            <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2 hover:border-[#4A3BFA] transition-colors cursor-pointer group" onClick={() => { setQuickBuyPaymentMethod('addi'); setQuickBuyOpen(true); }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">Págalo en cuotas con</span>
@@ -339,7 +340,7 @@ export function ProductDetailPage() {
               <div className="flex flex-col gap-3 mb-6">
                 {/* Botón Comprar Ahora - Compra impulsiva */}
                 <button
-                  onClick={() => setQuickBuyOpen(true)}
+                  onClick={() => { setQuickBuyPaymentMethod('efectivo'); setQuickBuyOpen(true); }}
                   className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white py-3.5 font-bold transition-colors rounded text-base"
                 >
                   <Zap className="w-5 h-5 text-orange-400" />
@@ -445,6 +446,7 @@ export function ProductDetailPage() {
           product={product}
           initialColor={selectedColor}
           initialStorage={selectedStorage}
+          initialPaymentMethod={quickBuyPaymentMethod}
         />
       )}
     </div>

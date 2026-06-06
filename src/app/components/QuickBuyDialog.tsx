@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 const DELIVERY_FEE = 10000;
 
 type DeliveryMethod = 'delivery' | 'pickup';
-type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold';
+type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi';
 
 interface QuickBuyDialogProps {
   isOpen: boolean;
@@ -17,9 +17,10 @@ interface QuickBuyDialogProps {
   product: Product;
   initialColor?: string;
   initialStorage?: string;
+  initialPaymentMethod?: PaymentMethod;
 }
 
-export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initialStorage }: QuickBuyDialogProps) {
+export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initialStorage, initialPaymentMethod }: QuickBuyDialogProps) {
   const { addOrder, ticketConfig } = useProducts();
 
   // Variantes seleccionadas
@@ -40,7 +41,7 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
   const [phone, setPhone] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('delivery');
   const [address, setAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialPaymentMethod || 'efectivo');
 
   // Estado de la orden
   const [currentOrder, setCurrentOrder] = useState<any>(null);
@@ -92,12 +93,14 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
     return product.stock;
   };
 
-  const unitPrice = getCurrentPrice();
-  const deliveryFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
+  const unitPrice = selectedStorage ? product.storageVariants?.find(v => v.storage === selectedStorage)?.price || product.price : product.price;
+  const totalCOP = unitPrice;
+  const addiSurcharge = paymentMethod === 'addi' ? Math.round(totalCOP * 0.25) : 0;
   const cardSurcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold')
-    ? Math.round(unitPrice * 0.05)
-    : 0;
-  const grandTotal = unitPrice + cardSurcharge + deliveryFee;
+    ? Math.round(totalCOP * 0.05)
+    : addiSurcharge;
+  const deliveryFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
+  const grandTotal = totalCOP + cardSurcharge + deliveryFee;
   const availableStock = getAvailableStock();
 
   const paymentMethodText =
@@ -105,6 +108,7 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
     paymentMethod === 'transferencia' ? 'Transferencia bancaria' :
     paymentMethod === 'nequi' ? 'Nequi' :
     paymentMethod === 'bold' ? 'BOLD (Tarjeta)' :
+    paymentMethod === 'addi' ? 'Addi (Crédito a cuotas)' :
     'Tarjeta';
 
   // ─── Construir el CartItem para la orden ────────────────────────────────────
@@ -196,6 +200,97 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
       console.error('Error al crear orden:', err);
       toast.error('Hubo un error al procesar el pedido. Intenta de nuevo.');
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ─── Pago Addi ──────────────────────────────────────────────────────────────
+  const handleAddiPayment = async () => {
+    if (!customerName || !customerIdNumber || !customerEmail || !phone) {
+      toast.error('Por favor completa todos los campos obligatorios antes de pagar con Addi');
+      return;
+    }
+    if (deliveryMethod === 'delivery' && !address) {
+      toast.error('Por favor ingresa el barrio/dirección de envío');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const orderItem = {
+        product: { ...product, price: unitPrice },
+        quantity: 1,
+        selectedColor,
+        selectedStorage
+      };
+
+      const newOrder = await addOrder({
+        items: [orderItem],
+        total: totalCOP,
+        status: 'pending_addi',
+        createdAt: new Date().toISOString(),
+        customerInfo: {
+          email: customerEmail, name: customerName, idNumber: customerIdNumber, phone, deliveryMethod,
+          address: deliveryMethod === 'delivery' ? address : 'Retiro en tienda',
+          paymentMethod: 'Addi (Crédito a cuotas)', deliveryFee,
+        },
+        paymentMethod: 'Addi (Crédito a cuotas)',
+      });
+
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout', {
+          content_ids: [product.id],
+          content_type: 'product',
+          value: grandTotal,
+          currency: 'COP',
+          num_items: 1
+        });
+      }
+
+      const nameParts = customerName.trim().split(' ');
+      const firstName = nameParts[0] || 'Cliente';
+      const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
+
+      const items = [{
+        sku: product.id || 'XM-01',
+        name: `${product.name} ${selectedStorage || ''}`.trim(),
+        quantity: '1',
+        unitPrice: unitPrice
+      }];
+
+      const addiRes = await fetch('/api/addi/create-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: newOrder.orderNumber,
+          totalAmount: grandTotal,
+          items,
+          client: {
+            idType: "CC",
+            idNumber: customerIdNumber,
+            firstName,
+            lastName,
+            email: customerEmail,
+            cellphone: phone.replace(/[^0-9]/g, ''),
+            cellphoneCountryCode: "+57",
+            address: {
+              lineOne: deliveryMethod === 'delivery' ? address : 'Tienda Fisica',
+              city: "Cartagena",
+              country: "CO"
+            }
+          }
+        })
+      });
+
+      const addiData = await addiRes.json();
+      if (addiData.success && addiData.redirectUrl) {
+        window.location.href = addiData.redirectUrl;
+      } else {
+        throw new Error(addiData.error || 'Error conectando con Addi');
+      }
+
+    } catch (err: any) {
+      toast.error(err.message || 'Error al iniciar pago con Addi.');
       setIsSubmitting(false);
     }
   };
@@ -537,6 +632,7 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
             <option value="transferencia">🏦 Transferencia Bancaria</option>
             <option value="tarjeta">💳 Tarjeta con Datáfono (Contra entrega) (+5%)</option>
             <option value="bold">🌐 Pago Seguro en Línea - BOLD (+5%)</option>
+            <option value="addi">🛍️ Paga con Addi a Cuotas</option>
           </select>
           {(paymentMethod === 'bold' || paymentMethod === 'tarjeta') && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-800 flex items-start gap-2">
@@ -596,6 +692,15 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
               <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generando Link de Pago...</>
             ) : (
               <><CreditCard className="w-5 h-5 mr-2" />Pagar y Confirmar Pedido</>
+            )}
+          </Button>
+        ) : paymentMethod === 'addi' ? (
+          <Button onClick={handleAddiPayment} disabled={isSubmitting}
+            className="w-full h-14 text-base font-bold bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-lg rounded-xl transition-all">
+            {isSubmitting ? (
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Procesando crédito...</>
+            ) : (
+              <><ShoppingBag className="w-5 h-5 mr-2" />Pagar con Addi</>
             )}
           </Button>
         ) : (

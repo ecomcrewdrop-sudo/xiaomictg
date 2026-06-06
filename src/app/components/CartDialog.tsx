@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 const DELIVERY_FEE = 10000; // $10.000 COP domicilio
 
 type DeliveryMethod = 'delivery' | 'pickup';
-type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold';
+type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi';
 
 interface CartDialogProps {
   isOpen: boolean;
@@ -48,7 +48,8 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
 
   // Única fuente de verdad para el total: siempre desde getCartTotal() del contexto
   const totalCOP = getCartTotal();
-  const cardSurcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(totalCOP * 0.05) : 0;
+  const addiSurcharge = paymentMethod === 'addi' ? Math.round(totalCOP * 0.25) : 0;
+  const cardSurcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(totalCOP * 0.05) : addiSurcharge;
   const deliveryFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
   const grandTotal = totalCOP + cardSurcharge + deliveryFee;
 
@@ -146,6 +147,7 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
       paymentMethod === 'nequi' ? 'Nequi' :
       paymentMethod === 'llave' ? 'Llave bre-b' :
       paymentMethod === 'bold' ? 'BOLD (Tarjeta)' :
+      paymentMethod === 'addi' ? 'Addi (Crédito a cuotas)' :
       'Tarjeta';
 
     setIsSubmitting(true);
@@ -195,6 +197,89 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
       console.error('[CartDialog] Error al crear orden:', err);
       toast.error('Hubo un error al procesar el pedido. Intenta de nuevo.');
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddiPayment = async () => {
+    if (!customerName || !customerIdNumber || !customerEmail || !phone) {
+      toast.error('Por favor completa todos los campos obligatorios antes de pagar con Addi');
+      return;
+    }
+    if (deliveryMethod === 'delivery' && !address) {
+      toast.error('Por favor ingresa el barrio/dirección de envío');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const newOrder = await addOrder({
+        items: cart,
+        total: totalCOP,
+        status: 'pending_addi',
+        createdAt: new Date().toISOString(),
+        customerInfo: {
+          email: customerEmail, name: customerName, idNumber: customerIdNumber, phone, deliveryMethod,
+          address: deliveryMethod === 'delivery' ? address : 'Retiro en tienda',
+          paymentMethod: 'Addi (Crédito a cuotas)', deliveryFee,
+        },
+        paymentMethod: 'Addi (Crédito a cuotas)',
+      });
+
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout', {
+          content_ids: cart.map(i => i.product.id),
+          content_type: 'product',
+          value: grandTotal,
+          currency: 'COP',
+          num_items: cart.length
+        });
+      }
+
+      const nameParts = customerName.trim().split(' ');
+      const firstName = nameParts[0] || 'Cliente';
+      const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
+
+      const items = cart.map(item => ({
+        sku: item.product.id || 'XM-01',
+        name: `${item.product.name} ${item.selectedStorage || ''}`.trim(),
+        quantity: item.quantity.toString(),
+        unitPrice: item.product.price
+      }));
+
+      const addiRes = await fetch('/api/addi/create-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: newOrder.orderNumber,
+          totalAmount: grandTotal,
+          items,
+          client: {
+            idType: "CC",
+            idNumber: customerIdNumber,
+            firstName,
+            lastName,
+            email: customerEmail,
+            cellphone: phone.replace(/[^0-9]/g, ''),
+            cellphoneCountryCode: "+57",
+            address: {
+              lineOne: deliveryMethod === 'delivery' ? address : 'Tienda Fisica',
+              city: "Cartagena",
+              country: "CO"
+            }
+          }
+        })
+      });
+
+      const addiData = await addiRes.json();
+      if (addiData.success && addiData.redirectUrl) {
+        window.location.href = addiData.redirectUrl;
+      } else {
+        throw new Error(addiData.error || 'Error conectando con Addi');
+      }
+
+    } catch (err: any) {
+      toast.error(err.message || 'Error al iniciar pago con Addi.');
       setIsSubmitting(false);
     }
   };
@@ -419,6 +504,7 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
                   <option value="transferencia">🏦 Transferencia Bancaria</option>
                   <option value="tarjeta">💳 Tarjeta con Datáfono (Contra entrega) (+5%)</option>
                   <option value="bold">🌐 Pago Seguro en Línea - BOLD (+5%)</option>
+                  <option value="addi">🛍️ Paga con Addi a Cuotas</option>
                 </select>
 
                 {(paymentMethod === 'bold' || paymentMethod === 'tarjeta') && (
@@ -501,6 +587,24 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
                   <>
                     <CreditCard className="w-5 h-5 mr-2" />
                     Pagar y Confirmar Pedido
+                  </>
+                )}
+              </Button>
+            ) : paymentMethod === 'addi' ? (
+              <Button
+                onClick={handleAddiPayment}
+                className="w-full h-14 text-base font-bold bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-lg rounded-xl transition-all"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Procesando crédito...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag className="w-5 h-5 mr-2" />
+                    Pagar con Addi
                   </>
                 )}
               </Button>
