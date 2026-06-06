@@ -276,8 +276,8 @@ export function OrdersManager() {
   // Calcular los totales para el ticket
   const calculateOrderTotals = (order: Order) => {
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const hasCardFee = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
-    const isAddi = order.paymentMethod?.toLowerCase().includes('addi');
+    const hasCardFee = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
+    const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
     const totalItems = order.total;
     const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
     const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
@@ -902,8 +902,8 @@ function ThermalTicketPreview({ order }: { order: Order }) {
   // Mismo cálculo que en OrdersManager para consistencia
   const EXCHANGE_RATE = 1;
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
-  const hasCardFee = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
-  const isAddi = order.paymentMethod?.toLowerCase().includes('addi');
+  const hasCardFee = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
+  const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
   
   const totalItems = order.total;
   const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;

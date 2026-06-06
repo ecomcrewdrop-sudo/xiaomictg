@@ -563,9 +563,9 @@ function processWhatsAppTemplate(template: string, order: any): string {
     : '';
 
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
-  const isAddi = order.paymentMethod?.toLowerCase().includes('addi');
+  const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
   const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.25) : 0;
-  const isCard = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
+  const isCard = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
   const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
   const grandTotal = (order.total || 0) + cardFee + addiSurcharge + deliveryFee;
 
@@ -669,7 +669,7 @@ async function sendOrderEmail(order: any) {
     };
 
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const isCard = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
+    const isCard = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
     const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
     const grandTotal = order.total + cardFee + deliveryFee;
 
@@ -797,7 +797,7 @@ async function sendInvoiceEmail(order: any) {
     };
 
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const isCard = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
+    const isCard = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
     const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
     const grandTotal = order.total + cardFee + deliveryFee;
     const nitValue = config.nit || '1043345642-7';

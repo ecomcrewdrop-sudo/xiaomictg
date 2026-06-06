@@ -299367,9 +299367,9 @@ function processWhatsAppTemplate(template, order) {
   const addressLine = isDelivery && order.customerInfo?.address ? `\u{1F4CD} *Direcci\xF3n:* ${order.customerInfo.address}
 ` : "";
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
-  const isAddi = order.paymentMethod?.toLowerCase().includes("addi");
+  const isAddi = (order.paymentMethod || "").toLowerCase().includes("addi");
   const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.25) : 0;
-  const isCard = order.paymentMethod?.toLowerCase().includes("tarjeta") || order.paymentMethod?.toLowerCase().includes("bold");
+  const isCard = (order.paymentMethod || "").toLowerCase().includes("tarjeta") || (order.paymentMethod || "").toLowerCase().includes("bold");
   const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
   const grandTotal = (order.total || 0) + cardFee + addiSurcharge + deliveryFee;
   let extrasStr = "";
@@ -299462,7 +299462,7 @@ async function sendOrderEmail(order) {
       schedule: "Lun - Vie: 9:00 AM - 7:00 PM | Dom: 10:30 AM - 3:00 PM"
     };
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const isCard = order.paymentMethod?.toLowerCase().includes("tarjeta") || order.paymentMethod?.toLowerCase().includes("bold");
+    const isCard = (order.paymentMethod || "").toLowerCase().includes("tarjeta") || (order.paymentMethod || "").toLowerCase().includes("bold");
     const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
     const grandTotal = order.total + cardFee + deliveryFee;
     const itemsHtml = order.items.map((item) => {
@@ -299579,7 +299579,7 @@ async function sendInvoiceEmail(order) {
       schedule: "Lun - Vie: 9:00 AM - 7:00 PM | Dom: 10:30 AM - 3:00 PM"
     };
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const isCard = order.paymentMethod?.toLowerCase().includes("tarjeta") || order.paymentMethod?.toLowerCase().includes("bold");
+    const isCard = (order.paymentMethod || "").toLowerCase().includes("tarjeta") || (order.paymentMethod || "").toLowerCase().includes("bold");
     const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
     const grandTotal = order.total + cardFee + deliveryFee;
     const nitValue = config.nit || "1043345642-7";
