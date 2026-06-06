@@ -262,8 +262,17 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
       if (ticketConfig.addiMode === 'whatsapp') {
         const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
         
+*🛍️ Productos:*
+• ${product.name} x1 ${selectedStorage ? `[${selectedStorage}]` : ''} ${selectedColor ? `(${selectedColor})` : ''}
+
+*📍 Datos de Envío:*
+Nombre: ${customerName}
+Cédula: ${customerIdNumber}
+Teléfono: ${phone}
+Dirección: ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
+
 *💳 Desglose de pago con Addi a Cuotas:*
-Subtotal: $${unitPrice.toLocaleString()}
+Subtotal: $${totalCOP.toLocaleString()}
 Envío: $${deliveryFee.toLocaleString()}
 Recargo Addi (25%): $${addiSurcharge.toLocaleString()}
 *Total a Pagar:* *$${grandTotal.toLocaleString()}*

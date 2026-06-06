@@ -251,6 +251,15 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
       if (ticketConfig.addiMode === 'whatsapp') {
         const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
         
+*🛍️ Productos:*
+${cart.map(item => `• ${item.product.name} x${item.quantity} ${item.selectedStorage ? `[${item.selectedStorage}]` : ''} ${item.selectedColor ? `(${item.selectedColor})` : ''}`).join('\n')}
+
+*📍 Datos de Envío:*
+Nombre: ${customerName}
+Cédula: ${customerIdNumber}
+Teléfono: ${phone}
+Dirección: ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
+
 *💳 Desglose de pago con Addi a Cuotas:*
 Subtotal: $${totalCOP.toLocaleString()}
 Envío: $${deliveryFee.toLocaleString()}

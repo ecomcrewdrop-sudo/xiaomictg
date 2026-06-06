@@ -224,6 +224,15 @@ export function DirectCheckoutPage() {
       if (ticketConfig.addiMode === 'whatsapp') {
         const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
         
+*🛍️ Productos:*
+• ${product!.name} x${quantity} ${selectedStorage ? `[${selectedStorage}]` : ''} ${selectedColor ? `(${selectedColor})` : ''}
+
+*📍 Datos de Envío:*
+Nombre: ${customerName}
+Cédula: ${customerIdNumber}
+Teléfono: ${phone}
+Dirección: ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
+
 *💳 Desglose de pago con Addi a Cuotas:*
 Subtotal: $${(unitPrice * quantity).toLocaleString()}
 Envío: $${deliveryFee.toLocaleString()}
