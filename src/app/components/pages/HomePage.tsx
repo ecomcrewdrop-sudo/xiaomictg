@@ -158,14 +158,13 @@ export function HomePage() {
       {/* Categorías Destacadas */}
       <div className="py-6 md:py-12 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1">
             {[
               { path: '/moviles', label: 'Teléfonos y Tabletas', icon: Smartphone, isPoco: false },
               { path: '/smartwatch', label: 'Smartwatch', icon: Watch, isPoco: false },
               { path: '/audifonos', label: 'Audífonos', icon: Headphones, isPoco: false },
               { path: '/scooter', label: 'Scooter', icon: Bike, isPoco: false },
               { path: '/accesorios', label: 'Estilo de Vida', icon: Cable, isPoco: false },
-              { path: '/poco', label: '', icon: null, isPoco: true },
             ].map(category => {
               const Icon = category.icon;
               return (
