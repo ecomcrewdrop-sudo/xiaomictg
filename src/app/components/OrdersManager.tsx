@@ -17,6 +17,18 @@ function resolveOrderItemImage(item: CartItem, products: Product[]): string {
   return fromCatalog?.image || '';
 }
 
+// Función pura para calcular totales de la orden
+export function calculateOrderTotals(order: Order) {
+  const deliveryFee = order.customerInfo?.deliveryFee || 0;
+  const hasCardFee = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
+  const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
+  const totalItems = order.total || 0;
+  const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
+  const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
+  const finalTotal = totalItems + cardFee + addiFee + deliveryFee;
+  return { finalTotal, cardFee, addiFee, totalCOP: totalItems, finalTotalCOP: finalTotal };
+}
+
 export function OrdersManager() {
   const { orders, products, updateOrderStatus, updateOrderDetails, deleteOrder, unreadOrdersCount, markOrdersAsRead, ticketConfig } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
@@ -273,17 +285,7 @@ export function OrdersManager() {
     });
   };
 
-  // Calcular los totales para el ticket
-  const calculateOrderTotals = (order: Order) => {
-    const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const hasCardFee = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
-    const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
-    const totalItems = order.total;
-    const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
-    const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
-    const finalTotal = totalItems + cardFee + addiFee + deliveryFee;
-    return { finalTotal, cardFee, addiFee, totalCOP: totalItems, finalTotalCOP: finalTotal };
-  };
+
 
   return (
     <div className="space-y-6">
