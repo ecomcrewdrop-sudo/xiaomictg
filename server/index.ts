@@ -1449,8 +1449,8 @@ app.post('/api/addi/create-transaction', async (req, res) => {
       redirect: 'manual', // Importante para capturar el header Location
       body: JSON.stringify({
         orderId,
-        totalAmount: totalAmount.toString(),
-        shippingAmount: "0.0",
+        totalAmount: Number(totalAmount),
+        shippingAmount: 0,
         currency: "COP",
         items,
         client,

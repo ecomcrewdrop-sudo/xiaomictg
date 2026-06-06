@@ -244,7 +244,7 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
       const items = cart.map(item => ({
         sku: item.product.id || 'XM-01',
         name: `${item.product.name} ${item.selectedStorage || ''}`.trim(),
-        quantity: item.quantity.toString(),
+        quantity: Number(item.quantity),
         unitPrice: item.product.price
       }));
 

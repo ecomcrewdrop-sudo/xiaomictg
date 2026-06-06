@@ -255,7 +255,7 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
       const items = [{
         sku: product.id || 'XM-01',
         name: `${product.name} ${selectedStorage || ''}`.trim(),
-        quantity: '1',
+        quantity: 1,
         unitPrice: unitPrice
       }];
 

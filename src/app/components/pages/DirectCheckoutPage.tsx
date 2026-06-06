@@ -231,7 +231,7 @@ export function DirectCheckoutPage() {
           items: [{
             sku: product!.id || 'XM-01',
             name: `${product!.name} ${selectedStorage || ''}`.trim(),
-            quantity: quantity.toString(),
+            quantity: Number(quantity),
             unitPrice: unitPrice
           }],
           client: {

@@ -300137,8 +300137,8 @@ app.post("/api/addi/create-transaction", async (req, res) => {
       // Importante para capturar el header Location
       body: JSON.stringify({
         orderId,
-        totalAmount: totalAmount.toString(),
-        shippingAmount: "0.0",
+        totalAmount: Number(totalAmount),
+        shippingAmount: 0,
         currency: "COP",
         items,
         client,
@@ -300148,9 +300148,9 @@ app.post("/api/addi/create-transaction", async (req, res) => {
           country: "CO"
         },
         allyUrlRedirection: {
-          logoUrl: "https://xiaomictg-production.up.railway.app/favicon.ico",
+          logoUrl: "https://xiaomicartagena.com/favicon.ico",
           callbackUrl: "https://xiaomictg-production.up.railway.app/api/addi/callback",
-          redirectionUrl: "https://xiaomictg-production.up.railway.app/"
+          redirectionUrl: "https://xiaomicartagena.com/?addi_success=true"
         }
       })
     });
@@ -300166,6 +300166,33 @@ app.post("/api/addi/create-transaction", async (req, res) => {
     console.error("Addi API Error:", error);
     res.status(500).json({ error: "Error interno conectando con Addi" });
   }
+});
+app.post("/api/addi/callback", async (req, res) => {
+  try {
+    const addiPayload = req.body;
+    console.log("Addi Callback Payload:", JSON.stringify(addiPayload));
+    const { orderId, status } = addiPayload;
+    if (orderId && status === "APPROVED") {
+      const order = await db.collection("orders").findOne({ orderNumber: orderId });
+      if (order && order.status === "pending_addi") {
+        await db.collection("orders").updateOne(
+          { orderNumber: orderId },
+          { $set: { status: "paid" } }
+        );
+        const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: "paid" }]);
+        sendOrderEmail(hydratedOrder).catch((err) => console.error("Error sending email:", err));
+        sendWhatsAppNotifications(hydratedOrder).catch((err) => console.error("[WA] Error notificaciones:", err));
+        io2.emit("orderUpdated", { id: order.id, status: "paid" });
+      }
+    }
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error("Addi Callback Error:", error);
+    res.status(500).send("Error");
+  }
+});
+app.get("/api/addi/callback", async (req, res) => {
+  res.redirect("/?addi_success=true");
 });
 app.post("/api/orders", async (req, res) => {
   try {
@@ -300210,8 +300237,10 @@ app.post("/api/orders", async (req, res) => {
     await db.collection("notifications").insertOne(notification);
     io2.emit("newOrder", notification);
     const [hydratedOrder] = await hydrateOrdersWithProductImages([order]);
-    sendOrderEmail(hydratedOrder).catch((err) => console.error("Error sending email:", err));
-    sendWhatsAppNotifications(hydratedOrder).catch((err) => console.error("[WA] Error notificaciones:", err));
+    if (!status.startsWith("pending_")) {
+      sendOrderEmail(hydratedOrder).catch((err) => console.error("Error sending email:", err));
+      sendWhatsAppNotifications(hydratedOrder).catch((err) => console.error("[WA] Error notificaciones:", err));
+    }
     res.json(hydratedOrder);
   } catch (error) {
     res.status(500).json({ error: "Error creating order" });
