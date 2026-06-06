@@ -137,6 +137,7 @@ export interface TicketConfig {
   schedule: string;
   exchangeRate?: number;
   showUSD?: boolean;
+  addiMode?: 'automatic' | 'whatsapp';
 }
 
 interface ProductContextType {

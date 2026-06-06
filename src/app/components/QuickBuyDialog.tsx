@@ -259,6 +259,12 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
         unitPrice: unitPrice
       }];
 
+      if (ticketConfig.addiMode === 'whatsapp') {
+        const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}* por *$${grandTotal.toLocaleString()}*. Seleccioné *Addi* como método de pago. Por favor envíame el link de pago.`;
+        window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
+        return;
+      }
+
       const addiRes = await fetch(`${API_ORIGIN}/api/addi/create-transaction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

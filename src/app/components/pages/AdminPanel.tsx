@@ -38,7 +38,8 @@ export function AdminPanel() {
     schedule: 'Lunes a Viernes: 9:00 AM - 6:00 PM',
     exchangeRate: 4200,
     showUSD: false,
-    nit: '1043345642-7'
+    nit: '1043345642-7',
+    addiMode: 'automatic' as 'automatic' | 'whatsapp'
   });
   
   const [isTicketSaving, setIsTicketSaving] = useState(false);
@@ -58,7 +59,8 @@ export function AdminPanel() {
         schedule: ticketConfig.schedule || 'Lunes a Viernes: 9:00 AM - 6:00 PM',
         exchangeRate: ticketConfig.exchangeRate ?? 4200,
         showUSD: ticketConfig.showUSD ?? false,
-        nit: ticketConfig.nit || '1043345642-7'
+        nit: ticketConfig.nit || '1043345642-7',
+        addiMode: ticketConfig.addiMode || 'automatic'
       });
     }
   }, [ticketConfig]);
@@ -956,6 +958,21 @@ export function AdminPanel() {
                     onChange={(e) => setTicketForm({ ...ticketForm, nit: e.target.value })}
                     placeholder="1043345642-7"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="ticket-addiMode">Modo Addi</Label>
+                  <Select
+                    value={ticketForm.addiMode}
+                    onValueChange={(value: 'automatic' | 'whatsapp') => setTicketForm({ ...ticketForm, addiMode: value })}
+                  >
+                    <SelectTrigger id="ticket-addiMode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="automatic">Automático (API - Checkout)</SelectItem>
+                      <SelectItem value="whatsapp">Manual (Redirigir a WhatsApp)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="ticket-tagline"> tagline</Label>

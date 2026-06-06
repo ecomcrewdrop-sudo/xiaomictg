@@ -221,6 +221,12 @@ export function DirectCheckoutPage() {
       const firstName = nameParts[0] || 'Cliente';
       const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
 
+      if (ticketConfig.addiMode === 'whatsapp') {
+        const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}* por *$${grandTotal.toLocaleString()}*. Seleccioné *Addi* como método de pago. Por favor envíame el link de pago.`;
+        window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
+        return;
+      }
+
       // Llamar al endpoint de Addi
       const addiRes = await fetch(`${API_ORIGIN}/api/addi/create-transaction`, {
         method: 'POST',
