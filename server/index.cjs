@@ -16551,7 +16551,7 @@ var require_shams = __commonJS({
         return true;
       }
       var obj = {};
-      var sym = Symbol("test");
+      var sym = /* @__PURE__ */ Symbol("test");
       var symObj = Object(sym);
       if (typeof sym === "string") {
         return false;
@@ -16610,7 +16610,7 @@ var require_has_symbols = __commonJS({
       if (typeof origSymbol("foo") !== "symbol") {
         return false;
       }
-      if (typeof Symbol("bar") !== "symbol") {
+      if (typeof /* @__PURE__ */ Symbol("bar") !== "symbol") {
         return false;
       }
       return hasSymbolSham();
@@ -62250,7 +62250,7 @@ var require_bson = __commonJS({
       }
     }
     var BSON_MAJOR_VERSION = 7;
-    var BSON_VERSION_SYMBOL = Symbol.for("@@mdb.bson.version");
+    var BSON_VERSION_SYMBOL = /* @__PURE__ */ Symbol.for("@@mdb.bson.version");
     var BSON_INT32_MAX = 2147483647;
     var BSON_INT32_MIN = -2147483648;
     var BSON_INT64_MAX = Math.pow(2, 63) - 1;
@@ -62689,7 +62689,7 @@ var require_bson = __commonJS({
     };
     var hasGlobalBuffer = typeof Buffer === "function" && Buffer.prototype?._isBuffer !== true;
     var ByteUtils = hasGlobalBuffer ? nodeJsByteUtils : webByteUtils;
-    var bsonType = Symbol.for("@@mdb.bson.type");
+    var bsonType = /* @__PURE__ */ Symbol.for("@@mdb.bson.type");
     var BSONValue = class {
       get [bsonType]() {
         return this._bsontype;
@@ -62697,7 +62697,7 @@ var require_bson = __commonJS({
       get [BSON_VERSION_SYMBOL]() {
         return BSON_MAJOR_VERSION;
       }
-      [Symbol.for("nodejs.util.inspect.custom")](depth, options, inspect) {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")](depth, options, inspect) {
         return this.inspect(depth, options, inspect);
       }
     };
@@ -68343,8 +68343,8 @@ var require_constants2 = __commonJS({
     ]);
     exports2.LEGACY_HELLO_COMMAND = "ismaster";
     exports2.LEGACY_HELLO_COMMAND_CAMEL_CASE = "isMaster";
-    exports2.kDecorateResult = Symbol.for("@@mdb.decorateDecryptionResult");
-    exports2.kDecoratedKeys = Symbol.for("@@mdb.decryptedKeys");
+    exports2.kDecorateResult = /* @__PURE__ */ Symbol.for("@@mdb.decorateDecryptionResult");
+    exports2.kDecoratedKeys = /* @__PURE__ */ Symbol.for("@@mdb.decryptedKeys");
   }
 });
 
@@ -69564,7 +69564,7 @@ var require_utils4 = __commonJS({
         }
         Object.freeze(this);
       }
-      [Symbol.for("nodejs.util.inspect.custom")]() {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")]() {
         return this.inspect();
       }
       inspect() {
@@ -69812,7 +69812,7 @@ var require_utils4 = __commonJS({
         decorateDecryptionResult(decrypted[k2], originalValue, false);
       }
     }
-    exports2.kDispose = Symbol.dispose ?? Symbol("dispose");
+    exports2.kDispose = Symbol.dispose ?? /* @__PURE__ */ Symbol("dispose");
     function addAbortListener(signal, listener) {
       if (signal == null)
         return;
@@ -70166,15 +70166,15 @@ var require_operation = __commonJS({
     var bson_1 = require_bson2();
     var read_preference_1 = require_read_preference();
     exports2.Aspect = {
-      READ_OPERATION: Symbol("READ_OPERATION"),
-      WRITE_OPERATION: Symbol("WRITE_OPERATION"),
-      RETRYABLE: Symbol("RETRYABLE"),
-      EXPLAINABLE: Symbol("EXPLAINABLE"),
-      SKIP_COLLATION: Symbol("SKIP_COLLATION"),
-      CURSOR_CREATING: Symbol("CURSOR_CREATING"),
-      MUST_SELECT_SAME_SERVER: Symbol("MUST_SELECT_SAME_SERVER"),
-      COMMAND_BATCHING: Symbol("COMMAND_BATCHING"),
-      SUPPORTS_RAW_DATA: Symbol("SUPPORTS_RAW_DATA")
+      READ_OPERATION: /* @__PURE__ */ Symbol("READ_OPERATION"),
+      WRITE_OPERATION: /* @__PURE__ */ Symbol("WRITE_OPERATION"),
+      RETRYABLE: /* @__PURE__ */ Symbol("RETRYABLE"),
+      EXPLAINABLE: /* @__PURE__ */ Symbol("EXPLAINABLE"),
+      SKIP_COLLATION: /* @__PURE__ */ Symbol("SKIP_COLLATION"),
+      CURSOR_CREATING: /* @__PURE__ */ Symbol("CURSOR_CREATING"),
+      MUST_SELECT_SAME_SERVER: /* @__PURE__ */ Symbol("MUST_SELECT_SAME_SERVER"),
+      COMMAND_BATCHING: /* @__PURE__ */ Symbol("COMMAND_BATCHING"),
+      SUPPORTS_RAW_DATA: /* @__PURE__ */ Symbol("SUPPORTS_RAW_DATA")
     };
     var AbstractOperation = class {
       constructor(options = {}) {
@@ -70492,7 +70492,7 @@ var require_execute_operation = __commonJS({
       let session = operation.session;
       let owner;
       if (session == null) {
-        owner = Symbol();
+        owner = /* @__PURE__ */ Symbol();
         session = client.startSession({ owner, explicit: false });
       } else if (session.hasEnded) {
         throw new error_1.MongoExpiredSessionError("Use of expired sessions is not permitted");
@@ -77304,7 +77304,7 @@ var require_drop2 = __commonJS({
         const listCollectionsResult = await db2.listCollections({ name }, {
           nameOnly: false,
           session: options.session,
-          timeoutContext: new abstract_cursor_1.CursorTimeoutContext(timeoutContext, Symbol())
+          timeoutContext: new abstract_cursor_1.CursorTimeoutContext(timeoutContext, /* @__PURE__ */ Symbol())
         }).toArray();
         encryptedFields = listCollectionsResult?.[0]?.options?.encryptedFields;
       }
@@ -79069,10 +79069,10 @@ var require_utils5 = __commonJS({
         Object.getOwnPropertyDescriptors(object)
       );
     }
-    var wrapperSymbol = Symbol("wrapper");
-    var implSymbol = Symbol("impl");
-    var sameObjectCaches = Symbol("SameObject caches");
-    var ctorRegistrySymbol = Symbol.for("[webidl2js] constructor registry");
+    var wrapperSymbol = /* @__PURE__ */ Symbol("wrapper");
+    var implSymbol = /* @__PURE__ */ Symbol("impl");
+    var sameObjectCaches = /* @__PURE__ */ Symbol("SameObject caches");
+    var ctorRegistrySymbol = /* @__PURE__ */ Symbol.for("[webidl2js] constructor registry");
     var AsyncIteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf(async function* () {
     }).prototype);
     function initCtorRegistry(globalObject) {
@@ -79120,7 +79120,7 @@ var require_utils5 = __commonJS({
       const impl = implForWrapper(wrapper);
       return impl ? impl : wrapper;
     }
-    var iterInternalSymbol = Symbol("internal");
+    var iterInternalSymbol = /* @__PURE__ */ Symbol("internal");
     function isArrayIndexPropName(P3) {
       if (typeof P3 !== "string") {
         return false;
@@ -79159,21 +79159,21 @@ var require_utils5 = __commonJS({
       }
       return { value: result, done: false };
     }
-    var supportsPropertyIndex = Symbol("supports property index");
-    var supportedPropertyIndices = Symbol("supported property indices");
-    var supportsPropertyName = Symbol("supports property name");
-    var supportedPropertyNames = Symbol("supported property names");
-    var indexedGet = Symbol("indexed property get");
-    var indexedSetNew = Symbol("indexed property set new");
-    var indexedSetExisting = Symbol("indexed property set existing");
-    var namedGet = Symbol("named property get");
-    var namedSetNew = Symbol("named property set new");
-    var namedSetExisting = Symbol("named property set existing");
-    var namedDelete = Symbol("named property delete");
-    var asyncIteratorNext = Symbol("async iterator get the next iteration result");
-    var asyncIteratorReturn = Symbol("async iterator return steps");
-    var asyncIteratorInit = Symbol("async iterator initialization steps");
-    var asyncIteratorEOI = Symbol("async iterator end of iteration");
+    var supportsPropertyIndex = /* @__PURE__ */ Symbol("supports property index");
+    var supportedPropertyIndices = /* @__PURE__ */ Symbol("supported property indices");
+    var supportsPropertyName = /* @__PURE__ */ Symbol("supports property name");
+    var supportedPropertyNames = /* @__PURE__ */ Symbol("supported property names");
+    var indexedGet = /* @__PURE__ */ Symbol("indexed property get");
+    var indexedSetNew = /* @__PURE__ */ Symbol("indexed property set new");
+    var indexedSetExisting = /* @__PURE__ */ Symbol("indexed property set existing");
+    var namedGet = /* @__PURE__ */ Symbol("named property get");
+    var namedSetNew = /* @__PURE__ */ Symbol("named property set new");
+    var namedSetExisting = /* @__PURE__ */ Symbol("named property set existing");
+    var namedDelete = /* @__PURE__ */ Symbol("named property delete");
+    var asyncIteratorNext = /* @__PURE__ */ Symbol("async iterator get the next iteration result");
+    var asyncIteratorReturn = /* @__PURE__ */ Symbol("async iterator return steps");
+    var asyncIteratorInit = /* @__PURE__ */ Symbol("async iterator initialization steps");
+    var asyncIteratorEOI = /* @__PURE__ */ Symbol("async iterator end of iteration");
     module2.exports = exports2 = {
       isObject,
       hasOwn,
@@ -79964,7 +79964,7 @@ var require_url_state_machine = __commonJS({
       ws: 80,
       wss: 443
     };
-    var failure = Symbol("failure");
+    var failure = /* @__PURE__ */ Symbol("failure");
     function countSymbols(str) {
       return [...str].length;
     }
@@ -82605,7 +82605,7 @@ var require_lib5 = __commonJS({
         const _sametype = false;
         return this.searchParams;
       }
-      [Symbol.for("nodejs.util.inspect.custom")]() {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")]() {
         const { href, origin, protocol, username, password, hosts, pathname, search, searchParams, hash: hash2 } = this;
         return {
           href,
@@ -83946,7 +83946,7 @@ var require_state_machine = __commonJS({
         const cursor = client.db(db2).listCollections(filter, {
           promoteLongs: false,
           promoteValues: false,
-          timeoutContext: options?.timeoutContext && new abstract_cursor_1.CursorTimeoutContext(options?.timeoutContext, Symbol()),
+          timeoutContext: options?.timeoutContext && new abstract_cursor_1.CursorTimeoutContext(options?.timeoutContext, /* @__PURE__ */ Symbol()),
           signal: options?.signal,
           nameOnly: false
         });
@@ -83995,7 +83995,7 @@ var require_state_machine = __commonJS({
           signal: void 0
         };
         if (options?.timeoutContext != null) {
-          commandOptions.timeoutContext = new abstract_cursor_1.CursorTimeoutContext(options.timeoutContext, Symbol());
+          commandOptions.timeoutContext = new abstract_cursor_1.CursorTimeoutContext(options.timeoutContext, /* @__PURE__ */ Symbol());
         }
         if (options?.signal != null) {
           commandOptions.signal = options.signal;
@@ -91564,7 +91564,7 @@ var require_executor = __commonJS({
         } else {
           const resultsMerger = new results_merger_1.ClientBulkWriteResultsMerger(this.options);
           while (commandBuilder.hasNextBatch()) {
-            const cursorContext = new abstract_cursor_1.CursorTimeoutContext(context, Symbol());
+            const cursorContext = new abstract_cursor_1.CursorTimeoutContext(context, /* @__PURE__ */ Symbol());
             const options = {
               ...this.options,
               timeoutContext: cursorContext,
@@ -92805,7 +92805,7 @@ var require_mongo_client = __commonJS({
       async withSession(optionsOrExecutor, executor) {
         const options = {
           // Always define an owner
-          owner: Symbol(),
+          owner: /* @__PURE__ */ Symbol(),
           // If it's an object inherit the options
           ...typeof optionsOrExecutor === "object" ? optionsOrExecutor : {}
         };
@@ -92922,9 +92922,9 @@ var require_change_stream = __commonJS({
     var timeout_1 = require_timeout();
     var utils_1 = require_utils4();
     var CHANGE_DOMAIN_TYPES = {
-      COLLECTION: Symbol("Collection"),
-      DATABASE: Symbol("Database"),
-      CLUSTER: Symbol("Cluster")
+      COLLECTION: /* @__PURE__ */ Symbol("Collection"),
+      DATABASE: /* @__PURE__ */ Symbol("Database"),
+      CLUSTER: /* @__PURE__ */ Symbol("Cluster")
     };
     var CHANGE_STREAM_EVENTS = [constants_1.RESUME_TOKEN_CHANGED, constants_1.END, constants_1.CLOSE];
     var NO_RESUME_TOKEN_ERROR = "A change stream document has been received that lacks a resume token (_id).";
@@ -92989,7 +92989,7 @@ var require_change_stream = __commonJS({
         } else {
           throw new error_1.MongoChangeStreamError("Parent provided to ChangeStream constructor must be an instance of Collection, Db, or MongoClient");
         }
-        this.contextOwner = Symbol();
+        this.contextOwner = /* @__PURE__ */ Symbol();
         this.parent = parent;
         this.namespace = parent.s.namespace;
         if (!this.options.readPreference && parent.readPreference) {
@@ -97711,10 +97711,10 @@ var require_constants3 = __commonJS({
       EMPTY_BUFFER: Buffer.alloc(0),
       GUID: "258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
       hasBlob,
-      kForOnEventAttribute: Symbol("kIsForOnEventAttribute"),
-      kListener: Symbol("kListener"),
-      kStatusCode: Symbol("status-code"),
-      kWebSocket: Symbol("websocket"),
+      kForOnEventAttribute: /* @__PURE__ */ Symbol("kIsForOnEventAttribute"),
+      kListener: /* @__PURE__ */ Symbol("kListener"),
+      kStatusCode: /* @__PURE__ */ Symbol("status-code"),
+      kWebSocket: /* @__PURE__ */ Symbol("websocket"),
       NOOP: () => {
       }
     };
@@ -97800,8 +97800,8 @@ var require_buffer_util = __commonJS({
 var require_limiter = __commonJS({
   "node_modules/ws/lib/limiter.js"(exports2, module2) {
     "use strict";
-    var kDone = Symbol("kDone");
-    var kRun = Symbol("kRun");
+    var kDone = /* @__PURE__ */ Symbol("kDone");
+    var kRun = /* @__PURE__ */ Symbol("kRun");
     var Limiter = class {
       /**
        * Creates a new `Limiter`.
@@ -97856,11 +97856,11 @@ var require_permessage_deflate = __commonJS({
     var { kStatusCode } = require_constants3();
     var FastBuffer = Buffer[Symbol.species];
     var TRAILER = Buffer.from([0, 0, 255, 255]);
-    var kPerMessageDeflate = Symbol("permessage-deflate");
-    var kTotalLength = Symbol("total-length");
-    var kCallback = Symbol("callback");
-    var kBuffers = Symbol("buffers");
-    var kError = Symbol("error");
+    var kPerMessageDeflate = /* @__PURE__ */ Symbol("permessage-deflate");
+    var kTotalLength = /* @__PURE__ */ Symbol("total-length");
+    var kCallback = /* @__PURE__ */ Symbol("callback");
+    var kBuffers = /* @__PURE__ */ Symbol("buffers");
+    var kError = /* @__PURE__ */ Symbol("error");
     var zlibLimiter;
     var PerMessageDeflate = class {
       /**
@@ -99032,7 +99032,7 @@ var require_sender = __commonJS({
     var { EMPTY_BUFFER: EMPTY_BUFFER2, kWebSocket, NOOP } = require_constants3();
     var { isBlob, isValidStatusCode } = require_validation();
     var { mask: applyMask, toBuffer: toBuffer2 } = require_buffer_util();
-    var kByteLength = Symbol("kByteLength");
+    var kByteLength = /* @__PURE__ */ Symbol("kByteLength");
     var maskBuffer = Buffer.alloc(4);
     var RANDOM_POOL_SIZE = 8 * 1024;
     var randomPool;
@@ -99515,14 +99515,14 @@ var require_event_target = __commonJS({
   "node_modules/ws/lib/event-target.js"(exports2, module2) {
     "use strict";
     var { kForOnEventAttribute, kListener } = require_constants3();
-    var kCode = Symbol("kCode");
-    var kData = Symbol("kData");
-    var kError = Symbol("kError");
-    var kMessage = Symbol("kMessage");
-    var kReason = Symbol("kReason");
-    var kTarget = Symbol("kTarget");
-    var kType = Symbol("kType");
-    var kWasClean = Symbol("kWasClean");
+    var kCode = /* @__PURE__ */ Symbol("kCode");
+    var kData = /* @__PURE__ */ Symbol("kData");
+    var kError = /* @__PURE__ */ Symbol("kError");
+    var kMessage = /* @__PURE__ */ Symbol("kMessage");
+    var kReason = /* @__PURE__ */ Symbol("kReason");
+    var kTarget = /* @__PURE__ */ Symbol("kTarget");
+    var kType = /* @__PURE__ */ Symbol("kType");
+    var kWasClean = /* @__PURE__ */ Symbol("kWasClean");
     var Event2 = class {
       /**
        * Create a new `Event`.
@@ -99924,7 +99924,7 @@ var require_websocket2 = __commonJS({
     var { format, parse: parse2 } = require_extension();
     var { toBuffer: toBuffer2 } = require_buffer_util();
     var closeTimeout = 30 * 1e3;
-    var kAborted = Symbol("kAborted");
+    var kAborted = /* @__PURE__ */ Symbol("kAborted");
     var protocolVersions = [8, 13];
     var readyStates = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
     var subprotocolRegex = /^[!#$%&'*+\-.0-9A-Z^_`|a-z~]+$/;
@@ -101338,7 +101338,7 @@ var require_server2 = __commonJS({
     var webtransport_1 = require_webtransport();
     var engine_io_parser_1 = require_cjs();
     var debug32 = (0, debug_1.default)("engine");
-    var kResponseHeaders = Symbol("responseHeaders");
+    var kResponseHeaders = /* @__PURE__ */ Symbol("responseHeaders");
     function parseSessionId(data) {
       try {
         const parsed = JSON.parse(data);
@@ -135298,7 +135298,7 @@ var require_once2 = __commonJS({
   "node_modules/@hapi/hoek/lib/once.js"(exports2, module2) {
     "use strict";
     var internals = {
-      wrapped: Symbol("wrapped")
+      wrapped: /* @__PURE__ */ Symbol("wrapped")
     };
     module2.exports = function(method) {
       if (method[internals.wrapped]) {
@@ -136786,7 +136786,7 @@ var require_cmp = __commonJS({
 var require_comparator = __commonJS({
   "node_modules/semver/classes/comparator.js"(exports2, module2) {
     "use strict";
-    var ANY = Symbol("SemVer ANY");
+    var ANY = /* @__PURE__ */ Symbol("SemVer ANY");
     var Comparator = class _Comparator {
       static get ANY() {
         return ANY;
@@ -156057,8 +156057,8 @@ var require_err_helpers = __commonJS({
 var require_err_proto = __commonJS({
   "node_modules/pino-std-serializers/lib/err-proto.js"(exports2, module2) {
     "use strict";
-    var seen = Symbol("circular-ref-tag");
-    var rawSymbol = Symbol("pino-raw-err-ref");
+    var seen = /* @__PURE__ */ Symbol("circular-ref-tag");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-err-ref");
     var pinoErrProto = Object.create({}, {
       type: {
         enumerable: true,
@@ -156195,7 +156195,7 @@ var require_req = __commonJS({
       mapHttpRequest,
       reqSerializer
     };
-    var rawSymbol = Symbol("pino-raw-req-ref");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-req-ref");
     var pinoReqProto = Object.create({}, {
       id: {
         enumerable: true,
@@ -156290,7 +156290,7 @@ var require_res = __commonJS({
       mapHttpResponse,
       resSerializer
     };
-    var rawSymbol = Symbol("pino-raw-res-ref");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-res-ref");
     var pinoResProto = Object.create({}, {
       statusCode: {
         enumerable: true,
@@ -156532,7 +156532,7 @@ var require_redact2 = __commonJS({
       }
       return true;
     }
-    var PATH_NOT_FOUND = Symbol("PATH_NOT_FOUND");
+    var PATH_NOT_FOUND = /* @__PURE__ */ Symbol("PATH_NOT_FOUND");
     function getValueIfExists(obj, parts) {
       let current = obj;
       for (const part of parts) {
@@ -156833,37 +156833,37 @@ var require_redact2 = __commonJS({
 var require_symbols = __commonJS({
   "node_modules/pino/lib/symbols.js"(exports2, module2) {
     "use strict";
-    var setLevelSym = Symbol("pino.setLevel");
-    var getLevelSym = Symbol("pino.getLevel");
-    var levelValSym = Symbol("pino.levelVal");
-    var levelCompSym = Symbol("pino.levelComp");
-    var useLevelLabelsSym = Symbol("pino.useLevelLabels");
-    var useOnlyCustomLevelsSym = Symbol("pino.useOnlyCustomLevels");
-    var mixinSym = Symbol("pino.mixin");
-    var lsCacheSym = Symbol("pino.lsCache");
-    var chindingsSym = Symbol("pino.chindings");
-    var asJsonSym = Symbol("pino.asJson");
-    var writeSym = Symbol("pino.write");
-    var redactFmtSym = Symbol("pino.redactFmt");
-    var timeSym = Symbol("pino.time");
-    var timeSliceIndexSym = Symbol("pino.timeSliceIndex");
-    var streamSym = Symbol("pino.stream");
-    var stringifySym = Symbol("pino.stringify");
-    var stringifySafeSym = Symbol("pino.stringifySafe");
-    var stringifiersSym = Symbol("pino.stringifiers");
-    var endSym = Symbol("pino.end");
-    var formatOptsSym = Symbol("pino.formatOpts");
-    var messageKeySym = Symbol("pino.messageKey");
-    var errorKeySym = Symbol("pino.errorKey");
-    var nestedKeySym = Symbol("pino.nestedKey");
-    var nestedKeyStrSym = Symbol("pino.nestedKeyStr");
-    var mixinMergeStrategySym = Symbol("pino.mixinMergeStrategy");
-    var msgPrefixSym = Symbol("pino.msgPrefix");
-    var wildcardFirstSym = Symbol("pino.wildcardFirst");
-    var serializersSym = Symbol.for("pino.serializers");
-    var formattersSym = Symbol.for("pino.formatters");
-    var hooksSym = Symbol.for("pino.hooks");
-    var needsMetadataGsym = Symbol.for("pino.metadata");
+    var setLevelSym = /* @__PURE__ */ Symbol("pino.setLevel");
+    var getLevelSym = /* @__PURE__ */ Symbol("pino.getLevel");
+    var levelValSym = /* @__PURE__ */ Symbol("pino.levelVal");
+    var levelCompSym = /* @__PURE__ */ Symbol("pino.levelComp");
+    var useLevelLabelsSym = /* @__PURE__ */ Symbol("pino.useLevelLabels");
+    var useOnlyCustomLevelsSym = /* @__PURE__ */ Symbol("pino.useOnlyCustomLevels");
+    var mixinSym = /* @__PURE__ */ Symbol("pino.mixin");
+    var lsCacheSym = /* @__PURE__ */ Symbol("pino.lsCache");
+    var chindingsSym = /* @__PURE__ */ Symbol("pino.chindings");
+    var asJsonSym = /* @__PURE__ */ Symbol("pino.asJson");
+    var writeSym = /* @__PURE__ */ Symbol("pino.write");
+    var redactFmtSym = /* @__PURE__ */ Symbol("pino.redactFmt");
+    var timeSym = /* @__PURE__ */ Symbol("pino.time");
+    var timeSliceIndexSym = /* @__PURE__ */ Symbol("pino.timeSliceIndex");
+    var streamSym = /* @__PURE__ */ Symbol("pino.stream");
+    var stringifySym = /* @__PURE__ */ Symbol("pino.stringify");
+    var stringifySafeSym = /* @__PURE__ */ Symbol("pino.stringifySafe");
+    var stringifiersSym = /* @__PURE__ */ Symbol("pino.stringifiers");
+    var endSym = /* @__PURE__ */ Symbol("pino.end");
+    var formatOptsSym = /* @__PURE__ */ Symbol("pino.formatOpts");
+    var messageKeySym = /* @__PURE__ */ Symbol("pino.messageKey");
+    var errorKeySym = /* @__PURE__ */ Symbol("pino.errorKey");
+    var nestedKeySym = /* @__PURE__ */ Symbol("pino.nestedKey");
+    var nestedKeyStrSym = /* @__PURE__ */ Symbol("pino.nestedKeyStr");
+    var mixinMergeStrategySym = /* @__PURE__ */ Symbol("pino.mixinMergeStrategy");
+    var msgPrefixSym = /* @__PURE__ */ Symbol("pino.msgPrefix");
+    var wildcardFirstSym = /* @__PURE__ */ Symbol("pino.wildcardFirst");
+    var serializersSym = /* @__PURE__ */ Symbol.for("pino.serializers");
+    var formattersSym = /* @__PURE__ */ Symbol.for("pino.formatters");
+    var hooksSym = /* @__PURE__ */ Symbol.for("pino.hooks");
+    var needsMetadataGsym = /* @__PURE__ */ Symbol.for("pino.metadata");
     module2.exports = {
       setLevelSym,
       getLevelSym,
@@ -157998,7 +157998,7 @@ var require_thread_stream = __commonJS({
     } = require_indexes2();
     var buffer = require("buffer");
     var assert = require("assert");
-    var kImpl = Symbol("kImpl");
+    var kImpl = /* @__PURE__ */ Symbol("kImpl");
     var MAX_STRING = buffer.constants.MAX_STRING_LENGTH;
     var FakeWeakRef = class {
       constructor(value) {
@@ -159927,7 +159927,7 @@ ${originalIndentation}`;
 var require_multistream = __commonJS({
   "node_modules/pino/lib/multistream.js"(exports2, module2) {
     "use strict";
-    var metadata = Symbol.for("pino.metadata");
+    var metadata = /* @__PURE__ */ Symbol.for("pino.metadata");
     var { DEFAULT_LEVELS } = require_constants5();
     var DEFAULT_INFO_LEVEL = DEFAULT_LEVELS.info;
     function multistream(streamsArray, opts) {
@@ -165140,67 +165140,67 @@ var require_lib12 = __commonJS({
 var require_symbols2 = __commonJS({
   "node_modules/undici/lib/core/symbols.js"(exports2, module2) {
     module2.exports = {
-      kClose: Symbol("close"),
-      kDestroy: Symbol("destroy"),
-      kDispatch: Symbol("dispatch"),
-      kUrl: Symbol("url"),
-      kWriting: Symbol("writing"),
-      kResuming: Symbol("resuming"),
-      kQueue: Symbol("queue"),
-      kConnect: Symbol("connect"),
-      kConnecting: Symbol("connecting"),
-      kHeadersList: Symbol("headers list"),
-      kKeepAliveDefaultTimeout: Symbol("default keep alive timeout"),
-      kKeepAliveMaxTimeout: Symbol("max keep alive timeout"),
-      kKeepAliveTimeoutThreshold: Symbol("keep alive timeout threshold"),
-      kKeepAliveTimeoutValue: Symbol("keep alive timeout"),
-      kKeepAlive: Symbol("keep alive"),
-      kHeadersTimeout: Symbol("headers timeout"),
-      kBodyTimeout: Symbol("body timeout"),
-      kServerName: Symbol("server name"),
-      kLocalAddress: Symbol("local address"),
-      kHost: Symbol("host"),
-      kNoRef: Symbol("no ref"),
-      kBodyUsed: Symbol("used"),
-      kRunning: Symbol("running"),
-      kBlocking: Symbol("blocking"),
-      kPending: Symbol("pending"),
-      kSize: Symbol("size"),
-      kBusy: Symbol("busy"),
-      kQueued: Symbol("queued"),
-      kFree: Symbol("free"),
-      kConnected: Symbol("connected"),
-      kClosed: Symbol("closed"),
-      kNeedDrain: Symbol("need drain"),
-      kReset: Symbol("reset"),
-      kDestroyed: Symbol.for("nodejs.stream.destroyed"),
-      kMaxHeadersSize: Symbol("max headers size"),
-      kRunningIdx: Symbol("running index"),
-      kPendingIdx: Symbol("pending index"),
-      kError: Symbol("error"),
-      kClients: Symbol("clients"),
-      kClient: Symbol("client"),
-      kParser: Symbol("parser"),
-      kOnDestroyed: Symbol("destroy callbacks"),
-      kPipelining: Symbol("pipelining"),
-      kSocket: Symbol("socket"),
-      kHostHeader: Symbol("host header"),
-      kConnector: Symbol("connector"),
-      kStrictContentLength: Symbol("strict content length"),
-      kMaxRedirections: Symbol("maxRedirections"),
-      kMaxRequests: Symbol("maxRequestsPerClient"),
-      kProxy: Symbol("proxy agent options"),
-      kCounter: Symbol("socket request counter"),
-      kInterceptors: Symbol("dispatch interceptors"),
-      kMaxResponseSize: Symbol("max response size"),
-      kHTTP2Session: Symbol("http2Session"),
-      kHTTP2SessionState: Symbol("http2Session state"),
-      kHTTP2BuildRequest: Symbol("http2 build request"),
-      kHTTP1BuildRequest: Symbol("http1 build request"),
-      kHTTP2CopyHeaders: Symbol("http2 copy headers"),
-      kHTTPConnVersion: Symbol("http connection version"),
-      kRetryHandlerDefaultRetry: Symbol("retry agent default retry"),
-      kConstruct: Symbol("constructable")
+      kClose: /* @__PURE__ */ Symbol("close"),
+      kDestroy: /* @__PURE__ */ Symbol("destroy"),
+      kDispatch: /* @__PURE__ */ Symbol("dispatch"),
+      kUrl: /* @__PURE__ */ Symbol("url"),
+      kWriting: /* @__PURE__ */ Symbol("writing"),
+      kResuming: /* @__PURE__ */ Symbol("resuming"),
+      kQueue: /* @__PURE__ */ Symbol("queue"),
+      kConnect: /* @__PURE__ */ Symbol("connect"),
+      kConnecting: /* @__PURE__ */ Symbol("connecting"),
+      kHeadersList: /* @__PURE__ */ Symbol("headers list"),
+      kKeepAliveDefaultTimeout: /* @__PURE__ */ Symbol("default keep alive timeout"),
+      kKeepAliveMaxTimeout: /* @__PURE__ */ Symbol("max keep alive timeout"),
+      kKeepAliveTimeoutThreshold: /* @__PURE__ */ Symbol("keep alive timeout threshold"),
+      kKeepAliveTimeoutValue: /* @__PURE__ */ Symbol("keep alive timeout"),
+      kKeepAlive: /* @__PURE__ */ Symbol("keep alive"),
+      kHeadersTimeout: /* @__PURE__ */ Symbol("headers timeout"),
+      kBodyTimeout: /* @__PURE__ */ Symbol("body timeout"),
+      kServerName: /* @__PURE__ */ Symbol("server name"),
+      kLocalAddress: /* @__PURE__ */ Symbol("local address"),
+      kHost: /* @__PURE__ */ Symbol("host"),
+      kNoRef: /* @__PURE__ */ Symbol("no ref"),
+      kBodyUsed: /* @__PURE__ */ Symbol("used"),
+      kRunning: /* @__PURE__ */ Symbol("running"),
+      kBlocking: /* @__PURE__ */ Symbol("blocking"),
+      kPending: /* @__PURE__ */ Symbol("pending"),
+      kSize: /* @__PURE__ */ Symbol("size"),
+      kBusy: /* @__PURE__ */ Symbol("busy"),
+      kQueued: /* @__PURE__ */ Symbol("queued"),
+      kFree: /* @__PURE__ */ Symbol("free"),
+      kConnected: /* @__PURE__ */ Symbol("connected"),
+      kClosed: /* @__PURE__ */ Symbol("closed"),
+      kNeedDrain: /* @__PURE__ */ Symbol("need drain"),
+      kReset: /* @__PURE__ */ Symbol("reset"),
+      kDestroyed: /* @__PURE__ */ Symbol.for("nodejs.stream.destroyed"),
+      kMaxHeadersSize: /* @__PURE__ */ Symbol("max headers size"),
+      kRunningIdx: /* @__PURE__ */ Symbol("running index"),
+      kPendingIdx: /* @__PURE__ */ Symbol("pending index"),
+      kError: /* @__PURE__ */ Symbol("error"),
+      kClients: /* @__PURE__ */ Symbol("clients"),
+      kClient: /* @__PURE__ */ Symbol("client"),
+      kParser: /* @__PURE__ */ Symbol("parser"),
+      kOnDestroyed: /* @__PURE__ */ Symbol("destroy callbacks"),
+      kPipelining: /* @__PURE__ */ Symbol("pipelining"),
+      kSocket: /* @__PURE__ */ Symbol("socket"),
+      kHostHeader: /* @__PURE__ */ Symbol("host header"),
+      kConnector: /* @__PURE__ */ Symbol("connector"),
+      kStrictContentLength: /* @__PURE__ */ Symbol("strict content length"),
+      kMaxRedirections: /* @__PURE__ */ Symbol("maxRedirections"),
+      kMaxRequests: /* @__PURE__ */ Symbol("maxRequestsPerClient"),
+      kProxy: /* @__PURE__ */ Symbol("proxy agent options"),
+      kCounter: /* @__PURE__ */ Symbol("socket request counter"),
+      kInterceptors: /* @__PURE__ */ Symbol("dispatch interceptors"),
+      kMaxResponseSize: /* @__PURE__ */ Symbol("max response size"),
+      kHTTP2Session: /* @__PURE__ */ Symbol("http2Session"),
+      kHTTP2SessionState: /* @__PURE__ */ Symbol("http2Session state"),
+      kHTTP2BuildRequest: /* @__PURE__ */ Symbol("http2 build request"),
+      kHTTP1BuildRequest: /* @__PURE__ */ Symbol("http1 build request"),
+      kHTTP2CopyHeaders: /* @__PURE__ */ Symbol("http2 copy headers"),
+      kHTTPConnVersion: /* @__PURE__ */ Symbol("http connection version"),
+      kRetryHandlerDefaultRetry: /* @__PURE__ */ Symbol("retry agent default retry"),
+      kConstruct: /* @__PURE__ */ Symbol("constructable")
     };
   }
 });
@@ -168195,7 +168195,7 @@ var require_constants8 = __commonJS({
 var require_global = __commonJS({
   "node_modules/undici/lib/fetch/global.js"(exports2, module2) {
     "use strict";
-    var globalOrigin = Symbol.for("undici.globalOrigin.1");
+    var globalOrigin = /* @__PURE__ */ Symbol.for("undici.globalOrigin.1");
     function getGlobalOrigin() {
       return globalThis[globalOrigin];
     }
@@ -168847,12 +168847,12 @@ var require_symbols3 = __commonJS({
   "node_modules/undici/lib/fetch/symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kUrl: Symbol("url"),
-      kHeaders: Symbol("headers"),
-      kSignal: Symbol("signal"),
-      kState: Symbol("state"),
-      kGuard: Symbol("guard"),
-      kRealm: Symbol("realm")
+      kUrl: /* @__PURE__ */ Symbol("url"),
+      kHeaders: /* @__PURE__ */ Symbol("headers"),
+      kSignal: /* @__PURE__ */ Symbol("signal"),
+      kState: /* @__PURE__ */ Symbol("state"),
+      kGuard: /* @__PURE__ */ Symbol("guard"),
+      kRealm: /* @__PURE__ */ Symbol("realm")
     };
   }
 });
@@ -170245,7 +170245,7 @@ var require_request3 = __commonJS({
     var tokenRegExp = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
     var headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
     var invalidPathRegex = /[^\u0021-\u00ff]/;
-    var kHandler = Symbol("handler");
+    var kHandler = /* @__PURE__ */ Symbol("handler");
     var channels = {};
     var extractBody;
     try {
@@ -170632,11 +170632,11 @@ var require_dispatcher_base = __commonJS({
       InvalidArgumentError
     } = require_errors5();
     var { kDestroy, kClose, kDispatch, kInterceptors } = require_symbols2();
-    var kDestroyed = Symbol("destroyed");
-    var kClosed = Symbol("closed");
-    var kOnDestroyed = Symbol("onDestroyed");
-    var kOnClosed = Symbol("onClosed");
-    var kInterceptedDispatch = Symbol("Intercepted Dispatch");
+    var kDestroyed = /* @__PURE__ */ Symbol("destroyed");
+    var kClosed = /* @__PURE__ */ Symbol("closed");
+    var kOnDestroyed = /* @__PURE__ */ Symbol("onDestroyed");
+    var kOnClosed = /* @__PURE__ */ Symbol("onClosed");
+    var kInterceptedDispatch = /* @__PURE__ */ Symbol("Intercepted Dispatch");
     var DispatcherBase = class extends Dispatcher {
       constructor() {
         super();
@@ -171291,7 +171291,7 @@ var require_RedirectHandler = __commonJS({
     var { InvalidArgumentError } = require_errors5();
     var EE = require("events");
     var redirectableStatusCodes = [300, 301, 302, 303, 307, 308];
-    var kBody = Symbol("body");
+    var kBody = /* @__PURE__ */ Symbol("body");
     var BodyAsyncIterable = class {
       constructor(body) {
         this[kBody] = body;
@@ -171565,7 +171565,7 @@ var require_client2 = __commonJS({
     } = http2;
     var h2ExperimentalWarned = false;
     var FastBuffer = Buffer[Symbol.species];
-    var kClosedResolve = Symbol("kClosedResolve");
+    var kClosedResolve = /* @__PURE__ */ Symbol("kClosedResolve");
     var channels = {};
     try {
       const diagnosticsChannel = require("diagnostics_channel");
@@ -173235,7 +173235,7 @@ var require_fixed_queue = __commonJS({
 var require_pool_stats = __commonJS({
   "node_modules/undici/lib/pool-stats.js"(exports2, module2) {
     var { kFree, kConnected, kPending, kQueued, kRunning, kSize } = require_symbols2();
-    var kPool = Symbol("pool");
+    var kPool = /* @__PURE__ */ Symbol("pool");
     var PoolStats = class {
       constructor(pool) {
         this[kPool] = pool;
@@ -173271,18 +173271,18 @@ var require_pool_base = __commonJS({
     var FixedQueue = require_fixed_queue();
     var { kConnected, kSize, kRunning, kPending, kQueued, kBusy, kFree, kUrl, kClose, kDestroy, kDispatch } = require_symbols2();
     var PoolStats = require_pool_stats();
-    var kClients = Symbol("clients");
-    var kNeedDrain = Symbol("needDrain");
-    var kQueue = Symbol("queue");
-    var kClosedResolve = Symbol("closed resolve");
-    var kOnDrain = Symbol("onDrain");
-    var kOnConnect = Symbol("onConnect");
-    var kOnDisconnect = Symbol("onDisconnect");
-    var kOnConnectionError = Symbol("onConnectionError");
-    var kGetDispatcher = Symbol("get dispatcher");
-    var kAddClient = Symbol("add client");
-    var kRemoveClient = Symbol("remove client");
-    var kStats = Symbol("stats");
+    var kClients = /* @__PURE__ */ Symbol("clients");
+    var kNeedDrain = /* @__PURE__ */ Symbol("needDrain");
+    var kQueue = /* @__PURE__ */ Symbol("queue");
+    var kClosedResolve = /* @__PURE__ */ Symbol("closed resolve");
+    var kOnDrain = /* @__PURE__ */ Symbol("onDrain");
+    var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
+    var kOnDisconnect = /* @__PURE__ */ Symbol("onDisconnect");
+    var kOnConnectionError = /* @__PURE__ */ Symbol("onConnectionError");
+    var kGetDispatcher = /* @__PURE__ */ Symbol("get dispatcher");
+    var kAddClient = /* @__PURE__ */ Symbol("add client");
+    var kRemoveClient = /* @__PURE__ */ Symbol("remove client");
+    var kStats = /* @__PURE__ */ Symbol("stats");
     var PoolBase = class extends DispatcherBase {
       constructor() {
         super();
@@ -173436,9 +173436,9 @@ var require_pool2 = __commonJS({
     var util = require_util2();
     var { kUrl, kInterceptors } = require_symbols2();
     var buildConnector = require_connect2();
-    var kOptions = Symbol("options");
-    var kConnections = Symbol("connections");
-    var kFactory = Symbol("factory");
+    var kOptions = /* @__PURE__ */ Symbol("options");
+    var kConnections = /* @__PURE__ */ Symbol("connections");
+    var kFactory = /* @__PURE__ */ Symbol("factory");
     function defaultFactory(origin, opts) {
       return new Client(origin, opts);
     }
@@ -173527,14 +173527,14 @@ var require_balanced_pool = __commonJS({
     var Pool = require_pool2();
     var { kUrl, kInterceptors } = require_symbols2();
     var { parseOrigin } = require_util2();
-    var kFactory = Symbol("factory");
-    var kOptions = Symbol("options");
-    var kGreatestCommonDivisor = Symbol("kGreatestCommonDivisor");
-    var kCurrentWeight = Symbol("kCurrentWeight");
-    var kIndex = Symbol("kIndex");
-    var kWeight = Symbol("kWeight");
-    var kMaxWeightPerServer = Symbol("kMaxWeightPerServer");
-    var kErrorPenalty = Symbol("kErrorPenalty");
+    var kFactory = /* @__PURE__ */ Symbol("factory");
+    var kOptions = /* @__PURE__ */ Symbol("options");
+    var kGreatestCommonDivisor = /* @__PURE__ */ Symbol("kGreatestCommonDivisor");
+    var kCurrentWeight = /* @__PURE__ */ Symbol("kCurrentWeight");
+    var kIndex = /* @__PURE__ */ Symbol("kIndex");
+    var kWeight = /* @__PURE__ */ Symbol("kWeight");
+    var kMaxWeightPerServer = /* @__PURE__ */ Symbol("kMaxWeightPerServer");
+    var kErrorPenalty = /* @__PURE__ */ Symbol("kErrorPenalty");
     function getGreatestCommonDivisor(a, b) {
       if (b === 0) return a;
       return getGreatestCommonDivisor(b, a % b);
@@ -173697,14 +173697,14 @@ var require_agent = __commonJS({
     var util = require_util2();
     var createRedirectInterceptor = require_redirectInterceptor();
     var { WeakRef: WeakRef2, FinalizationRegistry: FinalizationRegistry2 } = require_dispatcher_weakref()();
-    var kOnConnect = Symbol("onConnect");
-    var kOnDisconnect = Symbol("onDisconnect");
-    var kOnConnectionError = Symbol("onConnectionError");
-    var kMaxRedirections = Symbol("maxRedirections");
-    var kOnDrain = Symbol("onDrain");
-    var kFactory = Symbol("factory");
-    var kFinalizer = Symbol("finalizer");
-    var kOptions = Symbol("options");
+    var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
+    var kOnDisconnect = /* @__PURE__ */ Symbol("onDisconnect");
+    var kOnConnectionError = /* @__PURE__ */ Symbol("onConnectionError");
+    var kMaxRedirections = /* @__PURE__ */ Symbol("maxRedirections");
+    var kOnDrain = /* @__PURE__ */ Symbol("onDrain");
+    var kFactory = /* @__PURE__ */ Symbol("factory");
+    var kFinalizer = /* @__PURE__ */ Symbol("finalizer");
+    var kOptions = /* @__PURE__ */ Symbol("options");
     function defaultFactory(origin, opts) {
       return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool(origin, opts);
     }
@@ -173813,11 +173813,11 @@ var require_readable = __commonJS({
     var util = require_util2();
     var { ReadableStreamFrom, toUSVString } = require_util2();
     var Blob2;
-    var kConsume = Symbol("kConsume");
-    var kReading = Symbol("kReading");
-    var kBody = Symbol("kBody");
-    var kAbort = Symbol("abort");
-    var kContentType = Symbol("kContentType");
+    var kConsume = /* @__PURE__ */ Symbol("kConsume");
+    var kReading = /* @__PURE__ */ Symbol("kReading");
+    var kBody = /* @__PURE__ */ Symbol("kBody");
+    var kAbort = /* @__PURE__ */ Symbol("abort");
+    var kContentType = /* @__PURE__ */ Symbol("kContentType");
     var noop = () => {
     };
     module2.exports = class BodyReadable extends Readable3 {
@@ -174103,8 +174103,8 @@ var require_abort_signal = __commonJS({
   "node_modules/undici/lib/api/abort-signal.js"(exports2, module2) {
     var { addAbortListener } = require_util2();
     var { RequestAbortedError } = require_errors5();
-    var kListener = Symbol("kListener");
-    var kSignal = Symbol("kSignal");
+    var kListener = /* @__PURE__ */ Symbol("kListener");
+    var kSignal = /* @__PURE__ */ Symbol("kSignal");
     function abort(self2) {
       if (self2.abort) {
         self2.abort();
@@ -174493,7 +174493,7 @@ var require_api_pipeline = __commonJS({
     var { AsyncResource } = require("async_hooks");
     var { addSignal, removeSignal } = require_abort_signal();
     var assert = require("assert");
-    var kResume = Symbol("resume");
+    var kResume = /* @__PURE__ */ Symbol("resume");
     var PipelineRequest = class extends Readable3 {
       constructor() {
         super({ autoDestroy: true });
@@ -174887,25 +174887,25 @@ var require_mock_symbols = __commonJS({
   "node_modules/undici/lib/mock/mock-symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kAgent: Symbol("agent"),
-      kOptions: Symbol("options"),
-      kFactory: Symbol("factory"),
-      kDispatches: Symbol("dispatches"),
-      kDispatchKey: Symbol("dispatch key"),
-      kDefaultHeaders: Symbol("default headers"),
-      kDefaultTrailers: Symbol("default trailers"),
-      kContentLength: Symbol("content length"),
-      kMockAgent: Symbol("mock agent"),
-      kMockAgentSet: Symbol("mock agent set"),
-      kMockAgentGet: Symbol("mock agent get"),
-      kMockDispatch: Symbol("mock dispatch"),
-      kClose: Symbol("close"),
-      kOriginalClose: Symbol("original agent close"),
-      kOrigin: Symbol("origin"),
-      kIsMockActive: Symbol("is mock active"),
-      kNetConnect: Symbol("net connect"),
-      kGetNetConnect: Symbol("get net connect"),
-      kConnected: Symbol("connected")
+      kAgent: /* @__PURE__ */ Symbol("agent"),
+      kOptions: /* @__PURE__ */ Symbol("options"),
+      kFactory: /* @__PURE__ */ Symbol("factory"),
+      kDispatches: /* @__PURE__ */ Symbol("dispatches"),
+      kDispatchKey: /* @__PURE__ */ Symbol("dispatch key"),
+      kDefaultHeaders: /* @__PURE__ */ Symbol("default headers"),
+      kDefaultTrailers: /* @__PURE__ */ Symbol("default trailers"),
+      kContentLength: /* @__PURE__ */ Symbol("content length"),
+      kMockAgent: /* @__PURE__ */ Symbol("mock agent"),
+      kMockAgentSet: /* @__PURE__ */ Symbol("mock agent set"),
+      kMockAgentGet: /* @__PURE__ */ Symbol("mock agent get"),
+      kMockDispatch: /* @__PURE__ */ Symbol("mock dispatch"),
+      kClose: /* @__PURE__ */ Symbol("close"),
+      kOriginalClose: /* @__PURE__ */ Symbol("original agent close"),
+      kOrigin: /* @__PURE__ */ Symbol("origin"),
+      kIsMockActive: /* @__PURE__ */ Symbol("is mock active"),
+      kNetConnect: /* @__PURE__ */ Symbol("net connect"),
+      kGetNetConnect: /* @__PURE__ */ Symbol("get net connect"),
+      kConnected: /* @__PURE__ */ Symbol("connected")
     };
   }
 });
@@ -175677,12 +175677,12 @@ var require_proxy_agent = __commonJS({
     var DispatcherBase = require_dispatcher_base();
     var { InvalidArgumentError, RequestAbortedError } = require_errors5();
     var buildConnector = require_connect2();
-    var kAgent = Symbol("proxy agent");
-    var kClient = Symbol("proxy client");
-    var kProxyHeaders = Symbol("proxy headers");
-    var kRequestTls = Symbol("request tls settings");
-    var kProxyTls = Symbol("proxy tls settings");
-    var kConnectEndpoint = Symbol("connect endpoint function");
+    var kAgent = /* @__PURE__ */ Symbol("proxy agent");
+    var kClient = /* @__PURE__ */ Symbol("proxy client");
+    var kProxyHeaders = /* @__PURE__ */ Symbol("proxy headers");
+    var kRequestTls = /* @__PURE__ */ Symbol("request tls settings");
+    var kProxyTls = /* @__PURE__ */ Symbol("proxy tls settings");
+    var kConnectEndpoint = /* @__PURE__ */ Symbol("connect endpoint function");
     function defaultProtocolPort(protocol) {
       return protocol === "https:" ? 443 : 80;
     }
@@ -176089,7 +176089,7 @@ var require_RetryHandler = __commonJS({
 var require_global2 = __commonJS({
   "node_modules/undici/lib/global.js"(exports2, module2) {
     "use strict";
-    var globalDispatcher = Symbol.for("undici.globalDispatcher.1");
+    var globalDispatcher = /* @__PURE__ */ Symbol.for("undici.globalDispatcher.1");
     var { InvalidArgumentError } = require_errors5();
     var Agent = require_agent();
     if (getGlobalDispatcher() === void 0) {
@@ -176164,8 +176164,8 @@ var require_headers = __commonJS({
     var util = require("util");
     var { webidl } = require_webidl();
     var assert = require("assert");
-    var kHeadersMap = Symbol("headers map");
-    var kHeadersSortedMap = Symbol("headers map sorted");
+    var kHeadersMap = /* @__PURE__ */ Symbol("headers map");
+    var kHeadersSortedMap = /* @__PURE__ */ Symbol("headers map sorted");
     function isHTTPWhiteSpaceCharCode(code) {
       return code === 10 || code === 13 || code === 9 || code === 32;
     }
@@ -176492,7 +176492,7 @@ var require_headers = __commonJS({
           callbackFn.apply(thisArg, [value, key, this]);
         }
       }
-      [Symbol.for("nodejs.util.inspect.custom")]() {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")]() {
         webidl.brandCheck(this, _Headers);
         return this[kHeadersList];
       }
@@ -176952,7 +176952,7 @@ var require_request4 = __commonJS({
     var assert = require("assert");
     var { getMaxListeners, setMaxListeners, getEventListeners, defaultMaxListeners } = require("events");
     var TransformStream2 = globalThis.TransformStream;
-    var kAbortController = Symbol("abortController");
+    var kAbortController = /* @__PURE__ */ Symbol("abortController");
     var requestFinalizer = new FinalizationRegistry2(({ signal, abort }) => {
       signal.removeEventListener("abort", abort);
     });
@@ -178598,12 +178598,12 @@ var require_symbols4 = __commonJS({
   "node_modules/undici/lib/fileapi/symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kState: Symbol("FileReader state"),
-      kResult: Symbol("FileReader result"),
-      kError: Symbol("FileReader error"),
-      kLastProgressEventFired: Symbol("FileReader last progress event fired timestamp"),
-      kEvents: Symbol("FileReader events"),
-      kAborted: Symbol("FileReader aborted")
+      kState: /* @__PURE__ */ Symbol("FileReader state"),
+      kResult: /* @__PURE__ */ Symbol("FileReader result"),
+      kError: /* @__PURE__ */ Symbol("FileReader error"),
+      kLastProgressEventFired: /* @__PURE__ */ Symbol("FileReader last progress event fired timestamp"),
+      kEvents: /* @__PURE__ */ Symbol("FileReader events"),
+      kAborted: /* @__PURE__ */ Symbol("FileReader aborted")
     };
   }
 });
@@ -178613,7 +178613,7 @@ var require_progressevent = __commonJS({
   "node_modules/undici/lib/fileapi/progressevent.js"(exports2, module2) {
     "use strict";
     var { webidl } = require_webidl();
-    var kState = Symbol("ProgressEvent state");
+    var kState = /* @__PURE__ */ Symbol("ProgressEvent state");
     var ProgressEvent = class _ProgressEvent extends Event {
       constructor(type, eventInitDict = {}) {
         type = webidl.converters.DOMString(type);
@@ -180563,14 +180563,14 @@ var require_symbols6 = __commonJS({
   "node_modules/undici/lib/websocket/symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kWebSocketURL: Symbol("url"),
-      kReadyState: Symbol("ready state"),
-      kController: Symbol("controller"),
-      kResponse: Symbol("response"),
-      kBinaryType: Symbol("binary type"),
-      kSentClose: Symbol("sent close"),
-      kReceivedClose: Symbol("received close"),
-      kByteParser: Symbol("byte parser")
+      kWebSocketURL: /* @__PURE__ */ Symbol("url"),
+      kReadyState: /* @__PURE__ */ Symbol("ready state"),
+      kController: /* @__PURE__ */ Symbol("controller"),
+      kResponse: /* @__PURE__ */ Symbol("response"),
+      kBinaryType: /* @__PURE__ */ Symbol("binary type"),
+      kSentClose: /* @__PURE__ */ Symbol("sent close"),
+      kReceivedClose: /* @__PURE__ */ Symbol("received close"),
+      kByteParser: /* @__PURE__ */ Symbol("byte parser")
     };
   }
 });
@@ -287711,7 +287711,7 @@ var PQueue = class extends import_index.default {
       id: options.id ?? (this.#idAssigner++).toString()
     };
     return new Promise((resolve, reject) => {
-      const taskSymbol = Symbol(`task-${options.id}`);
+      const taskSymbol = /* @__PURE__ */ Symbol(`task-${options.id}`);
       let cleanupQueueAbortHandler = () => void 0;
       const run = async () => {
         cleanupQueueAbortHandler();
@@ -299945,7 +299945,7 @@ app.get("/api/media/:mediaId", async (req, res) => {
 });
 app.get("/api/products", async (req, res) => {
   try {
-    const products = await db.collection("products").find({}).project({ image: 1, id: 1, name: 1, category: 1, price: 1, description: 1, stock: 1, colorVariants: 1, storageVariants: 1, specifications: 1 }).toArray();
+    const products = await db.collection("products").find({}).project({ image: 1, id: 1, name: 1, category: 1, price: 1, description: 1, stock: 1, colorVariants: 1, storageVariants: 1, specifications: 1, reviews: 1, isFeatured: 1 }).toArray();
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     res.json(products.map((p) => sanitizeProductForCatalog(p)));
   } catch (error) {
