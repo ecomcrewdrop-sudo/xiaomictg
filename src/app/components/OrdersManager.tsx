@@ -488,6 +488,7 @@ export function OrdersManager() {
                     </div>
                   )}
                 </div>
+              </div>
               )}
 
               {/* Productos de la orden */}
