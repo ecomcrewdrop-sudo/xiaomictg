@@ -299377,9 +299377,11 @@ function processWhatsAppTemplate(template, order) {
   \u2022 Domicilio \u2014 $${deliveryFee.toLocaleString("es-CO")} COP`;
   if (cardFee > 0) extrasStr += `
   \u2022 Recargo Tarjeta (5%) \u2014 $${cardFee.toLocaleString("es-CO")} COP`;
-  if (addiSurcharge > 0) extrasStr += `
-  \u2022 Recargo Addi (25%) \u2014 $${addiSurcharge.toLocaleString("es-CO")} COP`;
-  const productsList = items.map((item) => `  \u2022 ${item.product?.name || "Producto"} x${item.quantity || 1} \u2014 $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString("es-CO")} COP`).join("\n") + extrasStr;
+  const productsList = items.map((item) => {
+    const baseTotal = (item.product?.price || 0) * (item.quantity || 1);
+    const itemAddi = isAddi ? Math.round(baseTotal * 0.25) : 0;
+    return `  \u2022 ${item.product?.name || "Producto"} x${item.quantity || 1} \u2014 $${(baseTotal + itemAddi).toLocaleString("es-CO")} COP`;
+  }).join("\n") + extrasStr;
   const vars = {
     "{{nombre}}": order.customerInfo?.name || "Cliente",
     "{{ordenNumero}}": order.orderNumber || "",

@@ -572,10 +572,13 @@ function processWhatsAppTemplate(template: string, order: any): string {
   let extrasStr = '';
   if (deliveryFee > 0) extrasStr += `\n  • Domicilio — $${deliveryFee.toLocaleString('es-CO')} COP`;
   if (cardFee > 0) extrasStr += `\n  • Recargo Tarjeta (5%) — $${cardFee.toLocaleString('es-CO')} COP`;
-  if (addiSurcharge > 0) extrasStr += `\n  • Recargo Addi (25%) — $${addiSurcharge.toLocaleString('es-CO')} COP`;
 
   const productsList = items
-    .map((item: any) => `  • ${item.product?.name || 'Producto'} x${item.quantity || 1} — $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP`)
+    .map((item: any) => {
+      const baseTotal = (item.product?.price || 0) * (item.quantity || 1);
+      const itemAddi = isAddi ? Math.round(baseTotal * 0.25) : 0;
+      return `  • ${item.product?.name || 'Producto'} x${item.quantity || 1} — $${(baseTotal + itemAddi).toLocaleString('es-CO')} COP`;
+    })
     .join('\n') + extrasStr;
 
   const vars: Record<string, string> = {

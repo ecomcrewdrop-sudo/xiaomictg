@@ -260,10 +260,9 @@ Cédula: ${customerIdNumber}
 Teléfono: ${phone}
 Dirección: ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
 
-*💳 Desglose de pago con Addi a Cuotas:*
-Subtotal: $${totalCOP.toLocaleString()}
+*💳 Pago con Addi a Cuotas:*
+Subtotal: $${(totalCOP + addiSurcharge).toLocaleString()}
 Envío: $${deliveryFee.toLocaleString()}
-Recargo Addi (25%): $${addiSurcharge.toLocaleString()}
 *Total a Pagar:* *$${grandTotal.toLocaleString()}*
 
 Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame el link de pago.`;
