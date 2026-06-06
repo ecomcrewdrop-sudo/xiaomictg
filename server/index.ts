@@ -556,10 +556,6 @@ _Xiaomi Cartagena_`;
 
 function processWhatsAppTemplate(template: string, order: any): string {
   const items: any[] = order.items || [];
-  const productsList = items
-    .map((item: any) => `  • ${item.product?.name || 'Producto'} x${item.quantity || 1} — $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP`)
-    .join('\n');
-
   const isDelivery = order.customerInfo?.deliveryMethod === 'delivery';
   const deliveryLabel = isDelivery ? 'Domicilio 🛵' : 'Retiro en tienda 🏪';
   const addressLine = isDelivery && order.customerInfo?.address
@@ -567,9 +563,20 @@ function processWhatsAppTemplate(template: string, order: any): string {
     : '';
 
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
+  const isAddi = order.paymentMethod?.toLowerCase().includes('addi');
+  const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.25) : 0;
   const isCard = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
   const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
-  const grandTotal = (order.total || 0) + cardFee + deliveryFee;
+  const grandTotal = (order.total || 0) + cardFee + addiSurcharge + deliveryFee;
+
+  let extrasStr = '';
+  if (deliveryFee > 0) extrasStr += `\n  • Domicilio — $${deliveryFee.toLocaleString('es-CO')} COP`;
+  if (cardFee > 0) extrasStr += `\n  • Recargo Tarjeta (5%) — $${cardFee.toLocaleString('es-CO')} COP`;
+  if (addiSurcharge > 0) extrasStr += `\n  • Recargo Addi (25%) — $${addiSurcharge.toLocaleString('es-CO')} COP`;
+
+  const productsList = items
+    .map((item: any) => `  • ${item.product?.name || 'Producto'} x${item.quantity || 1} — $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP`)
+    .join('\n') + extrasStr;
 
   const vars: Record<string, string> = {
     '{{nombre}}': order.customerInfo?.name || 'Cliente',

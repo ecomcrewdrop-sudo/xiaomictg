@@ -299362,15 +299362,24 @@ var DEFAULT_OWNER_TEMPLATE = `\u{1F514} *NUEVA VENTA* \u{1F3AF} \u2014 Xiaomi Ca
 _Xiaomi Cartagena_`;
 function processWhatsAppTemplate(template, order) {
   const items = order.items || [];
-  const productsList = items.map((item) => `  \u2022 ${item.product?.name || "Producto"} x${item.quantity || 1} \u2014 $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString("es-CO")} COP`).join("\n");
   const isDelivery = order.customerInfo?.deliveryMethod === "delivery";
   const deliveryLabel = isDelivery ? "Domicilio \u{1F6F5}" : "Retiro en tienda \u{1F3EA}";
   const addressLine = isDelivery && order.customerInfo?.address ? `\u{1F4CD} *Direcci\xF3n:* ${order.customerInfo.address}
 ` : "";
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
+  const isAddi = order.paymentMethod?.toLowerCase().includes("addi");
+  const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.25) : 0;
   const isCard = order.paymentMethod?.toLowerCase().includes("tarjeta") || order.paymentMethod?.toLowerCase().includes("bold");
   const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
-  const grandTotal = (order.total || 0) + cardFee + deliveryFee;
+  const grandTotal = (order.total || 0) + cardFee + addiSurcharge + deliveryFee;
+  let extrasStr = "";
+  if (deliveryFee > 0) extrasStr += `
+  \u2022 Domicilio \u2014 $${deliveryFee.toLocaleString("es-CO")} COP`;
+  if (cardFee > 0) extrasStr += `
+  \u2022 Recargo Tarjeta (5%) \u2014 $${cardFee.toLocaleString("es-CO")} COP`;
+  if (addiSurcharge > 0) extrasStr += `
+  \u2022 Recargo Addi (25%) \u2014 $${addiSurcharge.toLocaleString("es-CO")} COP`;
+  const productsList = items.map((item) => `  \u2022 ${item.product?.name || "Producto"} x${item.quantity || 1} \u2014 $${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString("es-CO")} COP`).join("\n") + extrasStr;
   const vars = {
     "{{nombre}}": order.customerInfo?.name || "Cliente",
     "{{ordenNumero}}": order.orderNumber || "",

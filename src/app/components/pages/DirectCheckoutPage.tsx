@@ -222,7 +222,15 @@ export function DirectCheckoutPage() {
       const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
 
       if (ticketConfig.addiMode === 'whatsapp') {
-        const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}* por *$${grandTotal.toLocaleString()}*. Seleccioné *Addi* como método de pago. Por favor envíame el link de pago.`;
+        const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
+        
+*💳 Desglose de pago con Addi a Cuotas:*
+Subtotal: $${(unitPrice * quantity).toLocaleString()}
+Envío: $${deliveryFee.toLocaleString()}
+Recargo Addi (25%): $${addiSurcharge.toLocaleString()}
+*Total a Pagar:* *$${grandTotal.toLocaleString()}*
+
+Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame el link de pago.`;
         window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
         return;
       }

@@ -89,7 +89,7 @@ export function OrdersManager() {
 
   const totalRevenue = orders
     .filter(order => order.status === 'completed')
-    .reduce((sum, order) => sum + order.total, 0);
+    .reduce((sum, order) => sum + calculateOrderTotals(order).finalTotal, 0);
   
   const totalRevenueCOP = totalRevenue;
 
@@ -276,11 +276,13 @@ export function OrdersManager() {
   // Calcular los totales para el ticket
   const calculateOrderTotals = (order: Order) => {
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
-    const hasCardFee = order.paymentMethod.toLowerCase().includes('tarjeta') || order.paymentMethod.toLowerCase().includes('bold');
+    const hasCardFee = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
+    const isAddi = order.paymentMethod?.toLowerCase().includes('addi');
     const totalItems = order.total;
     const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
-    const finalTotal = totalItems + cardFee + deliveryFee;
-    return { finalTotal, cardFee, totalCOP: totalItems, finalTotalCOP: finalTotal };
+    const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
+    const finalTotal = totalItems + cardFee + addiFee + deliveryFee;
+    return { finalTotal, cardFee, addiFee, totalCOP: totalItems, finalTotalCOP: finalTotal };
   };
 
   return (
@@ -429,7 +431,7 @@ export function OrdersManager() {
                 <div className="text-right">
                   <p className="text-sm text-gray-600 mb-1">Total</p>
                   <p className="text-2xl font-bold text-orange-500">
-                    ${order.total.toLocaleString('es-CO')} COP
+                    ${calculateOrderTotals(order).finalTotal.toLocaleString('es-CO')} COP
                   </p>
                 </div>
               </div>
@@ -900,20 +902,23 @@ function ThermalTicketPreview({ order }: { order: Order }) {
   // Mismo cálculo que en OrdersManager para consistencia
   const EXCHANGE_RATE = 1;
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
-  const hasCardFee = order.paymentMethod.toLowerCase().includes('tarjeta') || order.paymentMethod.toLowerCase().includes('bold');
+  const hasCardFee = order.paymentMethod?.toLowerCase().includes('tarjeta') || order.paymentMethod?.toLowerCase().includes('bold');
+  const isAddi = order.paymentMethod?.toLowerCase().includes('addi');
   
   const totalItems = order.total;
   const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
+  const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
   
   const totalCOP = totalItems * EXCHANGE_RATE;
-  const finalTotalCOP = (totalItems + cardFee + deliveryFee) * EXCHANGE_RATE;
+  const finalTotalCOP = (totalItems + cardFee + addiFee + deliveryFee) * EXCHANGE_RATE;
 
   return (
     <div className="flex justify-center scale-90 sm:scale-100 origin-top">
       <ThermalTicket 
         order={order}
-        finalTotal={totalItems + cardFee + deliveryFee}
+        finalTotal={totalItems + cardFee + addiFee + deliveryFee}
         cardFee={cardFee}
+        addiFee={addiFee}
         totalCOP={totalCOP}
         finalTotalCOP={finalTotalCOP}
         ticketId="preview-thermal-ticket"

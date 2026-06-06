@@ -5,6 +5,7 @@ interface ThermalTicketProps {
   order: Order;
   finalTotal: number;
   cardFee: number;
+  addiFee?: number;
   totalCOP: number;
   finalTotalCOP: number;
   ticketId?: string;
@@ -25,7 +26,7 @@ const defaultConfig: TicketConfig = {
   schedule: 'Lun - Vie: 9:00 AM - 7:00 PM | Dom: 10:30 AM - 3:00 PM'
 };
 
-export function ThermalTicket({ order, finalTotal, cardFee, totalCOP, finalTotalCOP, ticketId = 'thermal-ticket', config, preview = false }: ThermalTicketProps) {
+export function ThermalTicket({ order, finalTotal, cardFee, addiFee = 0, totalCOP, finalTotalCOP, ticketId = 'thermal-ticket', config, preview = false }: ThermalTicketProps) {
   const [ticketConfig, setTicketConfig] = useState<TicketConfig>(config || defaultConfig);
   const orderDate = new Date(order.createdAt);
   
@@ -188,6 +189,12 @@ export function ThermalTicket({ order, finalTotal, cardFee, totalCOP, finalTotal
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
             <span>Recargo Tarjeta (5%):</span>
             <span>${(cardFee * exchangeRate).toLocaleString('es-CO')}</span>
+          </div>
+        )}
+        {addiFee > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span>Recargo Addi (25%):</span>
+            <span>${(addiFee * exchangeRate).toLocaleString('es-CO')}</span>
           </div>
         )}
         
