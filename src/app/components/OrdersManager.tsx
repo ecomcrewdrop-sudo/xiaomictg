@@ -103,9 +103,9 @@ export function OrdersManager() {
 
   const handleEditTicket = (order: Order) => {
     setSelectedOrder(order);
-    setEditingItems([...order.items]);
-    setEditingCustomer({ ...order.customerInfo });
-    setEditingTotal(order.total);
+    setEditingItems([...(order.items || [])]);
+    setEditingCustomer({ ...(order.customerInfo || {}) });
+    setEditingTotal(order.total || 0);
     setShowEditDialog(true);
   };
 
@@ -437,7 +437,8 @@ export function OrdersManager() {
               </div>
 
               {/* Información del cliente */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              {order.customerInfo && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Información del Cliente</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                   <div>
@@ -487,13 +488,13 @@ export function OrdersManager() {
                     </div>
                   )}
                 </div>
-              </div>
+              )}
 
               {/* Productos de la orden */}
               <div className="mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">Productos</h4>
                 <div className="space-y-2">
-                  {order.items.map((item, index) => (
+                  {(order.items || []).map((item, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
