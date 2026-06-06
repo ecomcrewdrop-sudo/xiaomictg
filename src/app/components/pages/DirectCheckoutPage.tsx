@@ -75,7 +75,8 @@ export function DirectCheckoutPage() {
 
     const dFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
     const baseTotal = currentPrice * quantity;
-    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : 0;
+    const addiSurcharge = paymentMethod === 'addi' ? Math.round(baseTotal * 0.25) : 0;
+    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : addiSurcharge;
     
     return {
       unitPrice: currentPrice,
@@ -91,6 +92,7 @@ export function DirectCheckoutPage() {
     paymentMethod === 'transferencia' ? 'Transferencia bancaria' :
     paymentMethod === 'nequi' ? 'Nequi' :
     paymentMethod === 'bold' ? 'BOLD (Tarjeta)' :
+    paymentMethod === 'addi' ? 'Addi (Crédito a cuotas)' :
     'Tarjeta';
 
   // Utils para orden
@@ -197,6 +199,7 @@ export function DirectCheckoutPage() {
     { value: 'transferencia', label: 'Transferencia', sub: 'Bancaria Directa', icon: '🏦' },
     { value: 'tarjeta', label: 'Datáfono físico', sub: 'Contra entrega (+5%)', icon: '💳' },
     { value: 'bold', label: 'Pago Seguro Online', sub: 'Bold (+5%)', icon: '🌐' },
+    { value: 'addi', label: 'Paga con Addi', sub: 'Crédito a cuotas', icon: '🛍️' },
   ];
 
   if (loading || !product) {
@@ -218,9 +221,24 @@ export function DirectCheckoutPage() {
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">¡Pedido Confirmado!</h2>
           <p className="text-slate-500 text-base md:text-lg">Tu número de orden es <strong className="text-slate-900 bg-slate-100 px-2 py-1 rounded">{orderSuccess.orderNumber}</strong></p>
           <p className="text-slate-400 text-sm">Hemos enviado los detalles a <b className="text-slate-700">{customerEmail}</b></p>
-          <Button onClick={() => navigate('/')} className="mt-8 w-full h-14 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white rounded-2xl shadow-lg transition-all cursor-pointer">
-            Volver a la tienda
-          </Button>
+          
+          {paymentMethod === 'addi' ? (
+            <div className="mt-8">
+              <p className="text-sm text-slate-600 mb-4">Para finalizar tu pago con Addi, haz clic en el botón de abajo para que un asesor te envíe el link de aprobación a tu WhatsApp.</p>
+              <a 
+                href={`https://wa.me/573022875280?text=Hola%21%20Acabo%20de%20hacer%20el%20pedido%20%23${orderSuccess.orderNumber}%20por%20${grandTotal.toLocaleString('es-CO')}%20COP%20y%20quiero%20pagarlo%20con%20Addi.%20Me%20env%C3%ADan%20el%20link%20de%20pago%3F`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center h-14 text-base font-black bg-[#4A3BFA] hover:bg-[#392CD1] text-white rounded-2xl shadow-lg transition-all cursor-pointer"
+              >
+                Solicitar link de Addi
+              </a>
+            </div>
+          ) : (
+            <Button onClick={() => navigate('/')} className="mt-8 w-full h-14 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white rounded-2xl shadow-lg transition-all cursor-pointer">
+              Volver a la tienda
+            </Button>
+          )}
         </div>
         <div id="quick-thermal-ticket" className="hidden">
           <ThermalTicket order={orderSuccess} finalTotal={grandTotal} cardFee={cardSurcharge} totalCOP={unitPrice} finalTotalCOP={grandTotal} config={ticketConfig} preview={true} />
