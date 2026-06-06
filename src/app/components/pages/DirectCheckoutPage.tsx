@@ -76,7 +76,7 @@ export function DirectCheckoutPage() {
 
     const dFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
     const baseTotal = currentPrice * quantity;
-    const addiSurcharge = paymentMethod === 'addi' ? Math.round(baseTotal * 0.25) : 0;
+    const addiSurcharge = paymentMethod === 'addi' ? Math.round(baseTotal * 0.20) : 0;
     const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : addiSurcharge;
     
     return {
@@ -226,7 +226,7 @@ export function DirectCheckoutPage() {
         
 *🛍️ PRODUCTOS:*
 • ${product!.name} x${quantity} ${selectedStorage ? `[${selectedStorage}]` : ''} ${selectedColor ? `(${selectedColor})` : ''}
-  *Valor:* $${(unitPrice * quantity + addiSurcharge).toLocaleString()} COP
+  *Financiado por Addi:* $${(unitPrice * quantity + addiSurcharge).toLocaleString()} COP
 
 *📍 DATOS DE ENVÍO:*
 *Nombre:* ${customerName}
@@ -520,7 +520,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
               <div className="p-6 space-y-4">
                 <div className="flex justify-between text-slate-600 font-bold text-sm">
                   <span>Subtotal ({quantity}x)</span>
-                  <span>${(unitPrice * quantity).toLocaleString('es-CO')}</span>
+                  <span>${(unitPrice * quantity + addiSurcharge).toLocaleString('es-CO')}</span>
                 </div>
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-slate-600 font-bold text-sm">
@@ -532,13 +532,6 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                   <div className="flex justify-between text-sky-600 font-bold text-sm">
                     <span>Recargo Tarjeta (5%)</span>
                     <span>+${cardSurcharge.toLocaleString('es-CO')}</span>
-                  </div>
-                )}
-                
-                {paymentMethod === 'addi' && (
-                  <div className="flex justify-between text-orange-500 font-bold text-sm">
-                    <span>Recargo Addi (25%)</span>
-                    <span>+${addiSurcharge.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 

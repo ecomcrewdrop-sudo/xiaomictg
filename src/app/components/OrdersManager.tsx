@@ -24,7 +24,7 @@ export function calculateOrderTotals(order: Order) {
   const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
   const totalItems = order.total || 0;
   const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
-  const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
+  const addiFee = isAddi ? Math.round(totalItems * 0.20) : 0;
   const finalTotal = totalItems + cardFee + addiFee + deliveryFee;
   return { finalTotal, cardFee, addiFee, totalCOP: totalItems, finalTotalCOP: finalTotal };
 }
@@ -917,7 +917,7 @@ function ThermalTicketPreview({ order }: { order: Order }) {
   
   const totalItems = order.total;
   const cardFee = hasCardFee ? Math.round(totalItems * 0.05) : 0;
-  const addiFee = isAddi ? Math.round(totalItems * 0.25) : 0;
+  const addiFee = isAddi ? Math.round(totalItems * 0.20) : 0;
   
   const totalCOP = totalItems * EXCHANGE_RATE;
   const finalTotalCOP = (totalItems + cardFee + addiFee + deliveryFee) * EXCHANGE_RATE;

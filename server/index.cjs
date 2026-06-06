@@ -299370,7 +299370,7 @@ function processWhatsAppTemplate(template, order) {
 ` : "";
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
   const isAddi = (order.paymentMethod || "").toLowerCase().includes("addi");
-  const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.25) : 0;
+  const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.2) : 0;
   const isCard = (order.paymentMethod || "").toLowerCase().includes("tarjeta") || (order.paymentMethod || "").toLowerCase().includes("bold");
   const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
   const grandTotal = (order.total || 0) + cardFee + addiSurcharge + deliveryFee;
@@ -299381,8 +299381,9 @@ function processWhatsAppTemplate(template, order) {
   \u2022 Recargo Tarjeta (5%) \u2014 $${cardFee.toLocaleString("es-CO")} COP`;
   const productsList = items.map((item) => {
     const baseTotal = (item.product?.price || 0) * (item.quantity || 1);
-    const itemAddi = isAddi ? Math.round(baseTotal * 0.25) : 0;
-    return `  \u2022 ${item.product?.name || "Producto"} x${item.quantity || 1} \u2014 $${(baseTotal + itemAddi).toLocaleString("es-CO")} COP`;
+    const itemAddi = isAddi ? Math.round(baseTotal * 0.2) : 0;
+    return `\u2022 ${item.product?.name || "Producto"} x${item.quantity || 1}
+  *Financiado por Addi:* $${(baseTotal + itemAddi).toLocaleString("es-CO")} COP`;
   }).join("\n") + extrasStr;
   const vars = {
     "{{nombre}}": order.customerInfo?.name || "Cliente",

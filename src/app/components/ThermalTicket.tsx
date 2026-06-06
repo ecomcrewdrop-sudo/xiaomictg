@@ -177,7 +177,7 @@ export function ThermalTicket({ order, finalTotal, cardFee, addiFee = 0, totalCO
       <div style={{ fontSize: '11px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
           <span>Subtotal:</span>
-          <span>${totalCOP.toLocaleString('es-CO')}</span>
+          <span>${(totalCOP + (addiFee * exchangeRate)).toLocaleString('es-CO')}</span>
         </div>
         {(order.customerInfo?.deliveryFee || 0) > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -191,12 +191,7 @@ export function ThermalTicket({ order, finalTotal, cardFee, addiFee = 0, totalCO
             <span>${(cardFee * exchangeRate).toLocaleString('es-CO')}</span>
           </div>
         )}
-        {addiFee > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span>Recargo Addi (25%):</span>
-            <span>${(addiFee * exchangeRate).toLocaleString('es-CO')}</span>
-          </div>
-        )}
+
         
         {/* Línea gruesa antes del total final */}
         <div style={{ borderTop: '2px solid #000', margin: '10px 0' }}></div>

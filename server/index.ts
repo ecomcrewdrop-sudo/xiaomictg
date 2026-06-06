@@ -565,7 +565,7 @@ function processWhatsAppTemplate(template: string, order: any): string {
 
   const deliveryFee = order.customerInfo?.deliveryFee || 0;
   const isAddi = (order.paymentMethod || '').toLowerCase().includes('addi');
-  const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.25) : 0;
+  const addiSurcharge = isAddi ? Math.round((order.total || 0) * 0.20) : 0;
   const isCard = (order.paymentMethod || '').toLowerCase().includes('tarjeta') || (order.paymentMethod || '').toLowerCase().includes('bold');
   const cardFee = isCard ? Math.round((order.total || 0) * 0.05) : 0;
   const grandTotal = (order.total || 0) + cardFee + addiSurcharge + deliveryFee;
@@ -577,8 +577,8 @@ function processWhatsAppTemplate(template: string, order: any): string {
   const productsList = items
     .map((item: any) => {
       const baseTotal = (item.product?.price || 0) * (item.quantity || 1);
-      const itemAddi = isAddi ? Math.round(baseTotal * 0.25) : 0;
-      return `  • ${item.product?.name || 'Producto'} x${item.quantity || 1} — $${(baseTotal + itemAddi).toLocaleString('es-CO')} COP`;
+      const itemAddi = isAddi ? Math.round(baseTotal * 0.20) : 0;
+      return `• ${item.product?.name || 'Producto'} x${item.quantity || 1}\n  *Financiado por Addi:* $${(baseTotal + itemAddi).toLocaleString('es-CO')} COP`;
     })
     .join('\n') + extrasStr;
 

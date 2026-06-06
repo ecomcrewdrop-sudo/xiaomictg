@@ -49,7 +49,7 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
 
   // Única fuente de verdad para el total: siempre desde getCartTotal() del contexto
   const totalCOP = getCartTotal();
-  const addiSurcharge = paymentMethod === 'addi' ? Math.round(totalCOP * 0.25) : 0;
+  const addiSurcharge = paymentMethod === 'addi' ? Math.round(totalCOP * 0.20) : 0;
   const cardSurcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(totalCOP * 0.05) : addiSurcharge;
   const deliveryFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
   const grandTotal = totalCOP + cardSurcharge + deliveryFee;
@@ -252,7 +252,7 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
         const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
         
 *🛍️ PRODUCTOS:*
-${cart.map(item => `• ${item.product.name} x${item.quantity} ${item.selectedStorage ? `[${item.selectedStorage}]` : ''} ${item.selectedColor ? `(${item.selectedColor})` : ''}\n  *Valor:* $${(((item.product.price || 0) * (item.quantity || 1)) + Math.round((item.product.price || 0) * (item.quantity || 1) * 0.25)).toLocaleString()} COP`).join('\n\n')}
+${cart.map(item => `• ${item.product.name} x${item.quantity} ${item.selectedStorage ? `[${item.selectedStorage}]` : ''} ${item.selectedColor ? `(${item.selectedColor})` : ''}\n  *Financiado por Addi:* $${(((item.product.price || 0) * (item.quantity || 1)) + Math.round((item.product.price || 0) * (item.quantity || 1) * 0.20)).toLocaleString()} COP`).join('\n\n')}
 
 *📍 DATOS DE ENVÍO:*
 *Nombre:* ${customerName}
@@ -552,14 +552,14 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                       {item.quantity}x {item.product.name}
                     </span>
                     <span className="shrink-0">
-                      ${(item.product.price * item.quantity).toLocaleString('es-CO')}
+                      ${(item.product.price * item.quantity + (paymentMethod === 'addi' ? Math.round(item.product.price * item.quantity * 0.20) : 0)).toLocaleString('es-CO')}
                     </span>
                   </div>
                 ))}
                 
                 <div className="flex justify-between items-center text-sm pt-2 text-gray-400">
                   <span>Subtotal</span>
-                  <span>${totalCOP.toLocaleString('es-CO')}</span>
+                  <span>${(totalCOP + (paymentMethod === 'addi' ? addiSurcharge : 0)).toLocaleString('es-CO')}</span>
                 </div>
                 
                 {deliveryMethod === 'delivery' && (
@@ -573,13 +573,6 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                   <div className="flex justify-between items-center text-sm text-gray-300">
                     <span>Recargo (5%)</span>
                     <span>+${cardSurcharge.toLocaleString('es-CO')}</span>
-                  </div>
-                )}
-                
-                {paymentMethod === 'addi' && (
-                  <div className="flex justify-between items-center text-sm text-gray-300">
-                    <span>Recargo Addi (25%)</span>
-                    <span>+${addiSurcharge.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 
