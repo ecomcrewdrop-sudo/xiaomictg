@@ -1417,6 +1417,72 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
+app.post('/api/addi/create-transaction', async (req, res) => {
+  try {
+    const { orderId, totalAmount, items, client, shippingAddress } = req.body;
+    
+    // 1. Obtener Token de Addi
+    const tokenRes = await fetch('https://auth.addi.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: 'upT8WKxtMzHHtFI9SrWThPjjghzHkATy',
+        client_secret: '1YB3cFJDfFyeEAxhKBGjPfvLeto1NIKygCPlKmDGCG1YD4eQG0rkLrH_DMFep_MP',
+        grant_type: 'client_credentials',
+        audience: 'https://api.addi.com'
+      })
+    });
+    
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      console.error('Addi Token Error:', tokenData);
+      return res.status(500).json({ error: 'Error de autenticación con Addi' });
+    }
+
+    // 2. Crear Transacción en Addi
+    const transactionRes = await fetch('https://api.addi.com/v1/online-applications', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      redirect: 'manual', // Importante para capturar el header Location
+      body: JSON.stringify({
+        orderId,
+        totalAmount: totalAmount.toString(),
+        shippingAmount: "0.0",
+        currency: "COP",
+        items,
+        client,
+        shippingAddress: shippingAddress || {
+          lineOne: client.address.lineOne,
+          city: client.address.city,
+          country: "CO"
+        },
+        allyUrlRedirection: {
+          logoUrl: "https://xiaomictg-production.up.railway.app/favicon.ico",
+          callbackUrl: "https://xiaomictg-production.up.railway.app/api/addi/callback",
+          redirectionUrl: "https://xiaomictg-production.up.railway.app/"
+        }
+      })
+    });
+
+    if (transactionRes.status === 301 || transactionRes.status === 302) {
+      const addiUrl = transactionRes.headers.get('location');
+      return res.json({ success: true, redirectUrl: addiUrl });
+    } else {
+      const errorText = await transactionRes.text();
+      console.error('Addi Transaction Error:', transactionRes.status, errorText);
+      return res.status(500).json({ error: 'Error al crear la transacción en Addi' });
+    }
+
+  } catch (error) {
+    console.error('Addi API Error:', error);
+    res.status(500).json({ error: 'Error interno conectando con Addi' });
+  }
+});
+
+
 app.post('/api/orders', async (req, res) => {
   try {
     const { action, order: invoiceOrder } = req.body;

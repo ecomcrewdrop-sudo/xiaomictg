@@ -193,6 +193,76 @@ export function DirectCheckoutPage() {
     }
   };
 
+  // Enviar Orden (Addi)
+  const handleAddiPayment = async () => {
+    if (!validateForm()) return;
+    setIsSubmitting(true);
+    try {
+      const newOrder = await addOrder({
+        items: [buildCartItem()],
+        total: unitPrice * quantity,
+        status: 'pending_addi',
+        createdAt: new Date().toISOString(),
+        customerInfo: {
+          email: customerEmail, name: customerName, idNumber: customerIdNumber, phone, deliveryMethod,
+          address: deliveryMethod === 'delivery' ? address : 'Retiro en tienda',
+          paymentMethod: 'Addi (Crédito a cuotas)', deliveryFee,
+        },
+        paymentMethod: 'Addi (Crédito a cuotas)',
+      });
+
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout', { content_ids: [product!.id], value: grandTotal, currency: 'COP' });
+      }
+
+      // Separar nombre y apellido (Aproximación simple)
+      const nameParts = customerName.trim().split(' ');
+      const firstName = nameParts[0] || 'Cliente';
+      const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
+
+      // Llamar al endpoint de Addi
+      const addiRes = await fetch('/api/addi/create-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: newOrder.orderNumber,
+          totalAmount: grandTotal,
+          items: [{
+            sku: product!.id || 'XM-01',
+            name: `${product!.name} ${selectedStorage || ''}`.trim(),
+            quantity: quantity.toString(),
+            unitPrice: unitPrice
+          }],
+          client: {
+            idType: "CC",
+            idNumber: customerIdNumber,
+            firstName,
+            lastName,
+            email: customerEmail,
+            cellphone: phone.replace(/[^0-9]/g, ''),
+            cellphoneCountryCode: "+57",
+            address: {
+              lineOne: deliveryMethod === 'delivery' ? address : 'Tienda Fisica',
+              city: "Cartagena",
+              country: "CO"
+            }
+          }
+        })
+      });
+
+      const addiData = await addiRes.json();
+      if (addiData.success && addiData.redirectUrl) {
+        window.location.href = addiData.redirectUrl;
+      } else {
+        throw new Error(addiData.error || 'Error conectando con Addi');
+      }
+
+    } catch (err: any) {
+      toast.error(err.message || 'Error al iniciar pago con Addi.');
+      setIsSubmitting(false);
+    }
+  };
+
   const paymentMethods = [
     { value: 'efectivo', label: 'Efectivo', sub: 'Contra entrega', icon: '💵' },
     { value: 'nequi', label: 'Nequi', sub: 'Contra entrega', icon: '📱' },
@@ -458,6 +528,12 @@ export function DirectCheckoutPage() {
                     {boldLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
                     Pagar Seguro con BOLD
                   </Button>
+                ) : paymentMethod === 'addi' ? (
+                  <Button onClick={handleAddiPayment} disabled={isSubmitting || availableStock === 0}
+                    className="w-full h-15 text-base font-black bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-lg rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
+                    Pagar con Addi
+                  </Button>
                 ) : (
                   <Button onClick={handleCompleteOrder} disabled={isSubmitting || availableStock === 0}
                     className="w-full h-15 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white shadow-lg rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 animate-in fade-in duration-300">
@@ -500,6 +576,15 @@ export function DirectCheckoutPage() {
             >
               {boldLoading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <CreditCard className="w-4.5 h-4.5" />}
               Pagar con BOLD
+            </Button>
+          ) : paymentMethod === 'addi' ? (
+            <Button 
+              onClick={handleAddiPayment} 
+              disabled={isSubmitting}
+              className="w-full h-13 text-sm font-black bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-md rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-in fade-in duration-300"
+            >
+              {isSubmitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ShoppingBag className="w-4.5 h-4.5" />}
+              Pagar con Addi
             </Button>
           ) : (
             <Button 
