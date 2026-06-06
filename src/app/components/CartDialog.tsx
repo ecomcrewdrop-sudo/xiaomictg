@@ -251,19 +251,20 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
       if (ticketConfig.addiMode === 'whatsapp') {
         const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
         
-*🛍️ Productos:*
-${cart.map(item => `• ${item.product.name} x${item.quantity} ${item.selectedStorage ? `[${item.selectedStorage}]` : ''} ${item.selectedColor ? `(${item.selectedColor})` : ''}`).join('\n')}
+*🛍️ PRODUCTOS:*
+${cart.map(item => `• ${item.product.name} x${item.quantity} ${item.selectedStorage ? `[${item.selectedStorage}]` : ''} ${item.selectedColor ? `(${item.selectedColor})` : ''}\n  *Valor:* $${(((item.product.price || 0) * (item.quantity || 1)) + Math.round((item.product.price || 0) * (item.quantity || 1) * 0.25)).toLocaleString()} COP`).join('\n\n')}
 
-*📍 Datos de Envío:*
-Nombre: ${customerName}
-Cédula: ${customerIdNumber}
-Teléfono: ${phone}
-Dirección: ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
+*📍 DATOS DE ENVÍO:*
+*Nombre:* ${customerName}
+*Cédula:* ${customerIdNumber}
+*Teléfono:* ${phone}
+*Dirección:* ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
 
-*💳 Pago con Addi a Cuotas:*
-Subtotal: $${(totalCOP + addiSurcharge).toLocaleString()}
-Envío: $${deliveryFee.toLocaleString()}
-*Total a Pagar:* *$${grandTotal.toLocaleString()}*
+*💳 PAGO CON ADDI A CUOTAS:*
+*Subtotal:* $${(totalCOP + addiSurcharge).toLocaleString()} COP
+*Envío:* $${deliveryFee.toLocaleString()} COP
+
+💰 *TOTAL A PAGAR: $${grandTotal.toLocaleString()} COP* 💰
 
 Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame el link de pago.`;
         window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;

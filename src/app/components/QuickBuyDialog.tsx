@@ -262,19 +262,21 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
       if (ticketConfig.addiMode === 'whatsapp') {
         const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
         
-*🛍️ Productos:*
+*🛍️ PRODUCTOS:*
 • ${product.name} x1 ${selectedStorage ? `[${selectedStorage}]` : ''} ${selectedColor ? `(${selectedColor})` : ''}
+  *Valor:* $${(totalCOP + addiSurcharge).toLocaleString()} COP
 
-*📍 Datos de Envío:*
-Nombre: ${customerName}
-Cédula: ${customerIdNumber}
-Teléfono: ${phone}
-Dirección: ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
+*📍 DATOS DE ENVÍO:*
+*Nombre:* ${customerName}
+*Cédula:* ${customerIdNumber}
+*Teléfono:* ${phone}
+*Dirección:* ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
 
-*💳 Pago con Addi a Cuotas:*
-Subtotal: $${(totalCOP + addiSurcharge).toLocaleString()}
-Envío: $${deliveryFee.toLocaleString()}
-*Total a Pagar:* *$${grandTotal.toLocaleString()}*
+*💳 PAGO CON ADDI A CUOTAS:*
+*Subtotal:* $${(totalCOP + addiSurcharge).toLocaleString()} COP
+*Envío:* $${deliveryFee.toLocaleString()} COP
+
+💰 *TOTAL A PAGAR: $${grandTotal.toLocaleString()} COP* 💰
 
 Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame el link de pago.`;
         window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;

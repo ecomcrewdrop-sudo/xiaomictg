@@ -533,23 +533,24 @@ Hola *{{nombre}}*, gracias por tu compra. 🧡
 
 _Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
 
-const DEFAULT_OWNER_TEMPLATE =
-`🔔 *NUEVA VENTA* 🎯 — Xiaomi Cartagena
+const DEFAULT_OWNER_TEMPLATE = `Hola {{nombre}},
 
-👤 *Cliente:* {{nombre}}
-📞 *Cel:* {{telefono}}
-📧 *Email:* {{email}}
-🪪 *Cédula:* {{cedula}}
+Hemos recibido tu orden *{{ordenNumero}}*.
+Aquí tienes el resumen:
 
-🔖 *Orden:* #{{ordenNumero}}
-
-🛍️ *Productos:*
+*🛍️ PRODUCTOS:*
 {{productos}}
 
-💰 *Total:* $\{{total}} COP
-💳 *Pago:* {{metodoPago}}
-🚚 *Entrega:* {{metodoEntrega}}
+*📍 DATOS DE ENVÍO:*
+*Nombre:* {{nombre}}
+*Cédula:* {{cedula}}
+*Teléfono:* {{telefono}}
 {{linea_direccion}}
+*🚚 Entrega:* {{metodoEntrega}}
+*💳 Pago:* {{metodoPago}}
+
+💰 *TOTAL A PAGAR: ${{total}} COP* 💰
+
 📅 {{fecha}}
 
 _Xiaomi Cartagena_`;
