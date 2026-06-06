@@ -419,13 +419,19 @@ export function OrdersManager() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">
-                    {new Date(order.date).toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {(() => {
+                      if (!order.date) return 'Fecha desconocida';
+                      try {
+                        const d = new Date(order.date);
+                        if (isNaN(d.getTime())) return 'Fecha desconocida';
+                        return d.toLocaleDateString('es-ES', {
+                          year: 'numeric', month: 'long', day: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        });
+                      } catch (e) {
+                        return 'Fecha desconocida';
+                      }
+                    })()}
                   </p>
                 </div>
                 <div className="text-right">
@@ -503,22 +509,22 @@ export function OrdersManager() {
                       <div className="flex items-center gap-3 flex-1">
                         <ImageWithFallback
                           src={resolveOrderItemImage(item, products)}
-                          alt={item.product.name}
+                          alt={item.product?.name || 'Producto'}
                           className="w-12 h-12 object-cover rounded bg-gray-100"
                         />
                         <div>
                           <p className="font-medium text-gray-800">
-                            {item.product.name}
+                            {item.product?.name || 'Producto'}
                             {item.selectedStorage && <span className="text-xs text-blue-600 ml-1">{item.selectedStorage}</span>}
                             {item.selectedColor && <span className="text-xs text-gray-500 ml-1">({item.selectedColor})</span>}
                           </p>
                           <p className="text-sm text-gray-600">
-                            ${(item.product.price * item.quantity).toLocaleString('es-CO')} COP × {item.quantity}
+                            ${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP × {item.quantity || 1}
                           </p>
-                          {item.serialNumbers && item.serialNumbers.length > 0
+                          {Array.isArray(item.serialNumbers) && item.serialNumbers.length > 0
                             ? item.serialNumbers.map((sn, snIdx) => sn ? (
                                 <p key={snIdx} className="text-xs text-gray-500">
-                                  IMEI {item.serialNumbers!.length > 1 ? `#${snIdx + 1}` : ''}: {sn}
+                                  IMEI {item.serialNumbers.length > 1 ? `#${snIdx + 1}` : ''}: {sn}
                                 </p>
                               ) : null)
                             : item.serialNumber && (
@@ -531,7 +537,7 @@ export function OrdersManager() {
                         </div>
                       </div>
                       <p className="font-semibold text-gray-800">
-                        ${(item.product.price * item.quantity).toLocaleString('es-CO')} COP
+                        ${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP
                       </p>
                     </div>
                   ))}
