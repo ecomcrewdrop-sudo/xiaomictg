@@ -1239,7 +1239,7 @@ app.get('/api/products', async (req, res) => {
     const products = await db
       .collection('products')
       .find({})
-      .project({ image: 1, id: 1, name: 1, category: 1, price: 1, description: 1, stock: 1, colorVariants: 1, storageVariants: 1, specifications: 1 })
+      .project({ image: 1, id: 1, name: 1, category: 1, price: 1, description: 1, stock: 1, colorVariants: 1, storageVariants: 1, specifications: 1, reviews: 1, isFeatured: 1 })
       .toArray();
 
     res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
