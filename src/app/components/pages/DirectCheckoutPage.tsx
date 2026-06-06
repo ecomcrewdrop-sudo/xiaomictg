@@ -43,7 +43,15 @@ export function DirectCheckoutPage() {
 
   // Inicializar producto
   useEffect(() => {
-    if (!loading && products.length > 0 && productId) {
+    if (loading) return;
+
+    if (!productId) {
+      toast.error('Enlace inválido o incompleto');
+      navigate('/');
+      return;
+    }
+
+    if (products.length > 0) {
       const found = products.find(p => p.id === productId);
       if (found) {
         setProduct(found);
@@ -53,15 +61,15 @@ export function DirectCheckoutPage() {
         if (initialStorage) setSelectedStorage(initialStorage);
         else if (found.storageVariants?.length === 1) setSelectedStorage(found.storageVariants[0].storage);
       } else {
-        toast.error('Producto no encontrado');
+        toast.error('Producto no encontrado en nuestro catálogo');
         navigate('/');
       }
     }
   }, [loading, products, productId, initialColor, initialStorage, navigate]);
 
   // Cálculos de precio
-  const { unitPrice, availableStock, grandTotal, cardSurcharge, deliveryFee } = useMemo(() => {
-    if (!product) return { unitPrice: 0, availableStock: 0, grandTotal: 0, cardSurcharge: 0, deliveryFee: 0 };
+  const { unitPrice, availableStock, grandTotal, cardSurcharge, deliveryFee, addiSurcharge } = useMemo(() => {
+    if (!product) return { unitPrice: 0, availableStock: 0, grandTotal: 0, cardSurcharge: 0, deliveryFee: 0, addiSurcharge: 0 };
     
     let currentPrice = product.price;
     let currentStock = product.stock;
@@ -76,15 +84,16 @@ export function DirectCheckoutPage() {
 
     const dFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
     const baseTotal = currentPrice * quantity;
-    const addiSurcharge = paymentMethod === 'addi' ? Math.round(baseTotal * 0.20) : 0;
-    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : addiSurcharge;
+    const addiSurchargeCalculated = paymentMethod === 'addi' ? Math.round(baseTotal * 0.20) : 0;
+    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : addiSurchargeCalculated;
     
     return {
       unitPrice: currentPrice,
       availableStock: currentStock,
       deliveryFee: dFee,
       cardSurcharge: surcharge,
-      grandTotal: baseTotal + dFee + surcharge
+      grandTotal: baseTotal + dFee + surcharge,
+      addiSurcharge: addiSurchargeCalculated
     };
   }, [product, selectedStorage, selectedColor, deliveryMethod, paymentMethod]);
 

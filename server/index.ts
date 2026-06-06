@@ -8,6 +8,10 @@ import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { createHash } from 'crypto';
+import dns from 'dns';
+
+// Resolver a IPv4 primero para evitar errores "ENETUNREACH" con SMTP/Gmail
+dns.setDefaultResultOrder('ipv4first');
 // WhatsApp (Baileys + QR)
 import makeWASocket, {
   DisconnectReason,
@@ -45,7 +49,15 @@ const mailTransporter = GMAIL_USER && GMAIL_PASS ? nodemailer.createTransport({
   auth: {
     user: GMAIL_USER,
     pass: GMAIL_PASS
-  }
+  },
+  tls: {
+    // No fallar en entornos restrictivos
+    rejectUnauthorized: false
+  },
+  // Timeouts para evitar conexiones colgadas
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 20000
 }) : null;
 
 if (!ADMIN_USER || !ADMIN_PASSWORD) {
