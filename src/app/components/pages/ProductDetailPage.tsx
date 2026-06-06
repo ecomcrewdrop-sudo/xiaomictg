@@ -265,6 +265,26 @@ export function ProductDetailPage() {
               )}
             </div>
 
+            {/* Addi Widget */}
+            <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2 hover:border-[#4A3BFA] transition-colors cursor-pointer group" onClick={() => window.open('https://addi.com', '_blank')}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">Págalo en cuotas con</span>
+                  <span className="text-[#4A3BFA] font-black text-xl tracking-tighter">addi</span>
+                </div>
+                <div className="bg-[#4A3BFA]/10 text-[#4A3BFA] text-xs font-bold px-2 py-1 rounded-md">Fácil y rápido</div>
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-3xl font-bold text-gray-900">3</span>
+                <span className="text-sm font-medium text-gray-600">cuotas de</span>
+                <span className="text-2xl font-bold text-[#4A3BFA]">${Math.round((currentPrice / 0.80) / 3).toLocaleString('es-CO')}</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
+                <span>* Precio total: ${(currentPrice / 0.80).toLocaleString('es-CO')} COP</span>
+                <span className="underline decoration-gray-300 underline-offset-2">Ver requisitos</span>
+              </div>
+            </div>
+
             {/* Urgencia stock bajo */}
             {availableStock > 0 && availableStock < 5 && (
               <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-center gap-2">
