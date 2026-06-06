@@ -36,31 +36,39 @@ export function Footer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-12 gap-x-6 text-center">
             
             {/* Column 1: Pago */}
-            <div className="flex flex-col items-center justify-center">
-              <CreditCard className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Múltiples Formas de Pago</h4>
-              <p className="text-gray-400 text-[11px]">Contra entrega disponible</p>
+            <div className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-2xl hover:border-gray-300 transition-colors">
+              <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-4">
+                <CreditCard className="w-5 h-5 text-[#1a202c]" strokeWidth={1.5} />
+              </div>
+              <h4 className="text-[#1a202c] text-[13px] font-bold mb-1.5">Múltiples Formas de Pago</h4>
+              <p className="text-gray-500 text-[11px]">Contra entrega disponible</p>
             </div>
 
             {/* Column 2: Envío */}
-            <div className="flex flex-col items-center justify-center">
-              <Truck className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Envíos a Domicilio</h4>
-              <p className="text-gray-400 text-[11px]">$10.000 COP - Todo Cartagena</p>
+            <div className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-2xl hover:border-gray-300 transition-colors">
+              <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-4">
+                <Truck className="w-5 h-5 text-[#1a202c]" strokeWidth={1.5} />
+              </div>
+              <h4 className="text-[#1a202c] text-[13px] font-bold mb-1.5">Envíos a Domicilio</h4>
+              <p className="text-gray-500 text-[11px]">$10.000 COP - Todo Cartagena</p>
             </div>
 
             {/* Column 3: Contacto */}
-            <div className="flex flex-col items-center justify-center">
-              <Phone className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Línea de Atención</h4>
-              <p className="text-gray-400 text-[11px]">+57 302 287 5280</p>
+            <div className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-2xl hover:border-gray-300 transition-colors">
+              <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-4">
+                <Phone className="w-5 h-5 text-[#1a202c]" strokeWidth={1.5} />
+              </div>
+              <h4 className="text-[#1a202c] text-[13px] font-bold mb-1.5">Línea de Atención</h4>
+              <p className="text-gray-500 text-[11px]">+57 302 287 5280</p>
             </div>
 
             {/* Column 4: Legal */}
-            <div className="flex flex-col items-center justify-center">
-              <ShieldCheck className="w-8 h-8 text-[#1a202c] mb-4" strokeWidth={1.5} />
-              <h4 className="text-[#1a202c] text-[13px] font-medium mb-1.5">Garantía Oficial</h4>
-              <p className="text-gray-400 text-[11px]">Equipos 100% seguros</p>
+            <div className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-2xl hover:border-gray-300 transition-colors">
+              <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-4">
+                <ShieldCheck className="w-5 h-5 text-[#1a202c]" strokeWidth={1.5} />
+              </div>
+              <h4 className="text-[#1a202c] text-[13px] font-bold mb-1.5">Garantía Oficial</h4>
+              <p className="text-gray-500 text-[11px]">Equipos 100% seguros</p>
             </div>
 
           </div>
