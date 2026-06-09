@@ -78024,7 +78024,7 @@ var require_gssapi = __commonJS({
     exports2.GSSAPI = exports2.GSSAPICanonicalizationValue = void 0;
     exports2.performGSSAPICanonicalizeHostName = performGSSAPICanonicalizeHostName;
     exports2.resolveCname = resolveCname;
-    var dns = require("dns");
+    var dns2 = require("dns");
     var deps_1 = require_deps();
     var error_1 = require_error();
     var utils_1 = require_utils4();
@@ -78122,9 +78122,9 @@ var require_gssapi = __commonJS({
         return host;
       }
       if (mode === exports2.GSSAPICanonicalizationValue.on || mode === exports2.GSSAPICanonicalizationValue.forwardAndReverse) {
-        const { address } = await dns.promises.lookup(host);
+        const { address } = await dns2.promises.lookup(host);
         try {
-          const results = await dns.promises.resolve(address, "PTR");
+          const results = await dns2.promises.resolve(address, "PTR");
           return results.length > 0 ? results[0] : host;
         } catch {
           return await resolveCname(host);
@@ -78135,7 +78135,7 @@ var require_gssapi = __commonJS({
     }
     async function resolveCname(host) {
       try {
-        const results = await dns.promises.resolve(host, "CNAME");
+        const results = await dns2.promises.resolve(host, "CNAME");
         return results.length > 0 ? results[0] : host;
       } catch {
         return host;
@@ -88416,7 +88416,7 @@ var require_connection_string = __commonJS({
     exports2.DEFAULT_OPTIONS = exports2.OPTIONS = void 0;
     exports2.resolveSRVRecord = resolveSRVRecord;
     exports2.parseOptions = parseOptions;
-    var dns = require("dns");
+    var dns2 = require("dns");
     var mongodb_connection_string_url_1 = require_lib5();
     var process2 = require("process");
     var url_1 = require("url");
@@ -88438,12 +88438,12 @@ var require_connection_string = __commonJS({
     var LB_REPLICA_SET_ERROR = "loadBalanced option not supported with a replicaSet option";
     var LB_DIRECT_CONNECTION_ERROR = "loadBalanced option not supported when directConnection is provided";
     function retryDNSTimeoutFor(rrtype) {
-      const resolve = rrtype === "SRV" ? (address) => dns.promises.resolve(address, "SRV") : (address) => dns.promises.resolve(address, "TXT");
+      const resolve = rrtype === "SRV" ? (address) => dns2.promises.resolve(address, "SRV") : (address) => dns2.promises.resolve(address, "TXT");
       return async function dnsReqRetryTimeout(lookupAddress) {
         try {
           return await resolve(lookupAddress);
         } catch (firstDNSError) {
-          if (firstDNSError.code === dns.TIMEOUT) {
+          if (firstDNSError.code === dns2.TIMEOUT) {
             return await resolve(lookupAddress);
           } else {
             throw firstDNSError;
@@ -91709,7 +91709,7 @@ var require_srv_polling = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.SrvPoller = exports2.SrvPollingEvent = void 0;
-    var dns = require("dns");
+    var dns2 = require("dns");
     var timers_1 = require("timers");
     var error_1 = require_error();
     var mongo_types_1 = require_mongo_types();
@@ -91782,7 +91782,7 @@ var require_srv_polling = __commonJS({
         const generation = this.generation;
         let srvRecords;
         try {
-          srvRecords = await dns.promises.resolve(this.srvAddress, "SRV");
+          srvRecords = await dns2.promises.resolve(this.srvAddress, "SRV");
         } catch {
           this.failure();
           return;
@@ -117136,7 +117136,7 @@ var require_shared2 = __commonJS({
     var fs4 = require("fs");
     var nmfetch = require_fetch();
     var errors = require_errors3();
-    var dns = require("dns");
+    var dns2 = require("dns");
     var net = require("net");
     var os = require("os");
     var DNS_TTL = 5 * 60 * 1e3;
@@ -117165,16 +117165,16 @@ var require_shared2 = __commonJS({
       if (!isFamilySupported(family, options.allowInternalNetworkInterfaces)) {
         return callback(null, []);
       }
-      const dnsResolver = dns.Resolver ? new dns.Resolver(options) : dns;
+      const dnsResolver = dns2.Resolver ? new dns2.Resolver(options) : dns2;
       dnsResolver["resolve" + family](hostname, (err, addresses) => {
         if (err) {
           switch (err.code) {
-            case dns.NODATA:
-            case dns.NOTFOUND:
-            case dns.NOTIMP:
-            case dns.SERVFAIL:
-            case dns.CONNREFUSED:
-            case dns.REFUSED:
+            case dns2.NODATA:
+            case dns2.NOTFOUND:
+            case dns2.NOTIMP:
+            case dns2.SERVFAIL:
+            case dns2.CONNREFUSED:
+            case dns2.REFUSED:
             case "EAI_AGAIN":
               return callback(null, []);
           }
@@ -117292,7 +117292,7 @@ var require_shared2 = __commonJS({
             }
           }
           try {
-            dns.lookup(options.host, { all: true }, (err3, addresses3) => {
+            dns2.lookup(options.host, { all: true }, (err3, addresses3) => {
               if (err3) {
                 if (cached) {
                   dnsCache.set(options.host, {
@@ -123492,7 +123492,7 @@ var require_mailer = __commonJS({
     var packageData = require_package3();
     var MailMessage = require_mail_message();
     var net = require("net");
-    var dns = require("dns");
+    var dns2 = require("dns");
     var crypto6 = require("crypto");
     var Mail = class extends EventEmitter4 {
       constructor(transporter, options, defaults) {
@@ -123807,7 +123807,7 @@ var require_mailer = __commonJS({
               if (net.isIP(proxy.hostname)) {
                 return connect(proxy.hostname);
               }
-              return dns.resolve(proxy.hostname, (err2, address) => {
+              return dns2.resolve(proxy.hostname, (err2, address) => {
                 if (err2) {
                   return callback(err2);
                 }
@@ -188333,6 +188333,7 @@ var Resend = class {
 var import_nodemailer = __toESM(require_nodemailer(), 1);
 var import_dotenv = __toESM(require_main(), 1);
 var import_crypto23 = require("crypto");
+var import_dns = __toESM(require("dns"), 1);
 
 // node_modules/@whiskeysockets/baileys/WAProto/index.js
 var import_minimal = __toESM(require_minimal2(), 1);
@@ -298860,6 +298861,7 @@ var lib_default = Socket_default;
 
 // server/index.ts
 var import_qrcode = __toESM(require_lib11(), 1);
+import_dns.default.setDefaultResultOrder("ipv4first");
 import_dotenv.default.config();
 var app = (0, import_express.default)();
 var httpServer = (0, import_http.createServer)(app);
@@ -298881,7 +298883,15 @@ var mailTransporter = GMAIL_USER && GMAIL_PASS ? import_nodemailer.default.creat
   auth: {
     user: GMAIL_USER,
     pass: GMAIL_PASS
-  }
+  },
+  tls: {
+    // No fallar en entornos restrictivos
+    rejectUnauthorized: false
+  },
+  // Timeouts para evitar conexiones colgadas
+  connectionTimeout: 15e3,
+  greetingTimeout: 15e3,
+  socketTimeout: 2e4
 }) : null;
 if (!ADMIN_USER || !ADMIN_PASSWORD) {
   console.warn("[server] ADMIN_USER o ADMIN_PASSWORD no configurados en .env");

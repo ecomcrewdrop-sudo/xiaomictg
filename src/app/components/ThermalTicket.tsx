@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Order, TicketConfig } from './ProductContext';
+import { API_BASE_URL } from '../lib/api-base';
 
 interface ThermalTicketProps {
   order: Order;
@@ -34,7 +35,7 @@ export function ThermalTicket({ order, finalTotal, cardFee, addiFee = 0, totalCO
     async function fetchTicketConfig() {
       try {
         console.log('=== Fetching ticket config ===');
-        const res = await fetch('/api/ticket-config');
+        const res = await fetch(`${API_BASE_URL}/ticket-config`);
         console.log('Response status:', res.status);
         if (res.ok) {
           const data = await res.json();

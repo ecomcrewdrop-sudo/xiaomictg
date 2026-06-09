@@ -1,5 +1,6 @@
 import { useProducts, Order, CartItem, Product } from './ProductContext';
 import { sanitizeProductImage } from '../lib/catalog-cache';
+import { API_BASE_URL } from '../lib/api-base';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Package, Clock, CheckCircle2, XCircle, Search, Filter, Download, Receipt, Edit, Trash2, Mail, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -263,7 +264,7 @@ export function OrdersManager() {
         onClick: async () => {
           setIsSendingEmail(order.id);
           try {
-            const res = await fetch('/api/orders', {
+            const res = await fetch(`${API_BASE_URL}/orders`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'send-invoice', order })
