@@ -98,7 +98,7 @@ export interface Order {
   createdAt: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'pending_bold' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'pending_addi' | 'pending_bold' | 'processing' | 'completed' | 'cancelled';
   customerInfo: {
     email?: string;
     name?: string;

@@ -299478,18 +299478,23 @@ async function sendOrderEmail(order) {
     };
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
     const isCard = (order.paymentMethod || "").toLowerCase().includes("tarjeta") || (order.paymentMethod || "").toLowerCase().includes("bold");
+    const isAddi = (order.paymentMethod || "").toLowerCase().includes("addi");
     const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
-    const grandTotal = order.total + cardFee + deliveryFee;
+    const addiMultiplier = isAddi ? 1.2 : 1;
+    const adjustedSubtotal = isAddi ? Math.round(order.total * addiMultiplier) : order.total;
+    const grandTotal = adjustedSubtotal + cardFee + deliveryFee;
     const itemsHtml = order.items.map((item) => {
       const imageUrl = item.product?.image || "";
       const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${item.product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 10px;" />` : "";
+      const basePrice = (item.product?.price || 0) * (item.quantity || 1);
+      const displayPrice = isAddi ? Math.round(basePrice * addiMultiplier) : basePrice;
       return `
         <li style="display: flex; align-items: center; margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
           ${imageHtml}
           <div>
             <strong>${item.product?.name || "Producto"}</strong><br/>
             <span style="color: #666;">Cantidad: ${item.quantity}</span><br/>
-            <span style="color: #e65100; font-weight: bold;">$${((item.product?.price || 0) * item.quantity).toFixed(2)}</span>
+            <span style="color: #e65100; font-weight: bold;">$${displayPrice.toLocaleString("es-CO")} COP</span>
           </div>
         </li>
       `;
@@ -299510,7 +299515,7 @@ async function sendOrderEmail(order) {
             <ul style="list-style: none; padding: 0; margin: 0;">${itemsHtml}</ul>
             
             <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc; text-align: right;">
-              <p style="margin: 5px 0; font-size: 14px; color: #666;">Subtotal: $${order.total.toLocaleString("es-CO")} COP</p>
+              <p style="margin: 5px 0; font-size: 14px; color: #666;">Subtotal: $${adjustedSubtotal.toLocaleString("es-CO")} COP</p>
               ${deliveryFee > 0 ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">Env\xEDo: $${deliveryFee.toLocaleString("es-CO")} COP</p>` : ""}
               ${cardFee > 0 ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">Recargo Tarjeta (5%): $${cardFee.toLocaleString("es-CO")} COP</p>` : ""}
               <h2 style="margin: 10px 0 0 0; color: #ff6900; font-size: 22px;">Total: $${grandTotal.toLocaleString("es-CO")} COP</h2>
@@ -299595,8 +299600,11 @@ async function sendInvoiceEmail(order) {
     };
     const deliveryFee = order.customerInfo?.deliveryFee || 0;
     const isCard = (order.paymentMethod || "").toLowerCase().includes("tarjeta") || (order.paymentMethod || "").toLowerCase().includes("bold");
+    const isAddi = (order.paymentMethod || "").toLowerCase().includes("addi");
     const cardFee = isCard ? Math.round(order.total * 0.05) : 0;
-    const grandTotal = order.total + cardFee + deliveryFee;
+    const addiMultiplier = isAddi ? 1.2 : 1;
+    const adjustedSubtotal = isAddi ? Math.round(order.total * addiMultiplier) : order.total;
+    const grandTotal = adjustedSubtotal + cardFee + deliveryFee;
     const nitValue = config.nit || "1043345642-7";
     const ticketHtml = `
       <div style="border: 2px solid #333; padding: 20px; max-width: 320px; font-family: 'Courier New', Courier, monospace; font-size: 12px; background: #fff; margin: 0 auto; color: #000;">
@@ -299640,7 +299648,10 @@ async function sendInvoiceEmail(order) {
         
         <div style="margin-bottom: 12px;">
           <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">PRODUCTOS</div>
-          ${order.items.map((item) => `
+          ${order.items.map((item) => {
+      const unitPrice = isAddi ? Math.round((item.product?.price || 0) * addiMultiplier) : item.product?.price || 0;
+      const lineTotal = unitPrice * (item.quantity || 1);
+      return `
             <div style="margin-bottom: 10px; font-size: 11px;">
               <div style="font-weight: bold; text-transform: uppercase;">${item.product?.name || "Producto"}</div>
               <div style="font-size: 10px; margin-bottom: 4px;">
@@ -299648,13 +299659,14 @@ async function sendInvoiceEmail(order) {
                 ${item.selectedColor ? `- Color: ${item.selectedColor}` : ""}
               </div>
               <div style="display: flex; justify-content: space-between;">
-                <span>${item.quantity} x $${(item.product?.price || 0).toLocaleString("es-CO")}</span>
-                <strong>$${((item.product?.price || 0) * item.quantity).toLocaleString("es-CO")}</strong>
+                <span>${item.quantity} x $${unitPrice.toLocaleString("es-CO")}</span>
+                <strong>$${lineTotal.toLocaleString("es-CO")}</strong>
               </div>
               ${item.serialNumber ? `<div style="font-size: 10px; margin-top: 4px;">SN: ${item.serialNumber}</div>` : ""}
               ${item.invoiceNumber ? `<div style="font-size: 10px; margin-top: 2px;">Factura: ${item.invoiceNumber}</div>` : ""}
             </div>
-          `).join("")}
+          `;
+    }).join("")}
         </div>
         
         <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
@@ -299662,7 +299674,7 @@ async function sendInvoiceEmail(order) {
         <div style="font-size: 11px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
             <span>Subtotal:</span>
-            <span>$${order.total.toLocaleString("es-CO")}</span>
+            <span>$${adjustedSubtotal.toLocaleString("es-CO")}</span>
           </div>
           ${deliveryFee > 0 ? `
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">

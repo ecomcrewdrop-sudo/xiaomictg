@@ -67,6 +67,8 @@ export function OrdersManager() {
     switch (status) {
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'pending_addi':
+        return <Clock className="w-4 h-4 text-purple-500" />;
       case 'pending_bold':
         return <Clock className="w-4 h-4 text-orange-600" />;
       case 'processing':
@@ -81,6 +83,7 @@ export function OrdersManager() {
   const getStatusLabel = (status: Order['status']) => {
     const labels: Record<string, string> = {
       pending: 'Pendiente',
+      pending_addi: 'Pendiente (Addi)',
       pending_bold: 'Pendiente (Pago Bold)',
       processing: 'Procesando',
       completed: 'Completada',
@@ -92,6 +95,7 @@ export function OrdersManager() {
   const getStatusColor = (status: Order['status']) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      pending_addi: 'bg-purple-100 text-purple-800 border-purple-200',
       pending_bold: 'bg-orange-100 text-orange-800 border-orange-200',
       processing: 'bg-blue-100 text-blue-800 border-blue-200',
       completed: 'bg-green-100 text-green-800 border-green-200',
@@ -106,7 +110,7 @@ export function OrdersManager() {
   
   const totalRevenueCOP = totalRevenue;
 
-  const pendingOrders = orders.filter(order => order.status === 'pending').length;
+  const pendingOrders = orders.filter(order => order.status === 'pending' || order.status === 'pending_addi' || order.status === 'pending_bold').length;
   const processingOrders = orders.filter(order => order.status === 'processing').length;
 
   const handleViewTicket = (order: Order) => {
@@ -383,6 +387,8 @@ export function OrdersManager() {
             >
               <option value="all">Todos los estados</option>
               <option value="pending">Pendiente</option>
+              <option value="pending_addi">Pendiente (Addi)</option>
+              <option value="pending_bold">Pendiente (Bold)</option>
               <option value="processing">Procesando</option>
               <option value="completed">Completada</option>
               <option value="cancelled">Cancelada</option>
@@ -558,6 +564,69 @@ export function OrdersManager() {
                       size="sm"
                     >
                       Marcar como Procesando
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        toast('¿Cancelar esta orden?', {
+                          action: {
+                            label: 'Sí, cancelar',
+                            onClick: () => updateOrderStatus(order.id, 'cancelled')
+                          },
+                          cancel: { label: 'No', onClick: () => {} },
+                          duration: 5000,
+                        });
+                      }}
+                      variant="outline"
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                      size="sm"
+                    >
+                      Cancelar Orden
+                    </Button>
+                  </>
+                )}
+                {order.status === 'pending_addi' && (
+                  <>
+                    <Button
+                      onClick={() => updateOrderStatus(order.id, 'processing')}
+                      className="bg-purple-500 hover:bg-purple-600 text-white"
+                      size="sm"
+                    >
+                      ✅ Aprobar Pago Addi
+                    </Button>
+                    <Button
+                      onClick={() => updateOrderStatus(order.id, 'completed')}
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                      size="sm"
+                    >
+                      Completar Directo
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        toast('¿Cancelar esta orden de Addi?', {
+                          action: {
+                            label: 'Sí, cancelar',
+                            onClick: () => updateOrderStatus(order.id, 'cancelled')
+                          },
+                          cancel: { label: 'No', onClick: () => {} },
+                          duration: 5000,
+                        });
+                      }}
+                      variant="outline"
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                      size="sm"
+                    >
+                      Cancelar Orden
+                    </Button>
+                  </>
+                )}
+                {order.status === 'pending_bold' && (
+                  <>
+                    <Button
+                      onClick={() => updateOrderStatus(order.id, 'processing')}
+                      className="bg-orange-500 hover:bg-orange-600 text-white"
+                      size="sm"
+                    >
+                      ✅ Aprobar Pago Bold
                     </Button>
                     <Button
                       onClick={() => {
