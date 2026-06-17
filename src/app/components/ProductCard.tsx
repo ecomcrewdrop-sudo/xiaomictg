@@ -67,6 +67,8 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   const getAvailableStock = () => {
+    // Stock general = 0 actúa como interruptor maestro (producto agotado)
+    if (product.stock <= 0) return 0;
     if (product.storageVariants && selectedStorage) {
       const variant = product.storageVariants.find(v => v.storage === selectedStorage);
       return variant?.stock || 0;

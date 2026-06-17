@@ -83,6 +83,8 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
   };
 
   const getAvailableStock = (): number => {
+    // Stock general = 0 actúa como interruptor maestro (producto agotado)
+    if (product.stock <= 0) return 0;
     if (selectedStorage && product.storageVariants) {
       const v = product.storageVariants.find(v => v.storage === selectedStorage);
       return v?.stock ?? 0;

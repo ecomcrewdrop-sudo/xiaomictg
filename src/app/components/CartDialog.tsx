@@ -22,6 +22,8 @@ export function CartDialog({ isOpen, onClose }: CartDialogProps) {
 
   // Helper: obtener stock máximo de un item según su variante seleccionada
   const getItemMaxStock = (item: (typeof cart)[0]): number => {
+    // Stock general = 0 actúa como interruptor maestro (producto agotado)
+    if (item.product.stock <= 0) return 0;
     if (item.selectedStorage && item.product.storageVariants) {
       const v = item.product.storageVariants.find(v => v.storage === item.selectedStorage);
       return v?.stock ?? 0;
