@@ -231,7 +231,8 @@ export function FinancingManager() {
 
   const formatDate = (iso: string) => {
     return new Date(iso).toLocaleDateString('es-CO', {
-      day: '2-digit', month: 'short', year: 'numeric'
+      day: '2-digit', month: 'short', year: 'numeric',
+      timeZone: 'UTC',
     });
   };
 

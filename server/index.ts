@@ -1938,7 +1938,7 @@ function generateInstallments(startDate: string, count: number): FinancingInstal
   const start = new Date(startDate);
   for (let i = 0; i < count; i++) {
     const d = new Date(start);
-    d.setDate(d.getDate() + i * 15); // Cada 15 días
+    d.setUTCDate(d.getUTCDate() + i * 15); // Cada 15 días — UTC para evitar desfase de zona horaria
     installments.push({
       number: i + 1,
       dueDate: d.toISOString(),

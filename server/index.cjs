@@ -300527,7 +300527,7 @@ function generateInstallments(startDate, count) {
   const start = new Date(startDate);
   for (let i = 0; i < count; i++) {
     const d = new Date(start);
-    d.setDate(d.getDate() + i * 15);
+    d.setUTCDate(d.getUTCDate() + i * 15);
     installments.push({
       number: i + 1,
       dueDate: d.toISOString(),
