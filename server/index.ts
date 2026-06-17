@@ -561,7 +561,7 @@ Aquí tienes el resumen:
 *🚚 Entrega:* {{metodoEntrega}}
 *💳 Pago:* {{metodoPago}}
 
-💰 *TOTAL A PAGAR: ${{total}} COP* 💰
+💰 *TOTAL A PAGAR: $\{{total}} COP* 💰
 
 📅 {{fecha}}
 

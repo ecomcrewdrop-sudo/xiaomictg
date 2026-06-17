@@ -79738,8 +79738,8 @@ var require_tr46 = __commonJS({
         return l;
       });
       if (verifyDNSLength) {
-        const total2 = labels.join(".").length;
-        if (total2 > 253 || total2 === 0) {
+        const total = labels.join(".").length;
+        if (total > 253 || total === 0) {
           result.error = true;
         }
         for (let i = 0; i < labels.length; ++i) {
@@ -96028,10 +96028,10 @@ var require_parser_v3 = __commonJS({
         buffers.push(msg);
         bufferTail = bufferTail.slice(msgLength + 1);
       }
-      var total2 = buffers.length;
-      for (i = 0; i < total2; i++) {
+      var total = buffers.length;
+      for (i = 0; i < total; i++) {
         var buffer = buffers[i];
-        callback(decodePacket(buffer, binaryType, true), i, total2);
+        callback(decodePacket(buffer, binaryType, true), i, total);
       }
     }
   }
@@ -153796,7 +153796,7 @@ var init_MP4Parser = __esm({
             this.metadata.setFormat("bitsPerSample", ssd.description.sampleSize);
             this.metadata.setFormat("numberOfChannels", ssd.description.numAudioChannels);
             if (audioTrack.media.header.timeScale === 0 && audioTrack.timeToSampleTable.length > 0) {
-              const totalSampleSize = audioTrack.timeToSampleTable.map((ttstEntry) => ttstEntry.count * ttstEntry.duration).reduce((total2, sampleSize) => total2 + sampleSize);
+              const totalSampleSize = audioTrack.timeToSampleTable.map((ttstEntry) => ttstEntry.count * ttstEntry.duration).reduce((total, sampleSize) => total + sampleSize);
               audioTrack.duration = totalSampleSize / ssd.description.sampleRate;
             }
           }
@@ -182199,9 +182199,9 @@ async function requestApi(pathname, init, commandOptions) {
           },
           onUploadProgress: (commandOptions == null ? void 0 : commandOptions.onUploadProgress) ? (loaded) => {
             var _a3;
-            const total2 = bodyLength !== 0 ? bodyLength : loaded;
+            const total = bodyLength !== 0 ? bodyLength : loaded;
             totalLoaded = loaded;
-            const percentage = bodyLength > 0 ? Number((loaded / total2 * 100).toFixed(2)) : 0;
+            const percentage = bodyLength > 0 ? Number((loaded / total * 100).toFixed(2)) : 0;
             if (percentage === 100 && bodyLength > 0) {
               return;
             }
@@ -182211,7 +182211,7 @@ async function requestApi(pathname, init, commandOptions) {
               // Instead of defining total as total?: number we decided to set the total to the currently
               // loaded number. This is not inaccurate and way more practical for DX.
               // Passing down a stream to put() is very rare
-              total: total2,
+              total,
               percentage
             });
           } : void 0
@@ -182533,9 +182533,9 @@ function uploadAllParts({
           },
           0
         );
-        const total2 = totalToLoad || loaded;
+        const total = totalToLoad || loaded;
         const percentage = totalToLoad > 0 ? Number(((loaded / totalToLoad || loaded) * 100).toFixed(2)) : 0;
-        (_a3 = options.onUploadProgress) == null ? void 0 : _a3.call(options, { loaded, total: total2, percentage });
+        (_a3 = options.onUploadProgress) == null ? void 0 : _a3.call(options, { loaded, total, percentage });
       }, 150);
     }
     read2().catch(cancel);
@@ -283279,11 +283279,11 @@ var generateMac = (operation, data, keyId, key) => {
   keyData.set(keyIdBuffer, 1);
   const last = new Uint8Array(8);
   last[7] = keyData.length;
-  const total2 = new Uint8Array(keyData.length + data.length + last.length);
-  total2.set(keyData, 0);
-  total2.set(data, keyData.length);
-  total2.set(last, keyData.length + data.length);
-  const hmac = hmacSign(total2, key, "sha512");
+  const total = new Uint8Array(keyData.length + data.length + last.length);
+  total.set(keyData, 0);
+  total.set(data, keyData.length);
+  total.set(last, keyData.length + data.length);
+  const hmac = hmacSign(total, key, "sha512");
   return hmac.subarray(0, 32);
 };
 var to64BitNetworkOrder = (e) => {
@@ -283322,12 +283322,12 @@ var makeLtHashGenerator = ({ indexValueMap, hash: hash2 }) => {
   };
 };
 var generateSnapshotMac = (lthash, version4, name, key) => {
-  const total2 = Buffer.concat([lthash, to64BitNetworkOrder(version4), Buffer.from(name, "utf-8")]);
-  return hmacSign(total2, key, "sha256");
+  const total = Buffer.concat([lthash, to64BitNetworkOrder(version4), Buffer.from(name, "utf-8")]);
+  return hmacSign(total, key, "sha256");
 };
 var generatePatchMac = (snapshotMac, valueMacs, version4, type, key) => {
-  const total2 = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version4), Buffer.from(type, "utf-8")]);
-  return hmacSign(total2, key);
+  const total = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version4), Buffer.from(type, "utf-8")]);
+  return hmacSign(total, key);
 };
 var newLTHashState = () => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} });
 var ensureLTHashStateVersion = (state) => {
@@ -299367,7 +299367,7 @@ Aqu\xED tienes el resumen:
 *\u{1F69A} Entrega:* {{metodoEntrega}}
 *\u{1F4B3} Pago:* {{metodoPago}}
 
-\u{1F4B0} *TOTAL A PAGAR: ${{ total }} COP* \u{1F4B0}
+\u{1F4B0} *TOTAL A PAGAR: \${{total}} COP* \u{1F4B0}
 
 \u{1F4C5} {{fecha}}
 
@@ -300240,11 +300240,11 @@ app.post("/api/orders", async (req, res) => {
       await sendInvoiceEmail(invoiceOrder);
       return res.json({ success: true });
     }
-    const { orderNumber: clientOrderNumber, date, createdAt, items, total: total2, status, customerInfo, paymentMethod } = req.body;
+    const { orderNumber: clientOrderNumber, date, createdAt, items, total, status, customerInfo, paymentMethod } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "La orden debe tener al menos un producto" });
     }
-    if (total2 === void 0 || total2 === null || isNaN(Number(total2)) || Number(total2) < 0) {
+    if (total === void 0 || total === null || isNaN(Number(total)) || Number(total) < 0) {
       return res.status(400).json({ error: "Total inv\xE1lido" });
     }
     const id = Date.now().toString();
@@ -300256,7 +300256,7 @@ app.post("/api/orders", async (req, res) => {
       date: date || now,
       createdAt: createdAt || now,
       items,
-      total: total2,
+      total,
       status: status || "pending",
       customerInfo,
       paymentMethod
@@ -300265,7 +300265,7 @@ app.post("/api/orders", async (req, res) => {
     const notification = {
       orderId: id,
       orderNumber,
-      total: total2,
+      total,
       message: `Nuevo pedido recibido: ${orderNumber}`,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       read: false
@@ -300284,12 +300284,12 @@ app.post("/api/orders", async (req, res) => {
 });
 app.put("/api/orders/:id", async (req, res) => {
   try {
-    const { status, items, customerInfo, total: total2 } = req.body;
+    const { status, items, customerInfo, total } = req.body;
     const $set = {};
     if (status !== void 0) $set.status = status;
     if (items !== void 0) $set.items = items;
     if (customerInfo !== void 0) $set.customerInfo = customerInfo;
-    if (total2 !== void 0) $set.total = total2;
+    if (total !== void 0) $set.total = total;
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "No hay campos para actualizar" });
     }
