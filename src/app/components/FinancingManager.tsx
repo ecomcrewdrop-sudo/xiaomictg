@@ -317,9 +317,9 @@ export function FinancingManager() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <CreditCard className="w-7 h-7 text-orange-500" />
-            Sistema de Financiamiento
+            CrediLock
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Cuotas quincenales con recordatorios automáticos por WhatsApp</p>
+          <p className="text-sm text-gray-500 mt-1">Control de cuotas quincenales con recordatorios automáticos por WhatsApp</p>
         </div>
         <Button onClick={openCreate} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
           <Plus className="w-4 h-4" /> Nuevo Financiamiento
@@ -596,10 +596,10 @@ export function FinancingManager() {
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-orange-500" />
-              {editing ? 'Editar Financiamiento' : 'Nuevo Financiamiento'}
+              {editing ? 'Editar CrediLock' : 'Nuevo CrediLock'}
             </DialogTitle>
             <DialogDescription>
-              {editing ? 'Modifica los datos del financiamiento' : 'Registra un nuevo cliente con plan de cuotas quincenales'}
+              {editing ? 'Modifica los datos del crédito' : 'Registra un nuevo cliente con plan de cuotas quincenales'}
             </DialogDescription>
           </DialogHeader>
 
@@ -674,7 +674,7 @@ export function FinancingManager() {
               Cancelar
             </Button>
             <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">
-              {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear Financiamiento'}
+              {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear CrediLock'}
             </Button>
           </div>
         </DialogContent>
