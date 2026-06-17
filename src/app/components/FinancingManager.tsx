@@ -498,9 +498,10 @@ export function FinancingManager() {
 
                     {/* Tabla de cuotas */}
                     <div className="bg-white rounded-lg border overflow-hidden mb-4">
-                      <div className="grid grid-cols-[50px_1fr_100px_120px] md:grid-cols-[60px_1fr_120px_120px_140px] gap-2 px-3 py-2 bg-gray-100 text-xs font-bold text-gray-500 uppercase">
+                      <div className="grid grid-cols-[50px_1fr_90px_100px_120px] md:grid-cols-[60px_1fr_110px_120px_120px_140px] gap-2 px-3 py-2 bg-gray-100 text-xs font-bold text-gray-500 uppercase">
                         <span>#</span>
                         <span>Fecha de Pago</span>
+                        <span>Valor</span>
                         <span>Estado</span>
                         <span className="hidden md:block">Pagado el</span>
                         <span>Acción</span>
@@ -508,7 +509,7 @@ export function FinancingManager() {
                       {record.cuotas.map(cuota => (
                         <div
                           key={cuota.number}
-                          className={`grid grid-cols-[50px_1fr_100px_120px] md:grid-cols-[60px_1fr_120px_120px_140px] gap-2 px-3 py-2.5 border-t items-center text-sm ${
+                          className={`grid grid-cols-[50px_1fr_90px_100px_120px] md:grid-cols-[60px_1fr_110px_120px_120px_140px] gap-2 px-3 py-2.5 border-t items-center text-sm ${
                             cuota.status === 'paid' ? 'bg-green-50/50' :
                             cuota.status === 'overdue' ? 'bg-red-50/50' : ''
                           }`}
@@ -517,6 +518,7 @@ export function FinancingManager() {
                           <span className={`font-medium ${cuota.status === 'overdue' ? 'text-red-700' : 'text-gray-700'}`}>
                             {formatDate(cuota.dueDate)}
                           </span>
+                          <span className="font-bold text-orange-600">{formatCurrency(record.valorCuota)}</span>
                           <span>
                             {cuota.status === 'paid' && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold">
