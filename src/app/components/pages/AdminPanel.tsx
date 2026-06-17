@@ -14,6 +14,7 @@ import { StatisticsDashboard } from '../StatisticsDashboard';
 import { AdminLinkGenerator } from './AdminLinkGenerator';
 import { WhatsAppPanel } from '../WhatsAppPanel';
 import { ReviewsManager } from '../ReviewsManager';
+import { FinancingManager } from '../FinancingManager';
 import { toast } from 'sonner';
 import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
 const SOCKET_URL = '';
@@ -527,7 +528,7 @@ export function AdminPanel() {
         </div>
 
       <Tabs defaultValue="products" className="w-full">
-      <TabsList className="grid w-full max-w-5xl grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 mb-8 h-auto gap-1">
+      <TabsList className="grid w-full max-w-6xl grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 mb-8 h-auto gap-1">
           <TabsTrigger value="products">Productos</TabsTrigger>
           <TabsTrigger value="stats">Estadísticas</TabsTrigger>
           <TabsTrigger value="orders" className="relative">
@@ -538,14 +539,14 @@ export function AdminPanel() {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="financing" className="font-bold text-blue-700 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">Cuotas</TabsTrigger>
           <TabsTrigger value="banner">Banners</TabsTrigger>
           <TabsTrigger value="ticket">Ticket</TabsTrigger>
           <TabsTrigger value="backup">Respaldo</TabsTrigger>
           <TabsTrigger value="blocking">Bloqueo</TabsTrigger>
-          <TabsTrigger value="links" className="font-bold text-orange-600 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600">Links VIP</TabsTrigger>
           <TabsTrigger value="whatsapp" className="font-bold text-green-700 data-[state=active]:bg-green-50 data-[state=active]:text-green-700 flex items-center gap-1">
             <MessageCircle className="w-4 h-4" />
-            WhatsApp Bot
+            WhatsApp
           </TabsTrigger>
           <TabsTrigger value="reviews" className="font-bold text-indigo-700 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">Reseñas</TabsTrigger>
         </TabsList>
@@ -553,6 +554,11 @@ export function AdminPanel() {
         {/* TAB DE ÓRDENES */}
         <TabsContent value="orders">
           <OrdersManager />
+        </TabsContent>
+
+        {/* TAB DE FINANCIAMIENTO / CUOTAS */}
+        <TabsContent value="financing">
+          <FinancingManager />
         </TabsContent>
 
         {/* TAB DE LINKS VIP */}

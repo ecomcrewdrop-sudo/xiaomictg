@@ -1903,9 +1903,334 @@ app.delete('/api/admin/reviews/:id', async (req, res) => {
   }
 });
 
+// ====================================================================
+// FINANCING MODULE — Cuotas quincenales con recordatorios WhatsApp
+// ====================================================================
+
+interface FinancingInstallment {
+  number: number;
+  dueDate: string; // ISO
+  paidDate?: string; // ISO — cuando se marcó como pagada
+  status: 'pending' | 'paid' | 'overdue';
+}
+
+interface FinancingRecord {
+  id: string;
+  nombre: string;
+  cedula: string;
+  telefono: string;
+  imei: string;
+  producto: string;
+  costoTotal: number;
+  cuotaInicial: number;
+  numeroCuotas: number;
+  valorCuota: number;
+  fechaInicio: string; // ISO — fecha del primer pago
+  cuotas: FinancingInstallment[];
+  status: 'active' | 'completed' | 'defaulted';
+  createdAt: string;
+  lastReminderSent?: string; // ISO — para evitar enviar doble
+}
+
+/** Genera las cuotas quincenales a partir de una fecha de inicio */
+function generateInstallments(startDate: string, count: number): FinancingInstallment[] {
+  const installments: FinancingInstallment[] = [];
+  const start = new Date(startDate);
+  for (let i = 0; i < count; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i * 15); // Cada 15 días
+    installments.push({
+      number: i + 1,
+      dueDate: d.toISOString(),
+      status: 'pending',
+    });
+  }
+  return installments;
+}
+
+/** Actualiza estados overdue en cuotas vencidas no pagadas */
+function refreshOverdueStatus(cuotas: FinancingInstallment[]): FinancingInstallment[] {
+  const now = new Date();
+  return cuotas.map(c => {
+    if (c.status === 'pending' && new Date(c.dueDate) < now) {
+      return { ...c, status: 'overdue' as const };
+    }
+    return c;
+  });
+}
+
+// --- CRUD Financiamientos ---
+
+app.get('/api/financing', async (_req, res) => {
+  try {
+    const records = await db.collection('financing').find({}).sort({ createdAt: -1 }).toArray();
+    // Actualizar overdue on-read
+    const updated = records.map((r: any) => ({
+      ...r,
+      cuotas: refreshOverdueStatus(r.cuotas || []),
+    }));
+    res.json(updated);
+  } catch (error) {
+    console.error('[financing] Error listing:', error);
+    res.status(500).json({ error: 'Error al obtener financiamientos' });
+  }
+});
+
+app.post('/api/financing', async (req, res) => {
+  try {
+    const { nombre, cedula, telefono, imei, producto, costoTotal, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+
+    if (!nombre || !cedula || !telefono || !imei || !costoTotal || !numeroCuotas || !fechaInicio) {
+      return res.status(400).json({ error: 'Todos los campos obligatorios son requeridos' });
+    }
+
+    const saldoFinanciar = Number(costoTotal) - Number(cuotaInicial || 0);
+    const valorCuota = Math.round(saldoFinanciar / Number(numeroCuotas));
+
+    const id = Date.now().toString();
+    const record: FinancingRecord = {
+      id,
+      nombre: String(nombre).trim(),
+      cedula: String(cedula).trim(),
+      telefono: String(telefono).trim(),
+      imei: String(imei).trim(),
+      producto: String(producto || '').trim(),
+      costoTotal: Number(costoTotal),
+      cuotaInicial: Number(cuotaInicial || 0),
+      numeroCuotas: Number(numeroCuotas),
+      valorCuota,
+      fechaInicio,
+      cuotas: generateInstallments(fechaInicio, Number(numeroCuotas)),
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    await db.collection('financing').insertOne(record);
+    res.json(record);
+  } catch (error) {
+    console.error('[financing] Error creating:', error);
+    res.status(500).json({ error: 'Error al crear financiamiento' });
+  }
+});
+
+app.put('/api/financing/:id', async (req, res) => {
+  try {
+    const { nombre, cedula, telefono, imei, producto, costoTotal, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+    const $set: Record<string, unknown> = {};
+    if (nombre !== undefined) $set.nombre = String(nombre).trim();
+    if (cedula !== undefined) $set.cedula = String(cedula).trim();
+    if (telefono !== undefined) $set.telefono = String(telefono).trim();
+    if (imei !== undefined) $set.imei = String(imei).trim();
+    if (producto !== undefined) $set.producto = String(producto).trim();
+
+    // Si cambian datos financieros, recalcular cuotas
+    if (costoTotal !== undefined || cuotaInicial !== undefined || numeroCuotas !== undefined || fechaInicio !== undefined) {
+      const existing = await db.collection('financing').findOne({ id: req.params.id });
+      if (!existing) return res.status(404).json({ error: 'No encontrado' });
+
+      const newCosto = Number(costoTotal ?? existing.costoTotal);
+      const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
+      const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
+      const newFechaInicio = fechaInicio ?? existing.fechaInicio;
+
+      $set.costoTotal = newCosto;
+      $set.cuotaInicial = newInicial;
+      $set.numeroCuotas = newNumCuotas;
+      $set.fechaInicio = newFechaInicio;
+      $set.valorCuota = Math.round((newCosto - newInicial) / newNumCuotas);
+      $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
+    }
+
+    if (Object.keys($set).length === 0) {
+      return res.status(400).json({ error: 'Sin campos para actualizar' });
+    }
+
+    await db.collection('financing').updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error('[financing] Error updating:', error);
+    res.status(500).json({ error: 'Error al actualizar financiamiento' });
+  }
+});
+
+app.delete('/api/financing/:id', async (req, res) => {
+  try {
+    const result = await db.collection('financing').deleteOne({ id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[financing] Error deleting:', error);
+    res.status(500).json({ error: 'Error al eliminar financiamiento' });
+  }
+});
+
+// --- Marcar cuota como pagada ---
+app.post('/api/financing/:id/pay/:cuotaNumber', async (req, res) => {
+  try {
+    const record = await db.collection('financing').findOne({ id: req.params.id });
+    if (!record) return res.status(404).json({ error: 'Financiamiento no encontrado' });
+
+    const cuotaNum = Number(req.params.cuotaNumber);
+    const cuotas: FinancingInstallment[] = record.cuotas || [];
+    const idx = cuotas.findIndex(c => c.number === cuotaNum);
+    if (idx === -1) return res.status(404).json({ error: 'Cuota no encontrada' });
+
+    cuotas[idx].status = 'paid';
+    cuotas[idx].paidDate = new Date().toISOString();
+
+    // Verificar si todas las cuotas están pagadas
+    const allPaid = cuotas.every(c => c.status === 'paid');
+    const $set: Record<string, unknown> = { cuotas };
+    if (allPaid) $set.status = 'completed';
+
+    await db.collection('financing').updateOne({ id: req.params.id }, { $set });
+
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error('[financing] Error paying:', error);
+    res.status(500).json({ error: 'Error al registrar pago' });
+  }
+});
+
+// --- Desmarcar cuota (volver a pendiente) ---
+app.post('/api/financing/:id/unpay/:cuotaNumber', async (req, res) => {
+  try {
+    const record = await db.collection('financing').findOne({ id: req.params.id });
+    if (!record) return res.status(404).json({ error: 'Financiamiento no encontrado' });
+
+    const cuotaNum = Number(req.params.cuotaNumber);
+    const cuotas: FinancingInstallment[] = record.cuotas || [];
+    const idx = cuotas.findIndex(c => c.number === cuotaNum);
+    if (idx === -1) return res.status(404).json({ error: 'Cuota no encontrada' });
+
+    cuotas[idx].status = 'pending';
+    cuotas[idx].paidDate = undefined;
+
+    await db.collection('financing').updateOne(
+      { id: req.params.id },
+      { $set: { cuotas, status: 'active' } }
+    );
+
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error('[financing] Error unpaying:', error);
+    res.status(500).json({ error: 'Error al desmarcar pago' });
+  }
+});
+
+// --- Enviar recordatorio WhatsApp manual ---
+app.post('/api/financing/:id/remind', async (req, res) => {
+  try {
+    const record = await db.collection('financing').findOne({ id: req.params.id });
+    if (!record) return res.status(404).json({ error: 'No encontrado' });
+
+    if (whatsappService.getStatus() !== 'connected') {
+      return res.status(400).json({ error: 'WhatsApp no está conectado' });
+    }
+
+    // Encontrar próxima cuota pendiente
+    const cuotas: FinancingInstallment[] = refreshOverdueStatus(record.cuotas || []);
+    const nextPending = cuotas.find(c => c.status === 'pending' || c.status === 'overdue');
+
+    if (!nextPending) {
+      return res.status(400).json({ error: 'No hay cuotas pendientes' });
+    }
+
+    const dueDate = new Date(nextPending.dueDate);
+    const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const isOverdue = nextPending.status === 'overdue';
+
+    const valorStr = record.valorCuota.toLocaleString('es-CO');
+    const paidCountStr = cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
+
+    const msg = isOverdue
+      ? `⚠️ *Recordatorio de Pago Vencido* — Xiaomi Cartagena\n\nHola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venció el *${fechaStr}*.\n\nPor favor realiza tu pago lo antes posible para evitar inconvenientes con tu equipo.\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`
+      : `📅 *Recordatorio de Pago* — Xiaomi Cartagena\n\nHola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
+
+    const success = await whatsappService.sendMessage(record.telefono, msg);
+    if (success) {
+      await db.collection('financing').updateOne(
+        { id: req.params.id },
+        { $set: { lastReminderSent: new Date().toISOString() } }
+      );
+    }
+
+    res.json({ success, message: success ? 'Recordatorio enviado' : 'No se pudo enviar' });
+  } catch (error) {
+    console.error('[financing] Error sending reminder:', error);
+    res.status(500).json({ error: 'Error al enviar recordatorio' });
+  }
+});
+
+// --- Cron de recordatorios automáticos (se ejecuta cada hora) ---
+let financingReminderInterval: NodeJS.Timeout | null = null;
+
+async function checkFinancingReminders() {
+  if (!db || whatsappService.getStatus() !== 'connected') return;
+
+  try {
+    const records = await db.collection('financing').find({ status: 'active' }).toArray();
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    for (const record of records) {
+      const cuotas: FinancingInstallment[] = record.cuotas || [];
+      const nextPending = cuotas.find((c: FinancingInstallment) => c.status === 'pending' || c.status === 'overdue');
+      if (!nextPending) continue;
+
+      const dueDate = new Date(nextPending.dueDate);
+      const dueDateStr = dueDate.toISOString().slice(0, 10);
+
+      // Calcular día anterior
+      const dayBefore = new Date(dueDate);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      const dayBeforeStr = dayBefore.toISOString().slice(0, 10);
+
+      // Solo enviar si hoy es el día antes o el día del pago
+      const shouldRemind = todayStr === dayBeforeStr || todayStr === dueDateStr;
+      if (!shouldRemind) continue;
+
+      // Evitar enviar dos veces el mismo día
+      const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : '';
+      if (lastSent === todayStr) continue;
+
+      const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const isToday = todayStr === dueDateStr;
+
+      const msg = isToday
+        ? `📅 *¡Hoy vence tu cuota!* — Xiaomi Cartagena\n\nHola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString('es-CO')} COP*.\n\nCuotas pagadas: ${cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena_`
+        : `🔔 *Recordatorio de Pago* — Xiaomi Cartagena\n\nHola *${record.nombre}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString('es-CO')} COP*.\n\nCuotas pagadas: ${cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena_`;
+
+      const success = await whatsappService.sendMessage(record.telefono, msg);
+      if (success) {
+        await db.collection('financing').updateOne(
+          { id: record.id },
+          { $set: { lastReminderSent: new Date().toISOString() } }
+        );
+        console.log(`[financing] Recordatorio enviado a ${record.nombre} (${record.telefono})`);
+      }
+
+      // Delay entre mensajes para no ser bloqueado
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  } catch (err) {
+    console.error('[financing] Error en cron de recordatorios:', err);
+  }
+}
+
+// Iniciar cron cada hora
+financingReminderInterval = setInterval(checkFinancingReminders, 60 * 60 * 1000);
+// Primera verificación 30s después de arrancar
+setTimeout(checkFinancingReminders, 30000);
+
+// ====================================================================
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });

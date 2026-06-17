@@ -300522,6 +300522,266 @@ app.delete("/api/admin/reviews/:id", async (req, res) => {
     res.status(500).json({ error: "Error deleting review" });
   }
 });
+function generateInstallments(startDate, count) {
+  const installments = [];
+  const start = new Date(startDate);
+  for (let i = 0; i < count; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i * 15);
+    installments.push({
+      number: i + 1,
+      dueDate: d.toISOString(),
+      status: "pending"
+    });
+  }
+  return installments;
+}
+function refreshOverdueStatus(cuotas) {
+  const now = /* @__PURE__ */ new Date();
+  return cuotas.map((c) => {
+    if (c.status === "pending" && new Date(c.dueDate) < now) {
+      return { ...c, status: "overdue" };
+    }
+    return c;
+  });
+}
+app.get("/api/financing", async (_req, res) => {
+  try {
+    const records = await db.collection("financing").find({}).sort({ createdAt: -1 }).toArray();
+    const updated = records.map((r) => ({
+      ...r,
+      cuotas: refreshOverdueStatus(r.cuotas || [])
+    }));
+    res.json(updated);
+  } catch (error) {
+    console.error("[financing] Error listing:", error);
+    res.status(500).json({ error: "Error al obtener financiamientos" });
+  }
+});
+app.post("/api/financing", async (req, res) => {
+  try {
+    const { nombre, cedula, telefono, imei, producto, costoTotal, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+    if (!nombre || !cedula || !telefono || !imei || !costoTotal || !numeroCuotas || !fechaInicio) {
+      return res.status(400).json({ error: "Todos los campos obligatorios son requeridos" });
+    }
+    const saldoFinanciar = Number(costoTotal) - Number(cuotaInicial || 0);
+    const valorCuota = Math.round(saldoFinanciar / Number(numeroCuotas));
+    const id = Date.now().toString();
+    const record = {
+      id,
+      nombre: String(nombre).trim(),
+      cedula: String(cedula).trim(),
+      telefono: String(telefono).trim(),
+      imei: String(imei).trim(),
+      producto: String(producto || "").trim(),
+      costoTotal: Number(costoTotal),
+      cuotaInicial: Number(cuotaInicial || 0),
+      numeroCuotas: Number(numeroCuotas),
+      valorCuota,
+      fechaInicio,
+      cuotas: generateInstallments(fechaInicio, Number(numeroCuotas)),
+      status: "active",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("financing").insertOne(record);
+    res.json(record);
+  } catch (error) {
+    console.error("[financing] Error creating:", error);
+    res.status(500).json({ error: "Error al crear financiamiento" });
+  }
+});
+app.put("/api/financing/:id", async (req, res) => {
+  try {
+    const { nombre, cedula, telefono, imei, producto, costoTotal, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+    const $set = {};
+    if (nombre !== void 0) $set.nombre = String(nombre).trim();
+    if (cedula !== void 0) $set.cedula = String(cedula).trim();
+    if (telefono !== void 0) $set.telefono = String(telefono).trim();
+    if (imei !== void 0) $set.imei = String(imei).trim();
+    if (producto !== void 0) $set.producto = String(producto).trim();
+    if (costoTotal !== void 0 || cuotaInicial !== void 0 || numeroCuotas !== void 0 || fechaInicio !== void 0) {
+      const existing = await db.collection("financing").findOne({ id: req.params.id });
+      if (!existing) return res.status(404).json({ error: "No encontrado" });
+      const newCosto = Number(costoTotal ?? existing.costoTotal);
+      const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
+      const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
+      const newFechaInicio = fechaInicio ?? existing.fechaInicio;
+      $set.costoTotal = newCosto;
+      $set.cuotaInicial = newInicial;
+      $set.numeroCuotas = newNumCuotas;
+      $set.fechaInicio = newFechaInicio;
+      $set.valorCuota = Math.round((newCosto - newInicial) / newNumCuotas);
+      $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
+    }
+    if (Object.keys($set).length === 0) {
+      return res.status(400).json({ error: "Sin campos para actualizar" });
+    }
+    await db.collection("financing").updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error("[financing] Error updating:", error);
+    res.status(500).json({ error: "Error al actualizar financiamiento" });
+  }
+});
+app.delete("/api/financing/:id", async (req, res) => {
+  try {
+    const result = await db.collection("financing").deleteOne({ id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: "No encontrado" });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[financing] Error deleting:", error);
+    res.status(500).json({ error: "Error al eliminar financiamiento" });
+  }
+});
+app.post("/api/financing/:id/pay/:cuotaNumber", async (req, res) => {
+  try {
+    const record = await db.collection("financing").findOne({ id: req.params.id });
+    if (!record) return res.status(404).json({ error: "Financiamiento no encontrado" });
+    const cuotaNum = Number(req.params.cuotaNumber);
+    const cuotas = record.cuotas || [];
+    const idx = cuotas.findIndex((c) => c.number === cuotaNum);
+    if (idx === -1) return res.status(404).json({ error: "Cuota no encontrada" });
+    cuotas[idx].status = "paid";
+    cuotas[idx].paidDate = (/* @__PURE__ */ new Date()).toISOString();
+    const allPaid = cuotas.every((c) => c.status === "paid");
+    const $set = { cuotas };
+    if (allPaid) $set.status = "completed";
+    await db.collection("financing").updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error("[financing] Error paying:", error);
+    res.status(500).json({ error: "Error al registrar pago" });
+  }
+});
+app.post("/api/financing/:id/unpay/:cuotaNumber", async (req, res) => {
+  try {
+    const record = await db.collection("financing").findOne({ id: req.params.id });
+    if (!record) return res.status(404).json({ error: "Financiamiento no encontrado" });
+    const cuotaNum = Number(req.params.cuotaNumber);
+    const cuotas = record.cuotas || [];
+    const idx = cuotas.findIndex((c) => c.number === cuotaNum);
+    if (idx === -1) return res.status(404).json({ error: "Cuota no encontrada" });
+    cuotas[idx].status = "pending";
+    cuotas[idx].paidDate = void 0;
+    await db.collection("financing").updateOne(
+      { id: req.params.id },
+      { $set: { cuotas, status: "active" } }
+    );
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error("[financing] Error unpaying:", error);
+    res.status(500).json({ error: "Error al desmarcar pago" });
+  }
+});
+app.post("/api/financing/:id/remind", async (req, res) => {
+  try {
+    const record = await db.collection("financing").findOne({ id: req.params.id });
+    if (!record) return res.status(404).json({ error: "No encontrado" });
+    if (whatsappService.getStatus() !== "connected") {
+      return res.status(400).json({ error: "WhatsApp no est\xE1 conectado" });
+    }
+    const cuotas = refreshOverdueStatus(record.cuotas || []);
+    const nextPending = cuotas.find((c) => c.status === "pending" || c.status === "overdue");
+    if (!nextPending) {
+      return res.status(400).json({ error: "No hay cuotas pendientes" });
+    }
+    const dueDate = new Date(nextPending.dueDate);
+    const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const isOverdue = nextPending.status === "overdue";
+    const valorStr = record.valorCuota.toLocaleString("es-CO");
+    const paidCountStr = cuotas.filter((c) => c.status === "paid").length;
+    const msg = isOverdue ? `\u26A0\uFE0F *Recordatorio de Pago Vencido* \u2014 Xiaomi Cartagena
+
+Hola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venci\xF3 el *${fechaStr}*.
+
+Por favor realiza tu pago lo antes posible para evitar inconvenientes con tu equipo.
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_` : `\u{1F4C5} *Recordatorio de Pago* \u2014 Xiaomi Cartagena
+
+Hola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.
+
+Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
+    const success = await whatsappService.sendMessage(record.telefono, msg);
+    if (success) {
+      await db.collection("financing").updateOne(
+        { id: req.params.id },
+        { $set: { lastReminderSent: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
+    res.json({ success, message: success ? "Recordatorio enviado" : "No se pudo enviar" });
+  } catch (error) {
+    console.error("[financing] Error sending reminder:", error);
+    res.status(500).json({ error: "Error al enviar recordatorio" });
+  }
+});
+var financingReminderInterval = null;
+async function checkFinancingReminders() {
+  if (!db || whatsappService.getStatus() !== "connected") return;
+  try {
+    const records = await db.collection("financing").find({ status: "active" }).toArray();
+    const now = /* @__PURE__ */ new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    for (const record of records) {
+      const cuotas = record.cuotas || [];
+      const nextPending = cuotas.find((c) => c.status === "pending" || c.status === "overdue");
+      if (!nextPending) continue;
+      const dueDate = new Date(nextPending.dueDate);
+      const dueDateStr = dueDate.toISOString().slice(0, 10);
+      const dayBefore = new Date(dueDate);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      const dayBeforeStr = dayBefore.toISOString().slice(0, 10);
+      const shouldRemind = todayStr === dayBeforeStr || todayStr === dueDateStr;
+      if (!shouldRemind) continue;
+      const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : "";
+      if (lastSent === todayStr) continue;
+      const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      const isToday = todayStr === dueDateStr;
+      const msg = isToday ? `\u{1F4C5} *\xA1Hoy vence tu cuota!* \u2014 Xiaomi Cartagena
+
+Hola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString("es-CO")} COP*.
+
+Cuotas pagadas: ${cuotas.filter((c) => c.status === "paid").length}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_Xiaomi Cartagena_` : `\u{1F514} *Recordatorio de Pago* \u2014 Xiaomi Cartagena
+
+Hola *${record.nombre}*, ma\xF1ana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString("es-CO")} COP*.
+
+Cuotas pagadas: ${cuotas.filter((c) => c.status === "paid").length}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_Xiaomi Cartagena_`;
+      const success = await whatsappService.sendMessage(record.telefono, msg);
+      if (success) {
+        await db.collection("financing").updateOne(
+          { id: record.id },
+          { $set: { lastReminderSent: (/* @__PURE__ */ new Date()).toISOString() } }
+        );
+        console.log(`[financing] Recordatorio enviado a ${record.nombre} (${record.telefono})`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3e3));
+    }
+  } catch (err) {
+    console.error("[financing] Error en cron de recordatorios:", err);
+  }
+}
+financingReminderInterval = setInterval(checkFinancingReminders, 60 * 60 * 1e3);
+setTimeout(checkFinancingReminders, 3e4);
 io2.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
   socket.on("disconnect", () => {
