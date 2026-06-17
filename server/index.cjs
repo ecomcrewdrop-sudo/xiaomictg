@@ -300560,12 +300560,14 @@ app.get("/api/financing", async (_req, res) => {
 });
 app.post("/api/financing", async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
-    if (!nombre || !cedula || !telefono || !imei || !costoTotal || !numeroCuotas || !fechaInicio) {
+    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio } = req.body;
+    if (!nombre || !cedula || !telefono || !imei || !numeroCuotas || !fechaInicio) {
       return res.status(400).json({ error: "Todos los campos obligatorios son requeridos" });
     }
-    const saldoFinanciar = Number(costoTotal) - Number(cuotaInicial || 0);
-    const valorCuota = Math.round(saldoFinanciar / Number(numeroCuotas));
+    const valorCuota = Number(rawValorCuota || 0);
+    const numCuotas = Number(numeroCuotas);
+    const inicial = Number(cuotaInicial || 0);
+    const costoTotal = rawCostoTotal ? Number(rawCostoTotal) : valorCuota * numCuotas + inicial;
     const id = Date.now().toString();
     const record = {
       id,
@@ -300592,25 +300594,26 @@ app.post("/api/financing", async (req, res) => {
 });
 app.put("/api/financing/:id", async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
     const $set = {};
     if (nombre !== void 0) $set.nombre = String(nombre).trim();
     if (cedula !== void 0) $set.cedula = String(cedula).trim();
     if (telefono !== void 0) $set.telefono = String(telefono).trim();
     if (imei !== void 0) $set.imei = String(imei).trim();
     if (producto !== void 0) $set.producto = String(producto).trim();
-    if (costoTotal !== void 0 || cuotaInicial !== void 0 || numeroCuotas !== void 0 || fechaInicio !== void 0) {
+    if (valorCuota !== void 0 || cuotaInicial !== void 0 || numeroCuotas !== void 0 || fechaInicio !== void 0) {
       const existing = await db.collection("financing").findOne({ id: req.params.id });
       if (!existing) return res.status(404).json({ error: "No encontrado" });
-      const newCosto = Number(costoTotal ?? existing.costoTotal);
+      const newValorCuota = Number(valorCuota ?? existing.valorCuota);
       const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
       const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
       const newFechaInicio = fechaInicio ?? existing.fechaInicio;
-      $set.costoTotal = newCosto;
+      const newCostoTotal = newValorCuota * newNumCuotas + newInicial;
+      $set.valorCuota = newValorCuota;
       $set.cuotaInicial = newInicial;
       $set.numeroCuotas = newNumCuotas;
+      $set.costoTotal = newCostoTotal;
       $set.fechaInicio = newFechaInicio;
-      $set.valorCuota = Math.round((newCosto - newInicial) / newNumCuotas);
       $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
     }
     if (Object.keys($set).length === 0) {

@@ -57,7 +57,7 @@ export function FinancingManager() {
     telefono: '',
     imei: '',
     producto: '',
-    costoTotal: '',
+    valorCuota: '',
     cuotaInicial: '',
     numeroCuotas: '',
     fechaInicio: new Date().toISOString().slice(0, 10),
@@ -82,21 +82,27 @@ export function FinancingManager() {
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
   const handleSave = async () => {
-    if (!form.nombre || !form.cedula || !form.telefono || !form.imei || !form.costoTotal || !form.numeroCuotas || !form.fechaInicio) {
+    if (!form.nombre || !form.cedula || !form.telefono || !form.imei || !form.valorCuota || !form.numeroCuotas || !form.fechaInicio) {
       toast.error('Completa todos los campos obligatorios');
       return;
     }
     setSaving(true);
     try {
+      const valorCuota = Number(form.valorCuota);
+      const numeroCuotas = Number(form.numeroCuotas);
+      const cuotaInicial = Number(form.cuotaInicial || 0);
+      const costoTotal = (valorCuota * numeroCuotas) + cuotaInicial;
+
       const payload = {
         nombre: form.nombre,
         cedula: form.cedula,
         telefono: form.telefono,
         imei: form.imei,
         producto: form.producto,
-        costoTotal: Number(form.costoTotal),
-        cuotaInicial: Number(form.cuotaInicial || 0),
-        numeroCuotas: Number(form.numeroCuotas),
+        costoTotal,
+        cuotaInicial,
+        valorCuota,
+        numeroCuotas,
         fechaInicio: new Date(form.fechaInicio).toISOString(),
       };
 
@@ -197,7 +203,7 @@ export function FinancingManager() {
     setEditing(null);
     setForm({
       nombre: '', cedula: '', telefono: '', imei: '', producto: '',
-      costoTotal: '', cuotaInicial: '', numeroCuotas: '',
+      valorCuota: '', cuotaInicial: '', numeroCuotas: '',
       fechaInicio: new Date().toISOString().slice(0, 10),
     });
   };
@@ -210,7 +216,7 @@ export function FinancingManager() {
       telefono: record.telefono,
       imei: record.imei,
       producto: record.producto,
-      costoTotal: record.costoTotal.toString(),
+      valorCuota: record.valorCuota.toString(),
       cuotaInicial: record.cuotaInicial.toString(),
       numeroCuotas: record.numeroCuotas.toString(),
       fechaInicio: record.fechaInicio.slice(0, 10),
@@ -231,10 +237,10 @@ export function FinancingManager() {
 
   const formatCurrency = (n: number) => `$${n.toLocaleString('es-CO')}`;
 
-  const saldoFinanciar = Number(form.costoTotal || 0) - Number(form.cuotaInicial || 0);
-  const valorCuotaPreview = form.numeroCuotas && saldoFinanciar > 0
-    ? Math.round(saldoFinanciar / Number(form.numeroCuotas))
-    : 0;
+  const valorCuotaNum = Number(form.valorCuota || 0);
+  const numeroCuotasNum = Number(form.numeroCuotas || 0);
+  const cuotaInicialNum = Number(form.cuotaInicial || 0);
+  const totalPreview = (valorCuotaNum * numeroCuotasNum) + cuotaInicialNum;
 
   // ─── Filtered & sorted data ──────────────────────────────────────────────
 
@@ -375,14 +381,15 @@ export function FinancingManager() {
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Header de tabla — solo desktop */}
-          <div className="hidden lg:grid lg:grid-cols-[1fr_100px_110px_150px_100px_100px_90px_110px_70px] gap-2 px-4 py-3 bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <div className="hidden lg:grid lg:grid-cols-[1fr_100px_110px_150px_90px_90px_100px_90px_110px_70px] gap-2 px-4 py-3 bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase tracking-wider">
             <span>Nombre</span>
             <span>Cédula</span>
             <span>Teléfono</span>
             <span>IMEI</span>
             <span>C. Inicial</span>
-            <span>Costo</span>
-            <span>Cuotas</span>
+            <span>Cuota</span>
+            <span>Total</span>
+            <span>Pagadas</span>
             <span>Próx. Pago</span>
             <span></span>
           </div>
@@ -399,7 +406,7 @@ export function FinancingManager() {
               <div key={record.id} className={`border-b last:border-b-0 transition-colors ${hasOverdue ? 'bg-red-50/50' : ''}`}>
                 {/* Row principal */}
                 <div
-                  className="grid grid-cols-1 lg:grid-cols-[1fr_100px_110px_150px_100px_100px_90px_110px_70px] gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50/80 items-center"
+                  className="grid grid-cols-1 lg:grid-cols-[1fr_100px_110px_150px_90px_90px_100px_90px_110px_70px] gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50/80 items-center"
                   onClick={() => setExpandedId(isExpanded ? null : record.id)}
                 >
                   {/* Nombre + producto — mobile friendly */}
@@ -419,6 +426,7 @@ export function FinancingManager() {
                   <span className="hidden lg:block text-sm text-gray-600">{record.telefono}</span>
                   <span className="hidden lg:block text-xs text-gray-500 font-mono truncate">{record.imei}</span>
                   <span className="hidden lg:block text-sm font-medium text-gray-700">{formatCurrency(record.cuotaInicial)}</span>
+                  <span className="hidden lg:block text-sm font-bold text-orange-600">{formatCurrency(record.valorCuota)}</span>
                   <span className="hidden lg:block text-sm font-bold text-gray-900">{formatCurrency(record.costoTotal)}</span>
                   <span className="hidden lg:block text-sm text-gray-700">
                     <span className="font-bold text-orange-600">{paidCount}</span>
@@ -633,16 +641,16 @@ export function FinancingManager() {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label>Costo Total *</Label>
-                <Input type="number" value={form.costoTotal} onChange={e => setForm({ ...form, costoTotal: e.target.value })} placeholder="800000" />
+                <Label>Valor Cuota *</Label>
+                <Input type="number" value={form.valorCuota} onChange={e => setForm({ ...form, valorCuota: e.target.value })} placeholder="98000" />
+              </div>
+              <div>
+                <Label># Cuotas *</Label>
+                <Input type="number" value={form.numeroCuotas} onChange={e => setForm({ ...form, numeroCuotas: e.target.value })} placeholder="12" min="1" max="24" />
               </div>
               <div>
                 <Label>Cuota Inicial</Label>
                 <Input type="number" value={form.cuotaInicial} onChange={e => setForm({ ...form, cuotaInicial: e.target.value })} placeholder="200000" />
-              </div>
-              <div>
-                <Label># Cuotas *</Label>
-                <Input type="number" value={form.numeroCuotas} onChange={e => setForm({ ...form, numeroCuotas: e.target.value })} placeholder="6" min="1" max="24" />
               </div>
             </div>
 
@@ -652,18 +660,24 @@ export function FinancingManager() {
             </div>
 
             {/* Preview cálculo */}
-            {valorCuotaPreview > 0 && (
+            {valorCuotaNum > 0 && numeroCuotasNum > 0 && (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <p className="text-sm text-orange-800 font-medium mb-2">📊 Resumen del plan</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-gray-600">Saldo a financiar:</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(saldoFinanciar)}</span>
                   <span className="text-gray-600">Valor cada cuota:</span>
-                  <span className="font-bold text-orange-600">{formatCurrency(valorCuotaPreview)}</span>
+                  <span className="font-bold text-orange-600">{formatCurrency(valorCuotaNum)}</span>
+                  <span className="text-gray-600">Número de cuotas:</span>
+                  <span className="font-bold text-gray-900">{numeroCuotasNum}</span>
                   <span className="text-gray-600">Frecuencia:</span>
                   <span className="font-bold text-gray-900">Cada 15 días</span>
-                  <span className="text-gray-600">Total a pagar:</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(Number(form.costoTotal))}</span>
+                  {cuotaInicialNum > 0 && (
+                    <>
+                      <span className="text-gray-600">Cuota inicial:</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(cuotaInicialNum)}</span>
+                    </>
+                  )}
+                  <span className="text-gray-600 font-bold text-base pt-2 border-t border-orange-200">TOTAL A PAGAR:</span>
+                  <span className="font-black text-gray-900 text-base pt-2 border-t border-orange-200">{formatCurrency(totalPreview)}</span>
                 </div>
               </div>
             )}
