@@ -300611,19 +300611,21 @@ app.put("/api/financing/:id", async (req, res) => {
     if (imei !== void 0) $set.imei = String(imei).trim();
     if (producto !== void 0) $set.producto = String(producto).trim();
     if (horaBloqueo !== void 0) $set.horaBloqueo = String(horaBloqueo);
-    if (valorCuota !== void 0 || cuotaInicial !== void 0 || numeroCuotas !== void 0 || fechaInicio !== void 0) {
-      const existing = await db.collection("financing").findOne({ id: req.params.id });
-      if (!existing) return res.status(404).json({ error: "No encontrado" });
-      const newValorCuota = Number(valorCuota ?? existing.valorCuota);
-      const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
-      const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
-      const newFechaInicio = fechaInicio ?? existing.fechaInicio;
-      const newCostoTotal = newValorCuota * newNumCuotas + newInicial;
-      $set.valorCuota = newValorCuota;
-      $set.cuotaInicial = newInicial;
-      $set.numeroCuotas = newNumCuotas;
-      $set.costoTotal = newCostoTotal;
-      $set.fechaInicio = newFechaInicio;
+    const existing = await db.collection("financing").findOne({ id: req.params.id });
+    if (!existing) return res.status(404).json({ error: "No encontrado" });
+    const newValorCuota = Number(valorCuota ?? existing.valorCuota);
+    const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
+    const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
+    const newFechaInicio = fechaInicio ?? existing.fechaInicio;
+    const newCostoTotal = newValorCuota * newNumCuotas + newInicial;
+    $set.valorCuota = newValorCuota;
+    $set.cuotaInicial = newInicial;
+    $set.numeroCuotas = newNumCuotas;
+    $set.costoTotal = newCostoTotal;
+    $set.fechaInicio = newFechaInicio;
+    const cuotasChanged = newNumCuotas !== existing.numeroCuotas;
+    const fechaChanged = newFechaInicio !== existing.fechaInicio;
+    if (cuotasChanged || fechaChanged) {
       $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
     }
     if (Object.keys($set).length === 0) {

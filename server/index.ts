@@ -2039,22 +2039,27 @@ app.put('/api/financing/:id', async (req, res) => {
     if (producto !== undefined) $set.producto = String(producto).trim();
     if (horaBloqueo !== undefined) $set.horaBloqueo = String(horaBloqueo);
 
-    // Si cambian datos financieros, recalcular cuotas y total
-    if (valorCuota !== undefined || cuotaInicial !== undefined || numeroCuotas !== undefined || fechaInicio !== undefined) {
-      const existing = await db.collection('financing').findOne({ id: req.params.id });
-      if (!existing) return res.status(404).json({ error: 'No encontrado' });
+    // Solo recalcular cuotas si los datos financieros REALMENTE cambiaron
+    const existing = await db.collection('financing').findOne({ id: req.params.id });
+    if (!existing) return res.status(404).json({ error: 'No encontrado' });
 
-      const newValorCuota = Number(valorCuota ?? existing.valorCuota);
-      const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
-      const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
-      const newFechaInicio = fechaInicio ?? existing.fechaInicio;
-      const newCostoTotal = (newValorCuota * newNumCuotas) + newInicial;
+    const newValorCuota = Number(valorCuota ?? existing.valorCuota);
+    const newInicial = Number(cuotaInicial ?? existing.cuotaInicial);
+    const newNumCuotas = Number(numeroCuotas ?? existing.numeroCuotas);
+    const newFechaInicio = fechaInicio ?? existing.fechaInicio;
+    const newCostoTotal = (newValorCuota * newNumCuotas) + newInicial;
 
-      $set.valorCuota = newValorCuota;
-      $set.cuotaInicial = newInicial;
-      $set.numeroCuotas = newNumCuotas;
-      $set.costoTotal = newCostoTotal;
-      $set.fechaInicio = newFechaInicio;
+    // Siempre actualizar estos valores
+    $set.valorCuota = newValorCuota;
+    $set.cuotaInicial = newInicial;
+    $set.numeroCuotas = newNumCuotas;
+    $set.costoTotal = newCostoTotal;
+    $set.fechaInicio = newFechaInicio;
+
+    // Solo regenerar cuotas si # cuotas o fecha de inicio cambió (no regenerar si solo cambian datos básicos)
+    const cuotasChanged = newNumCuotas !== existing.numeroCuotas;
+    const fechaChanged = newFechaInicio !== existing.fechaInicio;
+    if (cuotasChanged || fechaChanged) {
       $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
     }
 
