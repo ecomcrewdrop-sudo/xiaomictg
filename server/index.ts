@@ -2256,7 +2256,8 @@ app.post('/api/financing/:id/remind', async (req, res) => {
     const isOverdue = nextPending.status === 'overdue';
 
     const valorStr = record.valorCuota.toLocaleString('es-CO');
-    const paidCountStr = cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
+    const previas = record.cuotasPrevias || 0;
+    const paidCountStr = previas + cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
     const hora = record.horaBloqueo || '08:00';
 
     const msg = isOverdue
@@ -2313,7 +2314,8 @@ async function checkFinancingReminders() {
       const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
       const isToday = todayStr === dueDateStr;
       const hora = record.horaBloqueo || '08:00';
-      const paidCount = cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
+      const previas = record.cuotasPrevias || 0;
+      const paidCount = previas + cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
       const valorStr = record.valorCuota.toLocaleString('es-CO');
 
       const msg = isToday
