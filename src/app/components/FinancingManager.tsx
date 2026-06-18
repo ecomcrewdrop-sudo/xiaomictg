@@ -8,7 +8,7 @@ import { API_BASE_URL, fetchWithTimeout } from '../lib/api-base';
 import {
   Plus, Search, Trash2, Pencil, Send, CheckCircle, Clock, AlertTriangle,
   DollarSign, Users, Smartphone, CalendarDays, ChevronDown, ChevronUp,
-  X, RotateCcw, Phone, CreditCard
+  X, RotateCcw, Phone, CreditCard, Lock
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ interface FinancingRecord {
   numeroCuotas: number;
   valorCuota: number;
   fechaInicio: string;
+  horaBloqueo: string; // HH:mm
   cuotas: Installment[];
   status: 'active' | 'completed' | 'defaulted';
   createdAt: string;
@@ -61,6 +62,7 @@ export function FinancingManager() {
     cuotaInicial: '',
     numeroCuotas: '',
     fechaInicio: new Date().toISOString().slice(0, 10),
+    horaBloqueo: '08:00',
   });
 
   // ─── API ──────────────────────────────────────────────────────────────────
@@ -104,6 +106,7 @@ export function FinancingManager() {
         valorCuota,
         numeroCuotas,
         fechaInicio: new Date(form.fechaInicio).toISOString(),
+        horaBloqueo: form.horaBloqueo,
       };
 
       const url = editing
@@ -205,6 +208,7 @@ export function FinancingManager() {
       nombre: '', cedula: '', telefono: '', imei: '', producto: '',
       valorCuota: '', cuotaInicial: '', numeroCuotas: '',
       fechaInicio: new Date().toISOString().slice(0, 10),
+      horaBloqueo: '08:00',
     });
   };
 
@@ -220,6 +224,7 @@ export function FinancingManager() {
       cuotaInicial: record.cuotaInicial.toString(),
       numeroCuotas: record.numeroCuotas.toString(),
       fechaInicio: record.fechaInicio.slice(0, 10),
+      horaBloqueo: record.horaBloqueo || '08:00',
     });
     setDialogOpen(true);
   };
@@ -435,13 +440,15 @@ export function FinancingManager() {
                   </span>
                   <span className="hidden lg:block text-xs">
                     {nextPending ? (
-                      <span className={`px-2 py-1 rounded-full font-semibold ${
-                        nextPending.status === 'overdue'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {formatDate(nextPending.dueDate)}
-                      </span>
+                      nextPending.status === 'overdue' ? (
+                        <span className="px-2 py-1 rounded-full bg-red-600 text-white font-bold animate-pulse">
+                          🔒 BLOQUEADO
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">
+                          {formatDate(nextPending.dueDate)}
+                        </span>
+                      )
                     ) : (
                       <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 font-semibold">Pagado</span>
                     )}
@@ -464,7 +471,7 @@ export function FinancingManager() {
                 {isExpanded && (
                   <div className="px-4 pb-4 bg-gray-50/70 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-200">
                     {/* Resumen */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 py-4">
                       <div className="bg-white rounded-lg p-3 border">
                         <p className="text-xs text-gray-400">Producto</p>
                         <p className="font-semibold text-sm text-gray-900 truncate">{record.producto || '—'}</p>
@@ -476,6 +483,10 @@ export function FinancingManager() {
                       <div className="bg-white rounded-lg p-3 border">
                         <p className="text-xs text-gray-400">Total pagado</p>
                         <p className="font-bold text-sm text-green-600">{formatCurrency(totalPagado)}</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-red-200">
+                        <p className="text-xs text-gray-400">🔒 Hora bloqueo</p>
+                        <p className="font-bold text-sm text-red-600">{record.horaBloqueo || '08:00'}</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 border">
                         <p className="text-xs text-gray-400">Restante</p>
@@ -532,8 +543,8 @@ export function FinancingManager() {
                               </span>
                             )}
                             {cuota.status === 'overdue' && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-bold">
-                                <AlertTriangle className="w-3 h-3" /> Vencida
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-bold animate-pulse">
+                                🔒 BLOQUEADO
                               </span>
                             )}
                           </span>
@@ -657,9 +668,16 @@ export function FinancingManager() {
               </div>
             </div>
 
-            <div>
-              <Label>Fecha primer pago *</Label>
-              <Input type="date" value={form.fechaInicio} onChange={e => setForm({ ...form, fechaInicio: e.target.value })} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Fecha primer pago *</Label>
+                <Input type="date" value={form.fechaInicio} onChange={e => setForm({ ...form, fechaInicio: e.target.value })} />
+              </div>
+              <div>
+                <Label>🔒 Hora de bloqueo</Label>
+                <Input type="time" value={form.horaBloqueo} onChange={e => setForm({ ...form, horaBloqueo: e.target.value })} />
+                <p className="text-[10px] text-gray-400 mt-1">Si no paga, se bloquea a esta hora</p>
+              </div>
             </div>
 
             {/* Preview cálculo */}
@@ -673,6 +691,8 @@ export function FinancingManager() {
                   <span className="font-bold text-gray-900">{numeroCuotasNum}</span>
                   <span className="text-gray-600">Frecuencia:</span>
                   <span className="font-bold text-gray-900">Cada 15 días</span>
+                  <span className="text-gray-600">🔒 Hora de bloqueo:</span>
+                  <span className="font-bold text-red-600">{form.horaBloqueo || '08:00'}</span>
                   {cuotaInicialNum > 0 && (
                     <>
                       <span className="text-gray-600">Cuota inicial:</span>

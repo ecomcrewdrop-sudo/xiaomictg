@@ -1926,6 +1926,7 @@ interface FinancingRecord {
   numeroCuotas: number;
   valorCuota: number;
   fechaInicio: string; // ISO — fecha del primer pago
+  horaBloqueo: string; // HH:mm — hora en que se bloquea si no paga
   cuotas: FinancingInstallment[];
   status: 'active' | 'completed' | 'defaulted';
   createdAt: string;
@@ -1978,7 +1979,7 @@ app.get('/api/financing', async (_req, res) => {
 
 app.post('/api/financing', async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo } = req.body;
 
     if (!nombre || !cedula || !telefono || !imei || !numeroCuotas || !fechaInicio) {
       return res.status(400).json({ error: 'Todos los campos obligatorios son requeridos' });
@@ -2003,6 +2004,7 @@ app.post('/api/financing', async (req, res) => {
       numeroCuotas: Number(numeroCuotas),
       valorCuota,
       fechaInicio,
+      horaBloqueo: String(horaBloqueo || '08:00'),
       cuotas: generateInstallments(fechaInicio, Number(numeroCuotas)),
       status: 'active',
       createdAt: new Date().toISOString(),
@@ -2018,13 +2020,14 @@ app.post('/api/financing', async (req, res) => {
 
 app.put('/api/financing/:id', async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio, horaBloqueo } = req.body;
     const $set: Record<string, unknown> = {};
     if (nombre !== undefined) $set.nombre = String(nombre).trim();
     if (cedula !== undefined) $set.cedula = String(cedula).trim();
     if (telefono !== undefined) $set.telefono = String(telefono).trim();
     if (imei !== undefined) $set.imei = String(imei).trim();
     if (producto !== undefined) $set.producto = String(producto).trim();
+    if (horaBloqueo !== undefined) $set.horaBloqueo = String(horaBloqueo);
 
     // Si cambian datos financieros, recalcular cuotas y total
     if (valorCuota !== undefined || cuotaInicial !== undefined || numeroCuotas !== undefined || fechaInicio !== undefined) {
@@ -2149,10 +2152,11 @@ app.post('/api/financing/:id/remind', async (req, res) => {
 
     const valorStr = record.valorCuota.toLocaleString('es-CO');
     const paidCountStr = cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
+    const hora = record.horaBloqueo || '08:00';
 
     const msg = isOverdue
-      ? `⚠️ *Recordatorio de Pago Vencido* — Xiaomi Cartagena\n\nHola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venció el *${fechaStr}*.\n\nPor favor realiza tu pago lo antes posible para evitar inconvenientes con tu equipo.\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`
-      : `📅 *Recordatorio de Pago* — Xiaomi Cartagena\n\nHola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
+      ? `🔒 *CREDILOCK — Pago Vencido*\n\nHola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venció el *${fechaStr}*.\n\n⚠️ *Tu equipo será bloqueado a las ${hora} si no realizas el pago.*\n\nEvita el bloqueo realizando tu pago lo antes posible.\n\n📱 IMEI: ${record.imei}\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
+      : `📅 *CREDILOCK — Recordatorio de Pago*\n\nHola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
 
     const success = await whatsappService.sendMessage(record.telefono, msg);
     if (success) {
@@ -2201,12 +2205,15 @@ async function checkFinancingReminders() {
       const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : '';
       if (lastSent === todayStr) continue;
 
-      const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
       const isToday = todayStr === dueDateStr;
+      const hora = record.horaBloqueo || '08:00';
+      const paidCount = cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
+      const valorStr = record.valorCuota.toLocaleString('es-CO');
 
       const msg = isToday
-        ? `📅 *¡Hoy vence tu cuota!* — Xiaomi Cartagena\n\nHola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString('es-CO')} COP*.\n\nCuotas pagadas: ${cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena_`
-        : `🔔 *Recordatorio de Pago* — Xiaomi Cartagena\n\nHola *${record.nombre}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString('es-CO')} COP*.\n\nCuotas pagadas: ${cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_Xiaomi Cartagena_`;
+        ? `🔒 *CREDILOCK — ¡Hoy vence tu cuota!*\n\nHola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, tu equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
+        : `🔔 *CREDILOCK — Recordatorio de Pago*\n\nHola *${record.nombre}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
 
       const success = await whatsappService.sendMessage(record.telefono, msg);
       if (success) {

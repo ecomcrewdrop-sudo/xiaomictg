@@ -300560,7 +300560,7 @@ app.get("/api/financing", async (_req, res) => {
 });
 app.post("/api/financing", async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo } = req.body;
     if (!nombre || !cedula || !telefono || !imei || !numeroCuotas || !fechaInicio) {
       return res.status(400).json({ error: "Todos los campos obligatorios son requeridos" });
     }
@@ -300581,6 +300581,7 @@ app.post("/api/financing", async (req, res) => {
       numeroCuotas: Number(numeroCuotas),
       valorCuota,
       fechaInicio,
+      horaBloqueo: String(horaBloqueo || "08:00"),
       cuotas: generateInstallments(fechaInicio, Number(numeroCuotas)),
       status: "active",
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -300594,13 +300595,14 @@ app.post("/api/financing", async (req, res) => {
 });
 app.put("/api/financing/:id", async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio } = req.body;
+    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio, horaBloqueo } = req.body;
     const $set = {};
     if (nombre !== void 0) $set.nombre = String(nombre).trim();
     if (cedula !== void 0) $set.cedula = String(cedula).trim();
     if (telefono !== void 0) $set.telefono = String(telefono).trim();
     if (imei !== void 0) $set.imei = String(imei).trim();
     if (producto !== void 0) $set.producto = String(producto).trim();
+    if (horaBloqueo !== void 0) $set.horaBloqueo = String(horaBloqueo);
     if (valorCuota !== void 0 || cuotaInicial !== void 0 || numeroCuotas !== void 0 || fechaInicio !== void 0) {
       const existing = await db.collection("financing").findOne({ id: req.params.id });
       if (!existing) return res.status(404).json({ error: "No encontrado" });
@@ -300696,25 +300698,31 @@ app.post("/api/financing/:id/remind", async (req, res) => {
     const isOverdue = nextPending.status === "overdue";
     const valorStr = record.valorCuota.toLocaleString("es-CO");
     const paidCountStr = cuotas.filter((c) => c.status === "paid").length;
-    const msg = isOverdue ? `\u26A0\uFE0F *Recordatorio de Pago Vencido* \u2014 Xiaomi Cartagena
+    const hora = record.horaBloqueo || "08:00";
+    const msg = isOverdue ? `\u{1F512} *CREDILOCK \u2014 Pago Vencido*
 
 Hola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venci\xF3 el *${fechaStr}*.
 
-Por favor realiza tu pago lo antes posible para evitar inconvenientes con tu equipo.
+\u26A0\uFE0F *Tu equipo ser\xE1 bloqueado a las ${hora} si no realizas el pago.*
+
+Evita el bloqueo realizando tu pago lo antes posible.
 
 \u{1F4F1} IMEI: ${record.imei}
+Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
 \u{1F4DE} Contacto: 302 287 5280
 
-_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_` : `\u{1F4C5} *Recordatorio de Pago* \u2014 Xiaomi Cartagena
+_CREDILOCK \u2014 Sistema de financiamiento_` : `\u{1F4C5} *CREDILOCK \u2014 Recordatorio de Pago*
 
 Hola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.
+
+\u23F0 *Si no se realiza el pago, el equipo ser\xE1 bloqueado a las ${hora}.*
 
 Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
 \u{1F4DE} Contacto: 302 287 5280
 
-_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
+_CREDILOCK \u2014 Sistema de financiamiento_`;
     const success = await whatsappService.sendMessage(record.telefono, msg);
     if (success) {
       await db.collection("financing").updateOne(
@@ -300748,27 +300756,34 @@ async function checkFinancingReminders() {
       if (!shouldRemind) continue;
       const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : "";
       if (lastSent === todayStr) continue;
-      const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
       const isToday = todayStr === dueDateStr;
-      const msg = isToday ? `\u{1F4C5} *\xA1Hoy vence tu cuota!* \u2014 Xiaomi Cartagena
+      const hora = record.horaBloqueo || "08:00";
+      const paidCount = cuotas.filter((c) => c.status === "paid").length;
+      const valorStr = record.valorCuota.toLocaleString("es-CO");
+      const msg = isToday ? `\u{1F512} *CREDILOCK \u2014 \xA1Hoy vence tu cuota!*
 
-Hola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString("es-CO")} COP*.
+Hola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.
 
-Cuotas pagadas: ${cuotas.filter((c) => c.status === "paid").length}/${record.numeroCuotas}
+\u26A0\uFE0F *Si no pagas antes de las ${hora}, tu equipo ser\xE1 bloqueado.*
 
-\u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
-
-_Xiaomi Cartagena_` : `\u{1F514} *Recordatorio de Pago* \u2014 Xiaomi Cartagena
-
-Hola *${record.nombre}*, ma\xF1ana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${record.valorCuota.toLocaleString("es-CO")} COP*.
-
-Cuotas pagadas: ${cuotas.filter((c) => c.status === "paid").length}/${record.numeroCuotas}
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
 \u{1F4DE} Contacto: 302 287 5280
 
-_Xiaomi Cartagena_`;
+_CREDILOCK \u2014 Sistema de financiamiento_` : `\u{1F514} *CREDILOCK \u2014 Recordatorio de Pago*
+
+Hola *${record.nombre}*, ma\xF1ana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.
+
+\u23F0 *Si no se realiza el pago, el equipo ser\xE1 bloqueado a las ${hora}.*
+
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
       const success = await whatsappService.sendMessage(record.telefono, msg);
       if (success) {
         await db.collection("financing").updateOne(
