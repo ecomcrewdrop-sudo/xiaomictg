@@ -371,10 +371,10 @@ export function FinancingManager() {
         <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-lg md:col-span-1">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-6 h-6 opacity-80" />
-            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Dinero en la calle</span>
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Cuotas Pendientes por Cobrar</span>
           </div>
           <p className="text-3xl font-black">{formatCurrency(kpis.dineroEnLaCalle)}</p>
-          <p className="text-xs opacity-70 mt-1">Total pendiente de todos los clientes</p>
+          <p className="text-xs opacity-70 mt-1">Total de cuotas pendientes de todos los clientes</p>
         </div>
         <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg md:col-span-1">
           <div className="flex items-center gap-2 mb-1">
@@ -387,10 +387,10 @@ export function FinancingManager() {
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg md:col-span-1">
           <div className="flex items-center gap-2 mb-1">
             <CalendarDays className="w-6 h-6 opacity-80" />
-            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Cobro Hoy</span>
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Cobro del Día</span>
           </div>
           <p className="text-3xl font-black">{formatCurrency(kpis.cobroHoy)}</p>
-          <p className="text-xs opacity-70 mt-1">Cuotas que se cobran hoy</p>
+          <p className="text-xs opacity-70 mt-1">Dinero que se debe recoger hoy</p>
         </div>
       </div>
 
