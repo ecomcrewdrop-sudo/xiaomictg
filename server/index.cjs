@@ -300595,19 +300595,16 @@ app.delete("/api/admin/reviews/:id", async (req, res) => {
 });
 function generateInstallments(startDate, count, cuotasPagadas = 0) {
   const installments = [];
-  const proximoPago = new Date(startDate);
-  const realStart = new Date(proximoPago);
-  if (cuotasPagadas > 0) {
-    realStart.setUTCDate(realStart.getUTCDate() - cuotasPagadas * 15);
-  }
-  for (let i = 0; i < count; i++) {
-    const d = new Date(realStart);
+  const start = new Date(startDate);
+  const remaining = count - cuotasPagadas;
+  for (let i = 0; i < remaining; i++) {
+    const d = new Date(start);
     d.setUTCDate(d.getUTCDate() + i * 15);
     installments.push({
-      number: i + 1,
+      number: cuotasPagadas + i + 1,
+      // Numerar desde la cuota que sigue
       dueDate: d.toISOString(),
-      status: i < cuotasPagadas ? "paid" : "pending",
-      ...i < cuotasPagadas ? { paidDate: (/* @__PURE__ */ new Date()).toISOString() } : {}
+      status: "pending"
     });
   }
   return installments;
@@ -300661,6 +300658,7 @@ app.post("/api/financing", async (req, res) => {
       valorCuota,
       fechaInicio,
       horaBloqueo: String(horaBloqueo || "08:00"),
+      cuotasPrevias: numPagadas,
       cuotas,
       status: numPagadas >= numCuotas ? "completed" : "active",
       createdAt: (/* @__PURE__ */ new Date()).toISOString()

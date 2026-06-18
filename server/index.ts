@@ -2013,6 +2013,7 @@ interface FinancingRecord {
   valorCuota: number;
   fechaInicio: string; // ISO — fecha del primer pago
   horaBloqueo: string; // HH:mm — hora en que se bloquea si no paga
+  cuotasPrevias: number; // Cuotas ya pagadas ANTES de registrar en el sistema
   cuotas: FinancingInstallment[];
   status: 'active' | 'completed' | 'defaulted';
   createdAt: string;
@@ -2022,23 +2023,19 @@ interface FinancingRecord {
 /** Genera las cuotas quincenales a partir de una fecha de inicio */
 function generateInstallments(startDate: string, count: number, cuotasPagadas = 0): FinancingInstallment[] {
   const installments: FinancingInstallment[] = [];
-  const proximoPago = new Date(startDate);
+  const start = new Date(startDate);
 
-  // Si hay cuotas ya pagadas, retroceder la fecha de inicio para que
-  // las cuotas pagadas queden en el pasado y la siguiente caiga en la fecha ingresada
-  const realStart = new Date(proximoPago);
-  if (cuotasPagadas > 0) {
-    realStart.setUTCDate(realStart.getUTCDate() - (cuotasPagadas * 15));
-  }
+  // Solo generar las cuotas RESTANTES (las ya pagadas no se muestran)
+  // La fecha ingresada = próximo pago, todas van hacia adelante
+  const remaining = count - cuotasPagadas;
 
-  for (let i = 0; i < count; i++) {
-    const d = new Date(realStart);
+  for (let i = 0; i < remaining; i++) {
+    const d = new Date(start);
     d.setUTCDate(d.getUTCDate() + i * 15); // Cada 15 días
     installments.push({
-      number: i + 1,
+      number: cuotasPagadas + i + 1, // Numerar desde la cuota que sigue
       dueDate: d.toISOString(),
-      status: i < cuotasPagadas ? 'paid' : 'pending',
-      ...(i < cuotasPagadas ? { paidDate: new Date().toISOString() } : {}),
+      status: 'pending',
     });
   }
   return installments;
@@ -2106,6 +2103,7 @@ app.post('/api/financing', async (req, res) => {
       valorCuota,
       fechaInicio,
       horaBloqueo: String(horaBloqueo || '08:00'),
+      cuotasPrevias: numPagadas,
       cuotas,
       status: numPagadas >= numCuotas ? 'completed' : 'active',
       createdAt: new Date().toISOString(),

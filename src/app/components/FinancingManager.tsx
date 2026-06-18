@@ -34,6 +34,7 @@ interface FinancingRecord {
   valorCuota: number;
   fechaInicio: string;
   horaBloqueo: string; // HH:mm
+  cuotasPrevias: number; // Cuotas pagadas antes de registrar
   cuotas: Installment[];
   status: 'active' | 'completed' | 'defaulted';
   createdAt: string;
@@ -312,10 +313,11 @@ export function FinancingManager() {
       return sum + cuotasPendientes * r.valorCuota;
     }, 0);
 
-    // 💵 TOTAL RECAUDADO — todo lo que ya se cobró
+    // 💵 TOTAL RECAUDADO — todo lo que ya se cobró (incluye cuotas previas + pagadas en sistema)
     const totalRecaudado = records.reduce((sum, r) => {
+      const previas = r.cuotasPrevias || 0;
       const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
-      return sum + cuotasPagadas * r.valorCuota + r.cuotaInicial;
+      return sum + (previas + cuotasPagadas) * r.valorCuota + r.cuotaInicial;
     }, 0);
 
     // 📅 COBRO HOY — cuotas que vencen hoy (pendientes)
@@ -338,8 +340,9 @@ export function FinancingManager() {
     const deudaXiaomi = records.reduce((sum, r) => {
       const costoEquipo = r.costoEquipo || 0;
       if (costoEquipo === 0) return sum;
+      const previas = r.cuotasPrevias || 0;
       const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
-      const pagado = r.cuotaInicial + (cuotasPagadas * r.valorCuota);
+      const pagado = r.cuotaInicial + ((previas + cuotasPagadas) * r.valorCuota);
       const deuda = Math.max(0, costoEquipo - pagado);
       return sum + deuda;
     }, 0);
@@ -347,8 +350,9 @@ export function FinancingManager() {
     // 💚 GANANCIA — lo recaudado que ya NO le pertenece a Xiaomi (es ganancia pura)
     const ganancia = records.reduce((sum, r) => {
       const costoEquipo = r.costoEquipo || 0;
+      const previas = r.cuotasPrevias || 0;
       const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
-      const pagado = r.cuotaInicial + (cuotasPagadas * r.valorCuota);
+      const pagado = r.cuotaInicial + ((previas + cuotasPagadas) * r.valorCuota);
       const profit = Math.max(0, pagado - costoEquipo);
       return sum + profit;
     }, 0);
@@ -503,7 +507,9 @@ export function FinancingManager() {
           {filteredRecords.map(record => {
             const isExpanded = expandedId === record.id;
             const nextPending = record.cuotas.find(c => c.status !== 'paid');
-            const paidCount = record.cuotas.filter(c => c.status === 'paid').length;
+            const paidInSystem = record.cuotas.filter(c => c.status === 'paid').length;
+            const previas = record.cuotasPrevias || 0;
+            const paidCount = previas + paidInSystem; // Total pagadas (previas + en sistema)
             const hasOverdue = record.cuotas.some(c => c.status === 'overdue');
             const totalPagado = paidCount * record.valorCuota + record.cuotaInicial;
             const totalRestante = record.costoTotal - totalPagado;
