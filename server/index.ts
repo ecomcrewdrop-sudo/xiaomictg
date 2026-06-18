@@ -2028,12 +2028,12 @@ function generateInstallments(startDate: string, count: number, cuotasPagadas = 
   // las cuotas pagadas queden en el pasado y la siguiente caiga en la fecha ingresada
   const realStart = new Date(proximoPago);
   if (cuotasPagadas > 0) {
-    realStart.setUTCDate(realStart.getUTCDate() - (cuotasPagadas * 14));
+    realStart.setUTCDate(realStart.getUTCDate() - (cuotasPagadas * 15));
   }
 
   for (let i = 0; i < count; i++) {
     const d = new Date(realStart);
-    d.setUTCDate(d.getUTCDate() + i * 14); // Cada 14 días
+    d.setUTCDate(d.getUTCDate() + i * 15); // Cada 15 días
     installments.push({
       number: i + 1,
       dueDate: d.toISOString(),
