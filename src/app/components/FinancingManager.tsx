@@ -63,6 +63,7 @@ export function FinancingManager() {
     numeroCuotas: '',
     fechaInicio: new Date().toISOString().slice(0, 10),
     horaBloqueo: '08:00',
+    cuotasPagadas: '0',
   });
 
   // ─── API ──────────────────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ export function FinancingManager() {
         numeroCuotas,
         fechaInicio: new Date(form.fechaInicio).toISOString(),
         horaBloqueo: form.horaBloqueo,
+        ...((!editing && Number(form.cuotasPagadas) > 0) ? { cuotasPagadas: Number(form.cuotasPagadas) } : {}),
       };
 
       const url = editing
@@ -209,6 +211,7 @@ export function FinancingManager() {
       valorCuota: '', cuotaInicial: '', numeroCuotas: '',
       fechaInicio: new Date().toISOString().slice(0, 10),
       horaBloqueo: '08:00',
+      cuotasPagadas: '0',
     });
   };
 
@@ -225,6 +228,7 @@ export function FinancingManager() {
       numeroCuotas: record.numeroCuotas.toString(),
       fechaInicio: record.fechaInicio.slice(0, 10),
       horaBloqueo: record.horaBloqueo || '08:00',
+      cuotasPagadas: '0',
     });
     setDialogOpen(true);
   };
@@ -246,7 +250,10 @@ export function FinancingManager() {
   const valorCuotaNum = Number(form.valorCuota || 0);
   const numeroCuotasNum = Number(form.numeroCuotas || 0);
   const cuotaInicialNum = Number(form.cuotaInicial || 0);
+  const cuotasPagadasNum = Number(form.cuotasPagadas || 0);
   const totalPreview = (valorCuotaNum * numeroCuotasNum) + cuotaInicialNum;
+  const cuotasRestantes = Math.max(0, numeroCuotasNum - cuotasPagadasNum);
+  const restantePorPagar = cuotasRestantes * valorCuotaNum;
 
   // ─── Filtered & sorted data ──────────────────────────────────────────────
 
@@ -668,6 +675,26 @@ export function FinancingManager() {
               </div>
             </div>
 
+            {/* Solo al crear — para clientes antiguos que ya pagaron cuotas */}
+            {!editing && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <Label className="text-blue-800 flex items-center gap-1.5 mb-1">
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Cuotas ya pagadas <span className="text-[10px] text-blue-500 font-normal">(clientes antiguos)</span>
+                </Label>
+                <Input
+                  type="number"
+                  value={form.cuotasPagadas}
+                  onChange={e => setForm({ ...form, cuotasPagadas: e.target.value })}
+                  placeholder="0"
+                  min="0"
+                  max={form.numeroCuotas || '24'}
+                  className="w-24"
+                />
+                <p className="text-[10px] text-blue-500 mt-1">Si el cliente ya pagó 4 cuotas, pon 4. Se marcan como pagadas automáticamente.</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Fecha primer pago *</Label>
@@ -697,6 +724,14 @@ export function FinancingManager() {
                     <>
                       <span className="text-gray-600">Cuota inicial:</span>
                       <span className="font-bold text-gray-900">{formatCurrency(cuotaInicialNum)}</span>
+                    </>
+                  )}
+                  {!editing && cuotasPagadasNum > 0 && (
+                    <>
+                      <span className="text-gray-600">✅ Cuotas ya pagadas:</span>
+                      <span className="font-bold text-green-600">{cuotasPagadasNum} de {numeroCuotasNum}</span>
+                      <span className="text-gray-600">Restante por cobrar:</span>
+                      <span className="font-bold text-red-600">{formatCurrency(restantePorPagar)}</span>
                     </>
                   )}
                   <span className="text-gray-600 font-bold text-base pt-2 border-t border-orange-200">TOTAL A PAGAR:</span>

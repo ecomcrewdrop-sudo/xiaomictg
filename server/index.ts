@@ -1979,7 +1979,7 @@ app.get('/api/financing', async (_req, res) => {
 
 app.post('/api/financing', async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo, cuotasPagadas } = req.body;
 
     if (!nombre || !cedula || !telefono || !imei || !numeroCuotas || !fechaInicio) {
       return res.status(400).json({ error: 'Todos los campos obligatorios son requeridos' });
@@ -1991,6 +1991,16 @@ app.post('/api/financing', async (req, res) => {
     const inicial = Number(cuotaInicial || 0);
     const costoTotal = rawCostoTotal ? Number(rawCostoTotal) : (valorCuota * numCuotas) + inicial;
 
+    // Generar cuotas y marcar las ya pagadas (clientes antiguos)
+    const cuotas = generateInstallments(fechaInicio, numCuotas);
+    const numPagadas = Math.min(Number(cuotasPagadas || 0), numCuotas);
+    if (numPagadas > 0) {
+      for (let i = 0; i < numPagadas; i++) {
+        cuotas[i].status = 'paid';
+        cuotas[i].paidDate = new Date().toISOString();
+      }
+    }
+
     const id = Date.now().toString();
     const record: FinancingRecord = {
       id,
@@ -2001,12 +2011,12 @@ app.post('/api/financing', async (req, res) => {
       producto: String(producto || '').trim(),
       costoTotal: Number(costoTotal),
       cuotaInicial: Number(cuotaInicial || 0),
-      numeroCuotas: Number(numeroCuotas),
+      numeroCuotas: numCuotas,
       valorCuota,
       fechaInicio,
       horaBloqueo: String(horaBloqueo || '08:00'),
-      cuotas: generateInstallments(fechaInicio, Number(numeroCuotas)),
-      status: 'active',
+      cuotas,
+      status: numPagadas >= numCuotas ? 'completed' : 'active',
       createdAt: new Date().toISOString(),
     };
 
