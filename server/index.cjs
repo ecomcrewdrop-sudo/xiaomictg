@@ -300593,16 +300593,21 @@ app.delete("/api/admin/reviews/:id", async (req, res) => {
     res.status(500).json({ error: "Error deleting review" });
   }
 });
-function generateInstallments(startDate, count) {
+function generateInstallments(startDate, count, cuotasPagadas = 0) {
   const installments = [];
-  const start = new Date(startDate);
+  const proximoPago = new Date(startDate);
+  const realStart = new Date(proximoPago);
+  if (cuotasPagadas > 0) {
+    realStart.setUTCDate(realStart.getUTCDate() - cuotasPagadas * 14);
+  }
   for (let i = 0; i < count; i++) {
-    const d = new Date(start);
-    d.setUTCDate(d.getUTCDate() + i * 15);
+    const d = new Date(realStart);
+    d.setUTCDate(d.getUTCDate() + i * 14);
     installments.push({
       number: i + 1,
       dueDate: d.toISOString(),
-      status: "pending"
+      status: i < cuotasPagadas ? "paid" : "pending",
+      ...i < cuotasPagadas ? { paidDate: (/* @__PURE__ */ new Date()).toISOString() } : {}
     });
   }
   return installments;
@@ -300639,14 +300644,8 @@ app.post("/api/financing", async (req, res) => {
     const numCuotas = Number(numeroCuotas);
     const inicial = Number(cuotaInicial || 0);
     const costoTotal = rawCostoTotal ? Number(rawCostoTotal) : valorCuota * numCuotas + inicial;
-    const cuotas = generateInstallments(fechaInicio, numCuotas);
     const numPagadas = Math.min(Number(cuotasPagadas || 0), numCuotas);
-    if (numPagadas > 0) {
-      for (let i = 0; i < numPagadas; i++) {
-        cuotas[i].status = "paid";
-        cuotas[i].paidDate = (/* @__PURE__ */ new Date()).toISOString();
-      }
-    }
+    const cuotas = generateInstallments(fechaInicio, numCuotas, numPagadas);
     const id = Date.now().toString();
     const record = {
       id,

@@ -817,7 +817,7 @@ export function FinancingManager() {
                   <span className="text-gray-600">Número de cuotas:</span>
                   <span className="font-bold text-gray-900">{numeroCuotasNum}</span>
                   <span className="text-gray-600">Frecuencia:</span>
-                  <span className="font-bold text-gray-900">Cada 15 días</span>
+                  <span className="font-bold text-gray-900">Cada 14 días</span>
                   <span className="text-gray-600">🔒 Hora de bloqueo:</span>
                   <span className="font-bold text-red-600">{form.horaBloqueo || '08:00'}</span>
                   {cuotaInicialNum > 0 && (
