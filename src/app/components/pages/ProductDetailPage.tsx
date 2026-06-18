@@ -1,11 +1,11 @@
 import { useParams, useNavigate, Link } from 'react-router';
 import { useProducts } from '../ProductContext';
-import { Star, ShoppingCart, ArrowLeft, Package, Shield, Truck, Zap, CheckCircle } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Package, Shield, Truck, Zap, CheckCircle, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '../ToastContext';
 import { QuickBuyDialog } from '../QuickBuyDialog';
 import { ProductReviews } from '../ProductReviews';
-import { API_ORIGIN } from '../../lib/api-base';
+import { API_ORIGIN, API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 
 const EXCHANGE_RATE = 1; // Precios en COP
 
@@ -21,6 +21,12 @@ export function ProductDetailPage() {
   const [quickBuyOpen, setQuickBuyOpen] = useState(false);
   const [quickBuyPaymentMethod, setQuickBuyPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi'>('efectivo');
   const [ratingSummary, setRatingSummary] = useState({ average: 0, count: 0 });
+
+  // Notificarme cuando haya stock
+  const [showNotifyInput, setShowNotifyInput] = useState(false);
+  const [notifyPhone, setNotifyPhone] = useState('');
+  const [notifyDone, setNotifyDone] = useState(false);
+  const [notifySending, setNotifySending] = useState(false);
 
   // Scroll al top cuando se monta el componente o cambia el ID
   useEffect(() => {
@@ -262,9 +268,60 @@ export function ProductDetailPage() {
                 </span>
               )}
               {availableStock === 0 && (
-                <span className="text-sm text-gray-500 font-medium mt-2 inline-block">
-                  Producto agotado
-                </span>
+                <div className="mt-3">
+                  {notifyDone ? (
+                    <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                      <Bell className="w-5 h-5 text-green-500" />
+                      <div>
+                        <p className="text-sm font-bold text-green-700">¡Listo! Te avisaremos</p>
+                        <p className="text-xs text-green-600">Te enviaremos un WhatsApp cuando haya stock</p>
+                      </div>
+                    </div>
+                  ) : showNotifyInput ? (
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                      <p className="text-sm font-bold text-orange-800 mb-2">📱 Deja tu WhatsApp y te avisamos</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="tel"
+                          value={notifyPhone}
+                          onChange={e => setNotifyPhone(e.target.value)}
+                          placeholder="Ej: 3001234567"
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!notifyPhone || notifyPhone.length < 10 || !product) return;
+                            setNotifySending(true);
+                            try {
+                              const res = await fetchWithTimeout(`${API_BASE_URL}/stock-alerts`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ productId: product.id, productName: product.name, phone: notifyPhone }),
+                              });
+                              if (res.ok) {
+                                setNotifyDone(true);
+                                showToast('✅ Te avisaremos por WhatsApp cuando haya stock');
+                              }
+                            } catch { /* silently fail */ }
+                            setNotifySending(false);
+                          }}
+                          disabled={notifySending || notifyPhone.length < 10}
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 transition-colors"
+                        >
+                          {notifySending ? 'Enviando...' : 'Avisarme'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowNotifyInput(true)}
+                      className="w-full bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Bell className="w-5 h-5" />
+                      Avísame cuando esté disponible
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 

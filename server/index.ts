@@ -1344,13 +1344,54 @@ async function updateProductRecord(id: string, body: Record<string, unknown>, re
     return res.status(400).json({ error: 'No hay campos para actualizar' });
   }
 
+  // Detectar si el stock cambia de 0 a > 0 para enviar alertas
+  const oldProduct = await db.collection('products').findOne(productQuery(id));
+  const oldStock = oldProduct ? Number(oldProduct.stock || 0) : 0;
+  const newStock = body.stock !== undefined ? Number(body.stock) : oldStock;
+
   const result = await db.collection('products').updateOne(productQuery(id), { $set });
   if (result.matchedCount === 0) {
     return res.status(404).json({ error: 'Producto no encontrado' });
   }
 
   const updated = await db.collection('products').findOne(productQuery(id));
+
+  // Si el stock pasó de 0 a > 0, notificar a los interesados por WhatsApp
+  if (oldStock <= 0 && newStock > 0 && updated) {
+    notifyStockAlerts(String(updated.id || updated._id), updated.name).catch(err =>
+      console.error('[stock-alerts] Error notificando:', err)
+    );
+  }
+
   return res.json(updated);
+}
+
+/** Envía WhatsApp a todas las personas que pidieron ser notificadas de un producto */
+async function notifyStockAlerts(productId: string, productName: string) {
+  if (!db || whatsappService.getStatus() !== 'connected') return;
+
+  const alerts = await db.collection('stock_alerts').find({
+    productId,
+    notified: false,
+  }).toArray();
+
+  if (alerts.length === 0) return;
+  console.log(`[stock-alerts] Notificando a ${alerts.length} personas sobre ${productName}`);
+
+  for (const alert of alerts) {
+    const msg = `🔔 *¡Ya está disponible!*\n\nHola, el producto *${productName}* que te interesaba ya tiene unidades disponibles en nuestra tienda.\n\n🛒 Visita nuestra tienda para comprarlo antes de que se agote.\n\n🌐 xiaomicartagena.com\n📞 302 287 5280\n\n_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
+
+    const success = await whatsappService.sendMessage(alert.phone, msg);
+    if (success) {
+      await db.collection('stock_alerts').updateOne(
+        { _id: alert._id },
+        { $set: { notified: true, notifiedAt: new Date().toISOString() } }
+      );
+    }
+
+    // Delay entre mensajes para no ser bloqueado
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
 }
 
 app.put('/api/products/:id', async (req, res) => {
@@ -1381,6 +1422,50 @@ app.delete('/api/products/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Error deleting product' });
+  }
+});
+
+// ====================================================================
+// STOCK ALERTS — "Notificarme cuando haya stock"
+// ====================================================================
+
+app.post('/api/stock-alerts', async (req, res) => {
+  try {
+    const { productId, productName, phone } = req.body;
+    if (!productId || !phone) {
+      return res.status(400).json({ error: 'productId y phone son requeridos' });
+    }
+
+    // Evitar duplicados (mismo teléfono + mismo producto)
+    const existing = await db.collection('stock_alerts').findOne({ productId, phone, notified: false });
+    if (existing) {
+      return res.json({ success: true, message: 'Ya estás registrado para este producto' });
+    }
+
+    await db.collection('stock_alerts').insertOne({
+      productId: String(productId),
+      productName: String(productName || ''),
+      phone: String(phone).trim(),
+      notified: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    res.json({ success: true, message: 'Te notificaremos por WhatsApp cuando haya stock' });
+  } catch (error) {
+    console.error('[stock-alerts] Error:', error);
+    res.status(500).json({ error: 'Error al registrar alerta' });
+  }
+});
+
+app.get('/api/stock-alerts/:productId/count', async (req, res) => {
+  try {
+    const count = await db.collection('stock_alerts').countDocuments({
+      productId: req.params.productId,
+      notified: false,
+    });
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: 'Error' });
   }
 });
 

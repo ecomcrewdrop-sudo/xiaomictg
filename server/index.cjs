@@ -300050,12 +300050,49 @@ async function updateProductRecord(id, body, res) {
   if (Object.keys($set).length === 0) {
     return res.status(400).json({ error: "No hay campos para actualizar" });
   }
+  const oldProduct = await db.collection("products").findOne(productQuery(id));
+  const oldStock = oldProduct ? Number(oldProduct.stock || 0) : 0;
+  const newStock = body.stock !== void 0 ? Number(body.stock) : oldStock;
   const result = await db.collection("products").updateOne(productQuery(id), { $set });
   if (result.matchedCount === 0) {
     return res.status(404).json({ error: "Producto no encontrado" });
   }
   const updated = await db.collection("products").findOne(productQuery(id));
+  if (oldStock <= 0 && newStock > 0 && updated) {
+    notifyStockAlerts(String(updated.id || updated._id), updated.name).catch(
+      (err) => console.error("[stock-alerts] Error notificando:", err)
+    );
+  }
   return res.json(updated);
+}
+async function notifyStockAlerts(productId, productName) {
+  if (!db || whatsappService.getStatus() !== "connected") return;
+  const alerts = await db.collection("stock_alerts").find({
+    productId,
+    notified: false
+  }).toArray();
+  if (alerts.length === 0) return;
+  console.log(`[stock-alerts] Notificando a ${alerts.length} personas sobre ${productName}`);
+  for (const alert of alerts) {
+    const msg = `\u{1F514} *\xA1Ya est\xE1 disponible!*
+
+Hola, el producto *${productName}* que te interesaba ya tiene unidades disponibles en nuestra tienda.
+
+\u{1F6D2} Visita nuestra tienda para comprarlo antes de que se agote.
+
+\u{1F310} xiaomicartagena.com
+\u{1F4DE} 302 287 5280
+
+_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
+    const success = await whatsappService.sendMessage(alert.phone, msg);
+    if (success) {
+      await db.collection("stock_alerts").updateOne(
+        { _id: alert._id },
+        { $set: { notified: true, notifiedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2e3));
+  }
 }
 app.put("/api/products/:id", async (req, res) => {
   try {
@@ -300083,6 +300120,40 @@ app.delete("/api/products/:id", async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error deleting product" });
+  }
+});
+app.post("/api/stock-alerts", async (req, res) => {
+  try {
+    const { productId, productName, phone } = req.body;
+    if (!productId || !phone) {
+      return res.status(400).json({ error: "productId y phone son requeridos" });
+    }
+    const existing = await db.collection("stock_alerts").findOne({ productId, phone, notified: false });
+    if (existing) {
+      return res.json({ success: true, message: "Ya est\xE1s registrado para este producto" });
+    }
+    await db.collection("stock_alerts").insertOne({
+      productId: String(productId),
+      productName: String(productName || ""),
+      phone: String(phone).trim(),
+      notified: false,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    res.json({ success: true, message: "Te notificaremos por WhatsApp cuando haya stock" });
+  } catch (error) {
+    console.error("[stock-alerts] Error:", error);
+    res.status(500).json({ error: "Error al registrar alerta" });
+  }
+});
+app.get("/api/stock-alerts/:productId/count", async (req, res) => {
+  try {
+    const count = await db.collection("stock_alerts").countDocuments({
+      productId: req.params.productId,
+      notified: false
+    });
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: "Error" });
   }
 });
 app.delete("/api/products", async (req, res) => {

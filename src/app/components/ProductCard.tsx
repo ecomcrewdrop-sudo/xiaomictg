@@ -1,9 +1,10 @@
 import { Product, useProducts } from './ProductContext';
 import { Link } from 'react-router';
-import { ShoppingCart, Zap } from 'lucide-react';
+import { ShoppingCart, Zap, Bell } from 'lucide-react';
 import { useToast } from './ToastContext';
 import { useState } from 'react';
 import { QuickBuyDialog } from './QuickBuyDialog';
+import { API_BASE_URL, fetchWithTimeout } from '../lib/api-base';
 
 interface ProductCardProps {
   product: Product;
@@ -25,6 +26,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
   // Estado del modal de compra impulsiva
   const [quickBuyOpen, setQuickBuyOpen] = useState(false);
+
+  // Estado para "Notificarme cuando haya stock"
+  const [showNotifyInput, setShowNotifyInput] = useState(false);
+  const [notifyPhone, setNotifyPhone] = useState('');
+  const [notifyDone, setNotifyDone] = useState(false);
+  const [notifySending, setNotifySending] = useState(false);
 
   const getCurrentPrice = () => {
     if (product.storageVariants && selectedStorage) {
@@ -83,6 +90,25 @@ export function ProductCard({ product }: ProductCardProps) {
   const availableStock = getAvailableStock();
   const isLowStock = availableStock > 0 && availableStock < 5;
   const isMediumStock = availableStock >= 5 && availableStock <= 10;
+
+  const handleNotifySubmit = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!notifyPhone || notifyPhone.length < 10) return;
+    setNotifySending(true);
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/stock-alerts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id, productName: product.name, phone: notifyPhone }),
+      });
+      if (res.ok) {
+        setNotifyDone(true);
+        showToast('✅ Te avisaremos por WhatsApp cuando haya stock');
+      }
+    } catch { /* silently fail */ }
+    setNotifySending(false);
+  };
 
   return (
     <>
@@ -228,9 +254,37 @@ export function ProductCard({ product }: ProductCardProps) {
                 )}
 
                 {availableStock === 0 && (
-                  <div className="w-full bg-gray-100 text-gray-500 py-1.5 md:py-2.5 text-[10px] md:text-[13px] font-semibold flex items-center justify-center rounded-lg md:rounded-xl cursor-default">
-                    Sin stock
-                  </div>
+                  notifyDone ? (
+                    <div className="w-full bg-green-50 text-green-600 py-1.5 md:py-2.5 text-[10px] md:text-[13px] font-semibold flex items-center justify-center gap-1 rounded-lg md:rounded-xl cursor-default">
+                      <Bell className="w-3 h-3" /> Te avisaremos
+                    </div>
+                  ) : showNotifyInput ? (
+                    <div className="w-full flex gap-1" onClick={e => e.preventDefault()}>
+                      <input
+                        type="tel"
+                        value={notifyPhone}
+                        onChange={e => setNotifyPhone(e.target.value)}
+                        onClick={e => e.preventDefault()}
+                        placeholder="Tu WhatsApp"
+                        className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-[10px] md:text-xs focus:outline-none focus:border-orange-400"
+                      />
+                      <button
+                        onClick={handleNotifySubmit}
+                        disabled={notifySending || notifyPhone.length < 10}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1.5 rounded-lg text-[10px] md:text-xs font-bold disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {notifySending ? '...' : 'Avisar'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.preventDefault(); setShowNotifyInput(true); }}
+                      className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 py-1.5 md:py-2.5 text-[10px] md:text-[13px] font-semibold flex items-center justify-center gap-1 rounded-lg md:rounded-xl transition-colors"
+                    >
+                      <Bell className="w-3 h-3 md:w-4 md:h-4" />
+                      Avísame cuando haya
+                    </button>
+                  )
                 )}
               </div>
             </div>
