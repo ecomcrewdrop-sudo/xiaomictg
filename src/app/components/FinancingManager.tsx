@@ -301,13 +301,32 @@ export function FinancingManager() {
     const overdue = records.filter(r =>
       r.status === 'active' && r.cuotas.some(c => c.status === 'overdue')
     );
-    const totalPorCobrar = active.reduce((sum, r) => {
+
+    // 💰 DINERO EN LA CALLE — todo lo que falta por cobrar de TODOS los clientes
+    const dineroEnLaCalle = records.reduce((sum, r) => {
       const cuotasPendientes = r.cuotas.filter(c => c.status !== 'paid').length;
       return sum + cuotasPendientes * r.valorCuota;
     }, 0);
+
+    // 💵 TOTAL RECAUDADO — todo lo que ya se cobró
     const totalRecaudado = records.reduce((sum, r) => {
       const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
       return sum + cuotasPagadas * r.valorCuota + r.cuotaInicial;
+    }, 0);
+
+    // 📅 COBRO HOY — cuotas que vencen hoy (pendientes)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const cobroHoy = records.reduce((sum, r) => {
+      const cuotasHoy = r.cuotas.filter(c =>
+        c.status !== 'paid' && c.dueDate.slice(0, 10) === todayStr
+      );
+      return sum + cuotasHoy.length * r.valorCuota;
+    }, 0);
+
+    // 🔴 CUOTAS VENCIDAS — total en dinero de cuotas vencidas sin pagar
+    const totalVencido = records.reduce((sum, r) => {
+      const cuotasVencidas = r.cuotas.filter(c => c.status === 'overdue').length;
+      return sum + cuotasVencidas * r.valorCuota;
     }, 0);
 
     return {
@@ -315,8 +334,10 @@ export function FinancingManager() {
       active: active.length,
       overdue: overdue.length,
       completed: records.filter(r => r.status === 'completed').length,
-      totalPorCobrar,
+      dineroEnLaCalle,
       totalRecaudado,
+      cobroHoy,
+      totalVencido,
     };
   }, [records]);
 
@@ -345,14 +366,40 @@ export function FinancingManager() {
         </Button>
       </div>
 
-      {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <KpiCard icon={<Users className="w-5 h-5" />} label="Total" value={kpis.total} color="blue" />
+      {/* ── 💰 DINERO EN LA CALLE — Card grande y prominente ──────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-lg md:col-span-1">
+          <div className="flex items-center gap-2 mb-1">
+            <DollarSign className="w-6 h-6 opacity-80" />
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Dinero en la calle</span>
+          </div>
+          <p className="text-3xl font-black">{formatCurrency(kpis.dineroEnLaCalle)}</p>
+          <p className="text-xs opacity-70 mt-1">Total pendiente de todos los clientes</p>
+        </div>
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg md:col-span-1">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle className="w-6 h-6 opacity-80" />
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Total Recaudado</span>
+          </div>
+          <p className="text-3xl font-black">{formatCurrency(kpis.totalRecaudado)}</p>
+          <p className="text-xs opacity-70 mt-1">Dinero cobrado hasta hoy</p>
+        </div>
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg md:col-span-1">
+          <div className="flex items-center gap-2 mb-1">
+            <CalendarDays className="w-6 h-6 opacity-80" />
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Cobro Hoy</span>
+          </div>
+          <p className="text-3xl font-black">{formatCurrency(kpis.cobroHoy)}</p>
+          <p className="text-xs opacity-70 mt-1">Cuotas que se cobran hoy</p>
+        </div>
+      </div>
+
+      {/* ── KPI Cards secundarios ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <KpiCard icon={<Users className="w-5 h-5" />} label="Clientes" value={kpis.total} color="blue" />
         <KpiCard icon={<Clock className="w-5 h-5" />} label="Activos" value={kpis.active} color="orange" />
-        <KpiCard icon={<AlertTriangle className="w-5 h-5" />} label="Vencidos" value={kpis.overdue} color="red" />
+        <KpiCard icon={<Lock className="w-5 h-5" />} label="Bloqueados" value={`${kpis.overdue} (${formatCurrency(kpis.totalVencido)})`} color="red" />
         <KpiCard icon={<CheckCircle className="w-5 h-5" />} label="Completados" value={kpis.completed} color="green" />
-        <KpiCard icon={<DollarSign className="w-5 h-5" />} label="Por cobrar" value={formatCurrency(kpis.totalPorCobrar)} color="amber" />
-        <KpiCard icon={<DollarSign className="w-5 h-5" />} label="Recaudado" value={formatCurrency(kpis.totalRecaudado)} color="emerald" />
       </div>
 
       {/* ── Filters ───────────────────────────────────────────────────────── */}
