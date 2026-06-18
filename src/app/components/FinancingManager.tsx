@@ -28,6 +28,7 @@ interface FinancingRecord {
   imei: string;
   producto: string;
   costoTotal: number;
+  costoEquipo: number; // Costo real del teléfono (lo que se le paga a Xiaomi)
   cuotaInicial: number;
   numeroCuotas: number;
   valorCuota: number;
@@ -58,6 +59,7 @@ export function FinancingManager() {
     telefono: '',
     imei: '',
     producto: '',
+    costoEquipo: '',
     valorCuota: '',
     cuotaInicial: '',
     numeroCuotas: '',
@@ -102,6 +104,7 @@ export function FinancingManager() {
         telefono: form.telefono,
         imei: form.imei,
         producto: form.producto,
+        costoEquipo: Number(form.costoEquipo || 0),
         costoTotal,
         cuotaInicial,
         valorCuota,
@@ -208,7 +211,7 @@ export function FinancingManager() {
     setEditing(null);
     setForm({
       nombre: '', cedula: '', telefono: '', imei: '', producto: '',
-      valorCuota: '', cuotaInicial: '', numeroCuotas: '',
+      costoEquipo: '', valorCuota: '', cuotaInicial: '', numeroCuotas: '',
       fechaInicio: new Date().toISOString().slice(0, 10),
       horaBloqueo: '08:00',
       cuotasPagadas: '0',
@@ -223,6 +226,7 @@ export function FinancingManager() {
       telefono: record.telefono,
       imei: record.imei,
       producto: record.producto,
+      costoEquipo: (record.costoEquipo || 0).toString(),
       valorCuota: record.valorCuota.toString(),
       cuotaInicial: record.cuotaInicial.toString(),
       numeroCuotas: record.numeroCuotas.toString(),
@@ -329,6 +333,26 @@ export function FinancingManager() {
       return sum + cuotasVencidas * r.valorCuota;
     }, 0);
 
+    // 🏪 DEUDA CON XIAOMI — lo que falta por pagarle a Xiaomi por los equipos en la calle
+    // Por cada cliente: costoEquipo - cuotaInicial - (cuotasPagadas * valorCuota), mínimo 0
+    const deudaXiaomi = records.reduce((sum, r) => {
+      const costoEquipo = r.costoEquipo || 0;
+      if (costoEquipo === 0) return sum;
+      const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
+      const pagado = r.cuotaInicial + (cuotasPagadas * r.valorCuota);
+      const deuda = Math.max(0, costoEquipo - pagado);
+      return sum + deuda;
+    }, 0);
+
+    // 💚 GANANCIA — lo recaudado que ya NO le pertenece a Xiaomi (es ganancia pura)
+    const ganancia = records.reduce((sum, r) => {
+      const costoEquipo = r.costoEquipo || 0;
+      const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
+      const pagado = r.cuotaInicial + (cuotasPagadas * r.valorCuota);
+      const profit = Math.max(0, pagado - costoEquipo);
+      return sum + profit;
+    }, 0);
+
     return {
       total: records.length,
       active: active.length,
@@ -338,6 +362,8 @@ export function FinancingManager() {
       totalRecaudado,
       cobroHoy,
       totalVencido,
+      deudaXiaomi,
+      ganancia,
     };
   }, [records]);
 
@@ -391,6 +417,26 @@ export function FinancingManager() {
           </div>
           <p className="text-3xl font-black">{formatCurrency(kpis.cobroHoy)}</p>
           <p className="text-xs opacity-70 mt-1">Dinero que se debe recoger hoy</p>
+        </div>
+      </div>
+
+      {/* ── 🏪 Deuda Xiaomi vs Ganancia ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div className="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl p-4 text-white shadow-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Smartphone className="w-5 h-5 opacity-80" />
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Por pagar a Xiaomi</span>
+          </div>
+          <p className="text-2xl font-black">{formatCurrency(kpis.deudaXiaomi)}</p>
+          <p className="text-xs opacity-70 mt-1">Costo de equipos en la calle aún sin cubrir</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <DollarSign className="w-5 h-5 opacity-80" />
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Ganancia CrediLock</span>
+          </div>
+          <p className="text-2xl font-black">{formatCurrency(kpis.ganancia)}</p>
+          <p className="text-xs opacity-70 mt-1">Dinero recaudado que ya es ganancia tuya</p>
         </div>
       </div>
 
@@ -702,9 +748,16 @@ export function FinancingManager() {
               </div>
             </div>
 
-            <div>
-              <Label>Producto</Label>
-              <Input value={form.producto} onChange={e => setForm({ ...form, producto: e.target.value })} placeholder="Ej: Xiaomi Redmi Note 13" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Producto</Label>
+                <Input value={form.producto} onChange={e => setForm({ ...form, producto: e.target.value })} placeholder="Ej: Xiaomi Redmi Note 13" />
+              </div>
+              <div>
+                <Label>💲 Costo del equipo</Label>
+                <Input type="number" value={form.costoEquipo} onChange={e => setForm({ ...form, costoEquipo: e.target.value })} placeholder="600000" />
+                <p className="text-[10px] text-gray-400 mt-0.5">Precio que se le paga a Xiaomi</p>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">

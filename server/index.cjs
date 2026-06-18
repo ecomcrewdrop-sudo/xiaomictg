@@ -300560,7 +300560,7 @@ app.get("/api/financing", async (_req, res) => {
 });
 app.post("/api/financing", async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo, cuotasPagadas } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoEquipo, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo, cuotasPagadas } = req.body;
     if (!nombre || !cedula || !telefono || !imei || !numeroCuotas || !fechaInicio) {
       return res.status(400).json({ error: "Todos los campos obligatorios son requeridos" });
     }
@@ -300585,6 +300585,7 @@ app.post("/api/financing", async (req, res) => {
       imei: String(imei).trim(),
       producto: String(producto || "").trim(),
       costoTotal: Number(costoTotal),
+      costoEquipo: Number(costoEquipo || 0),
       cuotaInicial: Number(cuotaInicial || 0),
       numeroCuotas: numCuotas,
       valorCuota,
@@ -300603,13 +300604,14 @@ app.post("/api/financing", async (req, res) => {
 });
 app.put("/api/financing/:id", async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio, horaBloqueo } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoEquipo, valorCuota, cuotaInicial, numeroCuotas, fechaInicio, horaBloqueo } = req.body;
     const $set = {};
     if (nombre !== void 0) $set.nombre = String(nombre).trim();
     if (cedula !== void 0) $set.cedula = String(cedula).trim();
     if (telefono !== void 0) $set.telefono = String(telefono).trim();
     if (imei !== void 0) $set.imei = String(imei).trim();
     if (producto !== void 0) $set.producto = String(producto).trim();
+    if (costoEquipo !== void 0) $set.costoEquipo = Number(costoEquipo);
     if (horaBloqueo !== void 0) $set.horaBloqueo = String(horaBloqueo);
     const existing = await db.collection("financing").findOne({ id: req.params.id });
     if (!existing) return res.status(404).json({ error: "No encontrado" });

@@ -1922,6 +1922,7 @@ interface FinancingRecord {
   imei: string;
   producto: string;
   costoTotal: number;
+  costoEquipo: number; // Costo real del teléfono (lo que se le paga a Xiaomi)
   cuotaInicial: number;
   numeroCuotas: number;
   valorCuota: number;
@@ -1979,7 +1980,7 @@ app.get('/api/financing', async (_req, res) => {
 
 app.post('/api/financing', async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo, cuotasPagadas } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoEquipo, costoTotal: rawCostoTotal, cuotaInicial, numeroCuotas, valorCuota: rawValorCuota, fechaInicio, horaBloqueo, cuotasPagadas } = req.body;
 
     if (!nombre || !cedula || !telefono || !imei || !numeroCuotas || !fechaInicio) {
       return res.status(400).json({ error: 'Todos los campos obligatorios son requeridos' });
@@ -2010,6 +2011,7 @@ app.post('/api/financing', async (req, res) => {
       imei: String(imei).trim(),
       producto: String(producto || '').trim(),
       costoTotal: Number(costoTotal),
+      costoEquipo: Number(costoEquipo || 0),
       cuotaInicial: Number(cuotaInicial || 0),
       numeroCuotas: numCuotas,
       valorCuota,
@@ -2030,13 +2032,14 @@ app.post('/api/financing', async (req, res) => {
 
 app.put('/api/financing/:id', async (req, res) => {
   try {
-    const { nombre, cedula, telefono, imei, producto, valorCuota, cuotaInicial, numeroCuotas, fechaInicio, horaBloqueo } = req.body;
+    const { nombre, cedula, telefono, imei, producto, costoEquipo, valorCuota, cuotaInicial, numeroCuotas, fechaInicio, horaBloqueo } = req.body;
     const $set: Record<string, unknown> = {};
     if (nombre !== undefined) $set.nombre = String(nombre).trim();
     if (cedula !== undefined) $set.cedula = String(cedula).trim();
     if (telefono !== undefined) $set.telefono = String(telefono).trim();
     if (imei !== undefined) $set.imei = String(imei).trim();
     if (producto !== undefined) $set.producto = String(producto).trim();
+    if (costoEquipo !== undefined) $set.costoEquipo = Number(costoEquipo);
     if (horaBloqueo !== undefined) $set.horaBloqueo = String(horaBloqueo);
 
     // Solo recalcular cuotas si los datos financieros REALMENTE cambiaron
