@@ -2219,22 +2219,40 @@ app.put('/api/financing/:id', async (req, res) => {
     const fechaChanged = normDate(newFechaInicio) !== normDate(existing.fechaInicio);
 
     if (cuotasChanged || fechaChanged) {
-      // NUNCA perder pagos — generar nuevas cuotas RESPETANDO cuotasPrevias y preservando pagos
       const previas = existing.cuotasPrevias || 0;
       const oldCuotas: FinancingInstallment[] = existing.cuotas || [];
-      const newCuotas = generateInstallments(newFechaInicio, newNumCuotas, previas);
 
-      // Transferir estado pagado de cuotas anteriores a las nuevas (por número de cuota)
-      for (const nc of newCuotas) {
-        const oldMatch = oldCuotas.find(oc => oc.number === nc.number);
-        if (oldMatch && oldMatch.status === 'paid') {
-          nc.status = 'paid';
-          nc.paidDate = oldMatch.paidDate;
+      // Separar cuotas pagadas (intocables) de pendientes (se regeneran)
+      const paidCuotas = oldCuotas.filter(c => c.status === 'paid');
+      const unpaidCount = newNumCuotas - previas - paidCuotas.length;
+
+      if (unpaidCount > 0) {
+        // Generar solo las cuotas pendientes desde la nueva fecha
+        const nextNumber = paidCuotas.length > 0
+          ? paidCuotas[paidCuotas.length - 1].number + 1
+          : previas + 1;
+
+        const unpaidCuotas: FinancingInstallment[] = [];
+        const start = new Date(newFechaInicio);
+        for (let i = 0; i < unpaidCount; i++) {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i * 15);
+          unpaidCuotas.push({
+            number: nextNumber + i,
+            dueDate: d.toISOString(),
+            status: 'pending',
+          });
         }
+
+        // Cuotas pagadas intactas + nuevas pendientes desde fechaInicio
+        $set.cuotas = [...paidCuotas, ...unpaidCuotas];
+      } else {
+        // Todas pagadas o menos cuotas que pagadas
+        $set.cuotas = paidCuotas.slice(0, newNumCuotas - previas);
       }
 
-      $set.cuotas = newCuotas;
-      console.log(`[financing] Regenerated cuotas for ${existing.nombre}: ${newCuotas.length} cuotas (previas=${previas}), preserved ${newCuotas.filter((c: FinancingInstallment) => c.status === 'paid').length} paid`);
+      const finalCuotas = $set.cuotas as FinancingInstallment[];
+      console.log(`[financing] Updated cuotas for ${existing.nombre}: ${paidCuotas.length} paid kept, ${finalCuotas.length - paidCuotas.length} unpaid regenerated from ${normDate(newFechaInicio)}`);
     }
 
     if (Object.keys($set).length === 0) {

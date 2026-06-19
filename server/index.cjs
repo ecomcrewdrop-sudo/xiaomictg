@@ -300749,16 +300749,27 @@ app.put("/api/financing/:id", async (req, res) => {
     if (cuotasChanged || fechaChanged) {
       const previas = existing.cuotasPrevias || 0;
       const oldCuotas = existing.cuotas || [];
-      const newCuotas = generateInstallments(newFechaInicio, newNumCuotas, previas);
-      for (const nc of newCuotas) {
-        const oldMatch = oldCuotas.find((oc) => oc.number === nc.number);
-        if (oldMatch && oldMatch.status === "paid") {
-          nc.status = "paid";
-          nc.paidDate = oldMatch.paidDate;
+      const paidCuotas = oldCuotas.filter((c) => c.status === "paid");
+      const unpaidCount = newNumCuotas - previas - paidCuotas.length;
+      if (unpaidCount > 0) {
+        const nextNumber = paidCuotas.length > 0 ? paidCuotas[paidCuotas.length - 1].number + 1 : previas + 1;
+        const unpaidCuotas = [];
+        const start = new Date(newFechaInicio);
+        for (let i = 0; i < unpaidCount; i++) {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i * 15);
+          unpaidCuotas.push({
+            number: nextNumber + i,
+            dueDate: d.toISOString(),
+            status: "pending"
+          });
         }
+        $set.cuotas = [...paidCuotas, ...unpaidCuotas];
+      } else {
+        $set.cuotas = paidCuotas.slice(0, newNumCuotas - previas);
       }
-      $set.cuotas = newCuotas;
-      console.log(`[financing] Regenerated cuotas for ${existing.nombre}: ${newCuotas.length} cuotas (previas=${previas}), preserved ${newCuotas.filter((c) => c.status === "paid").length} paid`);
+      const finalCuotas = $set.cuotas;
+      console.log(`[financing] Updated cuotas for ${existing.nombre}: ${paidCuotas.length} paid kept, ${finalCuotas.length - paidCuotas.length} unpaid regenerated from ${normDate(newFechaInicio)}`);
     }
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "Sin campos para actualizar" });
