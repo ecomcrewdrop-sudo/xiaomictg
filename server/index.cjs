@@ -300609,11 +300609,20 @@ function generateInstallments(startDate, count, cuotasPagadas = 0) {
   }
   return installments;
 }
-function refreshOverdueStatus(cuotas) {
-  const now = /* @__PURE__ */ new Date();
+function refreshOverdueStatus(cuotas, horaBloqueo = "08:00") {
+  const nowCO = new Date((/* @__PURE__ */ new Date()).toLocaleString("en-US", { timeZone: "America/Bogota" }));
+  const todayStr = nowCO.toISOString().slice(0, 10);
+  const [bH, bM] = horaBloqueo.split(":").map(Number);
   return cuotas.map((c) => {
-    if (c.status === "pending" && new Date(c.dueDate) < now) {
+    if (c.status !== "pending") return c;
+    const dueDateStr = c.dueDate.slice(0, 10);
+    if (dueDateStr < todayStr) {
       return { ...c, status: "overdue" };
+    }
+    if (dueDateStr === todayStr) {
+      if (nowCO.getHours() > bH || nowCO.getHours() === bH && nowCO.getMinutes() >= bM) {
+        return { ...c, status: "overdue" };
+      }
     }
     return c;
   });
@@ -300623,7 +300632,7 @@ app.get("/api/financing", async (_req, res) => {
     const records = await db.collection("financing").find({}).sort({ createdAt: -1 }).toArray();
     const updated = records.map((r) => ({
       ...r,
-      cuotas: refreshOverdueStatus(r.cuotas || [])
+      cuotas: refreshOverdueStatus(r.cuotas || [], r.horaBloqueo || "08:00")
     }));
     res.json(updated);
   } catch (error) {
@@ -300768,7 +300777,7 @@ app.post("/api/financing/:id/remind", async (req, res) => {
     if (whatsappService.getStatus() !== "connected") {
       return res.status(400).json({ error: "WhatsApp no est\xE1 conectado" });
     }
-    const cuotas = refreshOverdueStatus(record.cuotas || []);
+    const cuotas = refreshOverdueStatus(record.cuotas || [], record.horaBloqueo || "08:00");
     const nextPending = cuotas.find((c) => c.status === "pending" || c.status === "overdue");
     if (!nextPending) {
       return res.status(400).json({ error: "No hay cuotas pendientes" });

@@ -2041,12 +2041,27 @@ function generateInstallments(startDate: string, count: number, cuotasPagadas = 
   return installments;
 }
 
-/** Actualiza estados overdue en cuotas vencidas no pagadas */
-function refreshOverdueStatus(cuotas: FinancingInstallment[]): FinancingInstallment[] {
-  const now = new Date();
+/** Actualiza estados overdue en cuotas vencidas no pagadas.
+ *  Solo marca overdue si ya pasó la horaBloqueo en hora Colombia (UTC-5). */
+function refreshOverdueStatus(cuotas: FinancingInstallment[], horaBloqueo = '08:00'): FinancingInstallment[] {
+  // Hora actual en Colombia
+  const nowCO = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const todayStr = nowCO.toISOString().slice(0, 10);
+  const [bH, bM] = horaBloqueo.split(':').map(Number);
+
   return cuotas.map(c => {
-    if (c.status === 'pending' && new Date(c.dueDate) < now) {
+    if (c.status !== 'pending') return c;
+    const dueDateStr = c.dueDate.slice(0, 10); // yyyy-mm-dd
+
+    if (dueDateStr < todayStr) {
+      // Día ya pasó → overdue
       return { ...c, status: 'overdue' as const };
+    }
+    if (dueDateStr === todayStr) {
+      // Mismo día → solo overdue si ya pasó la hora de bloqueo
+      if (nowCO.getHours() > bH || (nowCO.getHours() === bH && nowCO.getMinutes() >= bM)) {
+        return { ...c, status: 'overdue' as const };
+      }
     }
     return c;
   });
@@ -2057,10 +2072,10 @@ function refreshOverdueStatus(cuotas: FinancingInstallment[]): FinancingInstallm
 app.get('/api/financing', async (_req, res) => {
   try {
     const records = await db.collection('financing').find({}).sort({ createdAt: -1 }).toArray();
-    // Actualizar overdue on-read
+    // Actualizar overdue on-read (con hora de bloqueo de cada cliente)
     const updated = records.map((r: any) => ({
       ...r,
-      cuotas: refreshOverdueStatus(r.cuotas || []),
+      cuotas: refreshOverdueStatus(r.cuotas || [], r.horaBloqueo || '08:00'),
     }));
     res.json(updated);
   } catch (error) {
@@ -2244,7 +2259,7 @@ app.post('/api/financing/:id/remind', async (req, res) => {
     }
 
     // Encontrar próxima cuota pendiente
-    const cuotas: FinancingInstallment[] = refreshOverdueStatus(record.cuotas || []);
+    const cuotas: FinancingInstallment[] = refreshOverdueStatus(record.cuotas || [], record.horaBloqueo || '08:00');
     const nextPending = cuotas.find(c => c.status === 'pending' || c.status === 'overdue');
 
     if (!nextPending) {
