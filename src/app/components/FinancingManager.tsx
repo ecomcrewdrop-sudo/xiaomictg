@@ -572,8 +572,10 @@ export function FinancingManager() {
             const totalPagado = paidCount * record.valorCuota + record.cuotaInicial;
             const totalRestante = record.costoTotal - totalPagado;
 
+            const isDueToday = nextPending && nextPending.status === 'pending' && nextPending.dueDate.slice(0, 10) === new Date().toISOString().slice(0, 10);
+
             return (
-              <div key={record.id} className={`border-b last:border-b-0 transition-colors ${hasOverdue ? 'bg-red-50/50' : ''}`}>
+              <div key={record.id} className={`border-b last:border-b-0 transition-colors ${hasOverdue ? 'bg-red-50/50' : isDueToday ? 'bg-amber-50/50' : ''}`}>
                 {/* Row principal */}
                 <div
                   className="grid grid-cols-1 lg:grid-cols-[1fr_100px_110px_150px_90px_90px_100px_90px_110px_70px] gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50/80 items-center"
@@ -582,7 +584,7 @@ export function FinancingManager() {
                   {/* Nombre + producto — mobile friendly */}
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      record.status === 'completed' ? 'bg-green-500' : hasOverdue ? 'bg-red-500' : 'bg-orange-500'
+                      record.status === 'completed' ? 'bg-green-500' : hasOverdue ? 'bg-red-500' : isDueToday ? 'bg-amber-500 animate-pulse' : 'bg-orange-500'
                     }`} />
                     <div className="min-w-0">
                       <span className="font-semibold text-gray-900 text-sm block truncate">{record.nombre}</span>
@@ -608,6 +610,10 @@ export function FinancingManager() {
                         <span className="px-2 py-1 rounded-full bg-red-600 text-white font-bold animate-pulse">
                           🔒 BLOQUEADO
                         </span>
+                      ) : nextPending.dueDate.slice(0, 10) === new Date().toISOString().slice(0, 10) ? (
+                        <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-bold animate-pulse">
+                          📅 CUOTA HOY
+                        </span>
                       ) : (
                         <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">
                           {formatDate(nextPending.dueDate)}
@@ -623,12 +629,18 @@ export function FinancingManager() {
                 </div>
 
                 {/* Mobile summary row */}
-                <div className="lg:hidden px-4 pb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                <div className="lg:hidden px-4 pb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 items-center">
                   <span>CC: {record.cedula}</span>
                   <span>Tel: {record.telefono}</span>
                   <span>IMEI: {record.imei.slice(0, 10)}...</span>
                   <span className="font-bold text-gray-700">{formatCurrency(record.costoTotal)}</span>
                   <span>Cuotas: <span className="text-orange-600 font-bold">{paidCount}/{record.numeroCuotas}</span></span>
+                  {hasOverdue && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-600 text-white font-bold animate-pulse">🔒 BLOQUEADO</span>
+                  )}
+                  {isDueToday && !hasOverdue && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold animate-pulse">📅 CUOTA HOY</span>
+                  )}
                 </div>
 
                 {/* ── Panel expandido con cuotas ──────────────────────────── */}
