@@ -300840,6 +300840,20 @@ app.post("/api/financing/:id/pay/:cuotaNumber", async (req, res) => {
     if (idx === -1) return res.status(404).json({ error: "Cuota no encontrada" });
     cuotas[idx].status = "paid";
     cuotas[idx].paidDate = (/* @__PURE__ */ new Date()).toISOString();
+    const { nextDate } = req.body || {};
+    if (nextDate) {
+      const pendingCuotas = cuotas.filter((c) => c.status !== "paid");
+      if (pendingCuotas.length > 0) {
+        const start = new Date(nextDate);
+        pendingCuotas.forEach((c, i) => {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i * 15);
+          c.dueDate = d.toISOString();
+        });
+      }
+      const $setExtra = { fechaInicio: new Date(nextDate).toISOString() };
+      await db.collection("financing").updateOne({ id: req.params.id }, { $set: $setExtra });
+    }
     const allPaid = cuotas.every((c) => c.status === "paid");
     const $set = { cuotas };
     if (allPaid) $set.status = "completed";

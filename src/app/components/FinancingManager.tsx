@@ -178,13 +178,39 @@ export function FinancingManager() {
   };
 
   const handlePayInstallment = async (recordId: string, cuotaNumber: number) => {
+    // Preguntar fecha del próximo pago
+    const record = records.find(r => r.id === recordId);
+    const nextCuota = record?.cuotas.find(c => c.number > cuotaNumber && c.status !== 'paid');
+
+    // Sugerir fecha por defecto: +15 días desde hoy
+    const defaultNext = new Date();
+    defaultNext.setDate(defaultNext.getDate() + 15);
+    const defaultStr = defaultNext.toISOString().slice(0, 10);
+
+    const nextDate = prompt(
+      `✅ Cuota #${cuotaNumber} pagada.\n\n📅 ¿Fecha del PRÓXIMO pago?\n(dejar vacío = ${nextCuota ? new Date(nextCuota.dueDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : defaultStr})`,
+      nextCuota ? new Date(nextCuota.dueDate).toISOString().slice(0, 10) : defaultStr
+    );
+
+    // Si cancela el prompt, no hacer nada
+    if (nextDate === null) return;
+
     try {
+      const body: Record<string, unknown> = {};
+      if (nextDate && nextDate.trim()) {
+        body.nextDate = new Date(nextDate).toISOString();
+      }
+
       const res = await fetchWithTimeout(`${API_BASE_URL}/financing/${recordId}/pay/${cuotaNumber}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
       if (res.ok) {
-        toast.success(`Cuota #${cuotaNumber} marcada como pagada ✅`);
+        const msg = nextDate && nextDate.trim()
+          ? `Cuota #${cuotaNumber} pagada ✅ Próximo pago: ${new Date(nextDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', timeZone: 'UTC' })}`
+          : `Cuota #${cuotaNumber} marcada como pagada ✅`;
+        toast.success(msg);
         await loadRecords();
       }
     } catch (err) {

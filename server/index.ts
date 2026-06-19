@@ -2328,7 +2328,7 @@ app.delete('/api/financing/:id', async (req, res) => {
   }
 });
 
-// --- Marcar cuota como pagada ---
+// --- Marcar cuota como pagada (con fecha de próximo pago opcional) ---
 app.post('/api/financing/:id/pay/:cuotaNumber', async (req, res) => {
   try {
     const record = await db.collection('financing').findOne({ id: req.params.id });
@@ -2339,8 +2339,26 @@ app.post('/api/financing/:id/pay/:cuotaNumber', async (req, res) => {
     const idx = cuotas.findIndex(c => c.number === cuotaNum);
     if (idx === -1) return res.status(404).json({ error: 'Cuota no encontrada' });
 
+    // Marcar como pagada
     cuotas[idx].status = 'paid';
     cuotas[idx].paidDate = new Date().toISOString();
+
+    // Si envían nextDate, reprogramar SOLO las cuotas pendientes desde esa fecha
+    const { nextDate } = req.body || {};
+    if (nextDate) {
+      const pendingCuotas = cuotas.filter(c => c.status !== 'paid');
+      if (pendingCuotas.length > 0) {
+        const start = new Date(nextDate);
+        pendingCuotas.forEach((c, i) => {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i * 15);
+          c.dueDate = d.toISOString();
+        });
+      }
+      // Actualizar fechaInicio del registro también
+      const $setExtra: Record<string, unknown> = { fechaInicio: new Date(nextDate).toISOString() };
+      await db.collection('financing').updateOne({ id: req.params.id }, { $set: $setExtra });
+    }
 
     // Verificar si todas las cuotas están pagadas
     const allPaid = cuotas.every(c => c.status === 'paid');
