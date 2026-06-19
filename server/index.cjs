@@ -298912,6 +298912,44 @@ function scheduleDbReconnect(delayMs = 15e3) {
     void connectDB();
   }, delayMs);
 }
+async function fixCorruptedCuotas() {
+  try {
+    const records = await db.collection("financing").find({}).toArray();
+    let fixCount = 0;
+    for (const r of records) {
+      const previas = r.cuotasPrevias || 0;
+      const expectedCount = r.numeroCuotas - previas;
+      const expectedFirstNum = previas + 1;
+      const actualCount = (r.cuotas || []).length;
+      const actualFirstNum = r.cuotas?.[0]?.number ?? 0;
+      if (actualCount !== expectedCount || actualFirstNum !== expectedFirstNum) {
+        const oldCuotas = r.cuotas || [];
+        const paidByPosition = {};
+        oldCuotas.forEach((c, idx) => {
+          if (c.status === "paid") {
+            paidByPosition[idx] = c.paidDate || (/* @__PURE__ */ new Date()).toISOString();
+          }
+        });
+        const newCuotas = generateInstallments(r.fechaInicio, r.numeroCuotas, previas);
+        for (const [posStr, paidDate] of Object.entries(paidByPosition)) {
+          const pos = Number(posStr);
+          if (pos < newCuotas.length) {
+            newCuotas[pos].status = "paid";
+            newCuotas[pos].paidDate = paidDate;
+          }
+        }
+        await db.collection("financing").updateOne({ id: r.id }, { $set: { cuotas: newCuotas } });
+        const paidCount = newCuotas.filter((c) => c.status === "paid").length;
+        console.log(`[fix-cuotas] ${r.nombre}: ${actualCount} \u2192 ${newCuotas.length} cuotas (#${expectedFirstNum}-${r.numeroCuotas}), ${paidCount} paid preserved`);
+        fixCount++;
+      }
+    }
+    if (fixCount > 0) console.log(`[fix-cuotas] Repaired ${fixCount} records`);
+    else console.log("[fix-cuotas] All records OK");
+  } catch (err) {
+    console.error("[fix-cuotas] Error:", err);
+  }
+}
 async function connectDB() {
   if (dbConnecting) return;
   dbConnecting = true;
@@ -298925,6 +298963,7 @@ async function connectDB() {
     console.log("Connected to MongoDB");
     await setupIndexes();
     await seedData();
+    await fixCorruptedCuotas();
     console.log("[server] MongoDB ready");
     whatsappService.init(db, io2).catch((err) => console.error("[WA] Error en init:", err));
   } catch (error) {
@@ -300702,10 +300741,22 @@ app.put("/api/financing/:id", async (req, res) => {
     $set.numeroCuotas = newNumCuotas;
     $set.costoTotal = newCostoTotal;
     $set.fechaInicio = newFechaInicio;
+    const normDate = (d) => new Date(d).toISOString().slice(0, 10);
     const cuotasChanged = newNumCuotas !== existing.numeroCuotas;
-    const fechaChanged = newFechaInicio !== existing.fechaInicio;
+    const fechaChanged = normDate(newFechaInicio) !== normDate(existing.fechaInicio);
     if (cuotasChanged || fechaChanged) {
-      $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
+      const previas = existing.cuotasPrevias || 0;
+      const oldCuotas = existing.cuotas || [];
+      const newCuotas = generateInstallments(newFechaInicio, newNumCuotas, previas);
+      for (const nc of newCuotas) {
+        const oldMatch = oldCuotas.find((oc) => oc.number === nc.number);
+        if (oldMatch && oldMatch.status === "paid") {
+          nc.status = "paid";
+          nc.paidDate = oldMatch.paidDate;
+        }
+      }
+      $set.cuotas = newCuotas;
+      console.log(`[financing] Regenerated cuotas for ${existing.nombre}: ${newCuotas.length} cuotas (previas=${previas}), preserved ${newCuotas.filter((c) => c.status === "paid").length} paid`);
     }
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "Sin campos para actualizar" });
@@ -300716,6 +300767,44 @@ app.put("/api/financing/:id", async (req, res) => {
   } catch (error) {
     console.error("[financing] Error updating:", error);
     res.status(500).json({ error: "Error al actualizar financiamiento" });
+  }
+});
+app.post("/api/financing/fix-cuotas", async (_req, res) => {
+  try {
+    const records = await db.collection("financing").find({}).toArray();
+    const fixes = [];
+    for (const r of records) {
+      const previas = r.cuotasPrevias || 0;
+      const expectedCount = r.numeroCuotas - previas;
+      const expectedFirstNum = previas + 1;
+      const actualCount = (r.cuotas || []).length;
+      const actualFirstNum = r.cuotas?.[0]?.number ?? 0;
+      if (actualCount !== expectedCount || actualFirstNum !== expectedFirstNum) {
+        const oldCuotas = r.cuotas || [];
+        const oldPaidPositions = /* @__PURE__ */ new Set();
+        const oldPaidDates = {};
+        oldCuotas.forEach((c, idx) => {
+          if (c.status === "paid") {
+            oldPaidPositions.add(idx);
+            oldPaidDates[idx] = c.paidDate || (/* @__PURE__ */ new Date()).toISOString();
+          }
+        });
+        const newCuotas = generateInstallments(r.fechaInicio, r.numeroCuotas, previas);
+        oldPaidPositions.forEach((pos) => {
+          if (pos < newCuotas.length) {
+            newCuotas[pos].status = "paid";
+            newCuotas[pos].paidDate = oldPaidDates[pos];
+          }
+        });
+        await db.collection("financing").updateOne({ id: r.id }, { $set: { cuotas: newCuotas } });
+        const paidCount = newCuotas.filter((c) => c.status === "paid").length;
+        fixes.push(`${r.nombre}: ${actualCount} \u2192 ${newCuotas.length} cuotas (nums ${expectedFirstNum}-${r.numeroCuotas}), ${paidCount} paid preserved`);
+      }
+    }
+    res.json({ fixed: fixes.length, details: fixes });
+  } catch (error) {
+    console.error("[financing] Error fixing cuotas:", error);
+    res.status(500).json({ error: "Error al reparar cuotas" });
   }
 });
 app.delete("/api/financing/:id", async (req, res) => {
