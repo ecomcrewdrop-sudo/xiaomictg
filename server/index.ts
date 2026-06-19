@@ -131,7 +131,7 @@ async function fixCorruptedCuotas() {
     if (fixCount > 0) console.log(`[fix-cuotas] Repaired ${fixCount} records`);
     else console.log('[fix-cuotas] All records OK');
 
-    // Fix 2: cuotas pagadas con fecha futura → corregir + recalcular pendientes desde fechaInicio
+    // Fix 2: asegurar que cuotas pendientes empiecen desde fechaInicio + cuotas pagadas con fecha correcta
     let dateFixes = 0;
     for (const r of records) {
       const cuotas = r.cuotas || [];
@@ -143,23 +143,29 @@ async function fixCorruptedCuotas() {
           const dueDay = new Date(c.dueDate).toISOString().slice(0, 10);
           const paidDay = new Date(c.paidDate).toISOString().slice(0, 10);
           if (dueDay > paidDay) {
-            console.log(`[fix-cuotas] ${r.nombre} cuota #${c.number}: dueDate ${dueDay} → ${paidDay}`);
             c.dueDate = c.paidDate;
             changed = true;
           }
         }
       }
 
-      // Recalcular pendientes desde fechaInicio (cada 15 días)
-      if (changed && r.fechaInicio) {
+      // Verificar que pendientes empiecen desde fechaInicio
+      if (r.fechaInicio) {
         const pendientes = cuotas.filter((c: any) => c.status !== 'paid');
-        const start = new Date(r.fechaInicio);
-        pendientes.forEach((c: any, i: number) => {
-          const d = new Date(start);
-          d.setUTCDate(d.getUTCDate() + i * 15);
-          c.dueDate = d.toISOString();
-        });
-        console.log(`[fix-cuotas] ${r.nombre}: ${pendientes.length} pending cuotas rescheduled from ${r.fechaInicio.slice(0,10)}`);
+        if (pendientes.length > 0) {
+          const expectedFirst = new Date(r.fechaInicio).toISOString().slice(0, 10);
+          const actualFirst = new Date(pendientes[0].dueDate).toISOString().slice(0, 10);
+          if (actualFirst !== expectedFirst) {
+            const start = new Date(r.fechaInicio);
+            pendientes.forEach((c: any, i: number) => {
+              const d = new Date(start);
+              d.setUTCDate(d.getUTCDate() + i * 15);
+              c.dueDate = d.toISOString();
+            });
+            console.log(`[fix-cuotas] ${r.nombre}: pending cuotas realigned ${actualFirst} → ${expectedFirst}`);
+            changed = true;
+          }
+        }
       }
 
       if (changed) {
