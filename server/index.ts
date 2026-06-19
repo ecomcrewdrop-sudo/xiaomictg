@@ -83,6 +83,56 @@ function scheduleDbReconnect(delayMs = 15000) {
   }, delayMs);
 }
 
+// --- Reparar cuotas corruptas al iniciar (cuotas que no respetan cuotasPrevias) ---
+async function fixCorruptedCuotas() {
+  try {
+    const records = await db.collection('financing').find({}).toArray();
+    let fixCount = 0;
+
+    for (const r of records) {
+      const previas = r.cuotasPrevias || 0;
+      const expectedCount = r.numeroCuotas - previas;
+      const expectedFirstNum = previas + 1;
+      const actualCount = (r.cuotas || []).length;
+      const actualFirstNum = r.cuotas?.[0]?.number ?? 0;
+
+      if (actualCount !== expectedCount || actualFirstNum !== expectedFirstNum) {
+        const oldCuotas = r.cuotas || [];
+
+        // Guardar pagos por posición relativa (1ra cuota del sistema, 2da, etc.)
+        const paidByPosition: Record<number, string> = {};
+        oldCuotas.forEach((c: any, idx: number) => {
+          if (c.status === 'paid') {
+            paidByPosition[idx] = c.paidDate || new Date().toISOString();
+          }
+        });
+
+        // Generar cuotas correctas con cuotasPrevias
+        const newCuotas = generateInstallments(r.fechaInicio, r.numeroCuotas, previas);
+
+        // Transferir pagos por posición
+        for (const [posStr, paidDate] of Object.entries(paidByPosition)) {
+          const pos = Number(posStr);
+          if (pos < newCuotas.length) {
+            newCuotas[pos].status = 'paid';
+            newCuotas[pos].paidDate = paidDate;
+          }
+        }
+
+        await db.collection('financing').updateOne({ id: r.id }, { $set: { cuotas: newCuotas } });
+        const paidCount = newCuotas.filter((c: any) => c.status === 'paid').length;
+        console.log(`[fix-cuotas] ${r.nombre}: ${actualCount} → ${newCuotas.length} cuotas (#${expectedFirstNum}-${r.numeroCuotas}), ${paidCount} paid preserved`);
+        fixCount++;
+      }
+    }
+
+    if (fixCount > 0) console.log(`[fix-cuotas] Repaired ${fixCount} records`);
+    else console.log('[fix-cuotas] All records OK');
+  } catch (err) {
+    console.error('[fix-cuotas] Error:', err);
+  }
+}
+
 async function connectDB() {
   if (dbConnecting) return;
   dbConnecting = true;
@@ -97,6 +147,7 @@ async function connectDB() {
     
     await setupIndexes();
     await seedData();
+    await fixCorruptedCuotas();
     console.log('[server] MongoDB ready');
     // Inicializar WhatsApp con sesión persistente en MongoDB
     whatsappService.init(db, io).catch(err => console.error('[WA] Error en init:', err));
