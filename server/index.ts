@@ -2166,11 +2166,12 @@ app.put('/api/financing/:id', async (req, res) => {
     const fechaChanged = normDate(newFechaInicio) !== normDate(existing.fechaInicio);
 
     if (cuotasChanged || fechaChanged) {
-      // NUNCA perder pagos — generar nuevas cuotas pero PRESERVAR el estado de las ya pagadas
+      // NUNCA perder pagos — generar nuevas cuotas RESPETANDO cuotasPrevias y preservando pagos
+      const previas = existing.cuotasPrevias || 0;
       const oldCuotas: FinancingInstallment[] = existing.cuotas || [];
-      const newCuotas = generateInstallments(newFechaInicio, newNumCuotas);
+      const newCuotas = generateInstallments(newFechaInicio, newNumCuotas, previas);
 
-      // Transferir estado pagado de cuotas anteriores a las nuevas
+      // Transferir estado pagado de cuotas anteriores a las nuevas (por número de cuota)
       for (const nc of newCuotas) {
         const oldMatch = oldCuotas.find(oc => oc.number === nc.number);
         if (oldMatch && oldMatch.status === 'paid') {
@@ -2180,7 +2181,7 @@ app.put('/api/financing/:id', async (req, res) => {
       }
 
       $set.cuotas = newCuotas;
-      console.log(`[financing] Regenerated cuotas for ${existing.nombre}: preserved ${newCuotas.filter((c: FinancingInstallment) => c.status === 'paid').length} paid cuotas`);
+      console.log(`[financing] Regenerated cuotas for ${existing.nombre}: ${newCuotas.length} cuotas (previas=${previas}), preserved ${newCuotas.filter((c: FinancingInstallment) => c.status === 'paid').length} paid`);
     }
 
     if (Object.keys($set).length === 0) {
@@ -2193,6 +2194,55 @@ app.put('/api/financing/:id', async (req, res) => {
   } catch (error) {
     console.error('[financing] Error updating:', error);
     res.status(500).json({ error: 'Error al actualizar financiamiento' });
+  }
+});
+
+// --- Reparar cuotas corruptas (cuotas que no respetan cuotasPrevias) ---
+app.post('/api/financing/fix-cuotas', async (_req, res) => {
+  try {
+    const records = await db.collection('financing').find({}).toArray();
+    const fixes: string[] = [];
+
+    for (const r of records) {
+      const previas = r.cuotasPrevias || 0;
+      const expectedCount = r.numeroCuotas - previas;
+      const expectedFirstNum = previas + 1;
+      const actualCount = (r.cuotas || []).length;
+      const actualFirstNum = r.cuotas?.[0]?.number ?? 0;
+
+      if (actualCount !== expectedCount || actualFirstNum !== expectedFirstNum) {
+        // Guardar qué cuotas estaban pagadas (por posición relativa: 1ra cuota del sistema, 2da, etc.)
+        const oldCuotas: FinancingInstallment[] = r.cuotas || [];
+        const oldPaidPositions = new Set<number>();
+        const oldPaidDates: Record<number, string> = {};
+        oldCuotas.forEach((c: FinancingInstallment, idx: number) => {
+          if (c.status === 'paid') {
+            oldPaidPositions.add(idx);
+            oldPaidDates[idx] = c.paidDate || new Date().toISOString();
+          }
+        });
+
+        // Generar cuotas correctas
+        const newCuotas = generateInstallments(r.fechaInicio, r.numeroCuotas, previas);
+
+        // Transferir pagos: por posición (1ra cuota pagada → 1ra nueva cuota pagada)
+        oldPaidPositions.forEach(pos => {
+          if (pos < newCuotas.length) {
+            newCuotas[pos].status = 'paid';
+            newCuotas[pos].paidDate = oldPaidDates[pos];
+          }
+        });
+
+        await db.collection('financing').updateOne({ id: r.id }, { $set: { cuotas: newCuotas } });
+        const paidCount = newCuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
+        fixes.push(`${r.nombre}: ${actualCount} → ${newCuotas.length} cuotas (nums ${expectedFirstNum}-${r.numeroCuotas}), ${paidCount} paid preserved`);
+      }
+    }
+
+    res.json({ fixed: fixes.length, details: fixes });
+  } catch (error) {
+    console.error('[financing] Error fixing cuotas:', error);
+    res.status(500).json({ error: 'Error al reparar cuotas' });
   }
 });
 
