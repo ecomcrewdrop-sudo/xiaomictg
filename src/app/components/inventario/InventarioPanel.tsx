@@ -3,10 +3,10 @@ import { StockManager } from './StockManager';
 import { DailySales } from './DailySales';
 import { PettyCash } from './PettyCash';
 import { SupplierDebts } from './SupplierDebts';
-import { Package, Receipt, Wallet, TrendingUp } from 'lucide-react';
+import { Package, CreditCard, Wallet, TrendingUp } from 'lucide-react';
 
 const TABS = [
-  { key: 'ventas', label: 'Ventas del Dia', icon: Receipt },
+  { key: 'ventas', label: 'Ventas del Dia', icon: CreditCard },
   { key: 'inventario', label: 'Inventario', icon: Package },
   { key: 'caja', label: 'Caja Menor', icon: Wallet },
   { key: 'proveedores', label: 'Proveedores', icon: TrendingUp },

@@ -4,7 +4,7 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
-import { Plus, Trash2, Wallet, ArrowDownCircle, ShoppingBag, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Wallet, Minus, DollarSign, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PettyCashEntry {
   id: string;
@@ -20,8 +20,8 @@ const fmt = (n: number) => `$${n.toLocaleString('es-CO')}`;
 const QUICK_AMOUNTS = [10000, 20000, 50000, 100000];
 
 const TIPO_CONFIG = {
-  retiro: { label: 'Retiro', icon: ArrowDownCircle, color: 'bg-red-100 text-red-700' },
-  gasto: { label: 'Gasto', icon: ShoppingBag, color: 'bg-amber-100 text-amber-700' },
+  retiro: { label: 'Retiro', icon: Minus, color: 'bg-red-100 text-red-700' },
+  gasto: { label: 'Gasto', icon: DollarSign, color: 'bg-amber-100 text-amber-700' },
   transferencia: { label: 'Transferencia', icon: Send, color: 'bg-blue-100 text-blue-700' },
 };
 

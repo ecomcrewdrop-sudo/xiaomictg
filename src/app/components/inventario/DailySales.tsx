@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Trash2, DollarSign, TrendingUp, CreditCard, Wallet,
-  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Globe
+  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone
 } from 'lucide-react';
 
 interface PaymentMethod {
@@ -239,7 +239,7 @@ export function DailySales() {
       <div className="bg-white rounded-xl border overflow-hidden">
         {ventas.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
-            <Receipt className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="font-semibold">No hay ventas registradas</p>
             <p className="text-xs">Agrega una venta o espera ordenes de la web</p>
           </div>
@@ -266,7 +266,7 @@ export function DailySales() {
                     <tr key={v.id} className="border-t hover:bg-gray-50/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {v.creadoPor === 'web' && <Globe className="w-3.5 h-3.5 text-violet-500" title="Orden web" />}
+                          {v.creadoPor === 'web' && <Smartphone className="w-3.5 h-3.5 text-violet-500" title="Orden web" />}
                           <span className="font-medium text-gray-900">{v.cliente}</span>
                         </div>
                       </td>

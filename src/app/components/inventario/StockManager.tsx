@@ -5,7 +5,7 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
-import { Plus, Trash2, Pencil, Search, Package, Filter } from 'lucide-react';
+import { Plus, Trash2, Pencil, Search, Package } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
@@ -136,7 +136,7 @@ export function StockManager() {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por producto, IMEI, proveedor..." className="pl-10" />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" />
+          <Search className="w-4 h-4 text-gray-400" />
           <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} className="h-10 rounded-md border border-gray-200 px-3 text-sm">
             <option value="todos">Todos</option>
             <option value="disponible">Disponible</option>
