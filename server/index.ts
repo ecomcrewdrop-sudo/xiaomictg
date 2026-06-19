@@ -45,16 +45,18 @@ const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 
 const mailTransporter = GMAIL_USER && GMAIL_PASS ? nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: GMAIL_USER,
     pass: GMAIL_PASS
   },
   tls: {
-    // No fallar en entornos restrictivos
     rejectUnauthorized: false
   },
-  // Timeouts para evitar conexiones colgadas
+  // Forzar IPv4 (Railway no soporta IPv6 para SMTP)
+  family: 4,
   connectionTimeout: 15000,
   greetingTimeout: 15000,
   socketTimeout: 20000
