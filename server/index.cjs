@@ -298957,18 +298957,28 @@ async function fixCorruptedCuotas() {
           const dueDay = new Date(c.dueDate).toISOString().slice(0, 10);
           const paidDay = new Date(c.paidDate).toISOString().slice(0, 10);
           if (dueDay > paidDay) {
-            console.log(`[fix-cuotas] ${r.nombre} cuota #${c.number}: dueDate ${dueDay} \u2192 ${paidDay} (pagada antes de vencer)`);
+            console.log(`[fix-cuotas] ${r.nombre} cuota #${c.number}: dueDate ${dueDay} \u2192 ${paidDay}`);
             c.dueDate = c.paidDate;
             changed = true;
           }
         }
+      }
+      if (changed && r.fechaInicio) {
+        const pendientes = cuotas.filter((c) => c.status !== "paid");
+        const start = new Date(r.fechaInicio);
+        pendientes.forEach((c, i) => {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i * 15);
+          c.dueDate = d.toISOString();
+        });
+        console.log(`[fix-cuotas] ${r.nombre}: ${pendientes.length} pending cuotas rescheduled from ${r.fechaInicio.slice(0, 10)}`);
       }
       if (changed) {
         await db.collection("financing").updateOne({ id: r.id }, { $set: { cuotas } });
         dateFixes++;
       }
     }
-    if (dateFixes > 0) console.log(`[fix-cuotas] Fixed ${dateFixes} records with wrong paid dates`);
+    if (dateFixes > 0) console.log(`[fix-cuotas] Fixed ${dateFixes} records`);
   } catch (err) {
     console.error("[fix-cuotas] Error:", err);
   }

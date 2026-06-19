@@ -131,29 +131,43 @@ async function fixCorruptedCuotas() {
     if (fixCount > 0) console.log(`[fix-cuotas] Repaired ${fixCount} records`);
     else console.log('[fix-cuotas] All records OK');
 
-    // Fix 2: cuotas pagadas con fecha futura → corregir dueDate a paidDate
+    // Fix 2: cuotas pagadas con fecha futura → corregir + recalcular pendientes desde fechaInicio
     let dateFixes = 0;
     for (const r of records) {
       const cuotas = r.cuotas || [];
       let changed = false;
+
+      // Corregir cuotas pagadas con fecha futura
       for (const c of cuotas) {
         if (c.status === 'paid' && c.paidDate) {
           const dueDay = new Date(c.dueDate).toISOString().slice(0, 10);
           const paidDay = new Date(c.paidDate).toISOString().slice(0, 10);
-          // Si la fecha de vencimiento es DESPUÉS de la fecha en que se pagó, corregir
           if (dueDay > paidDay) {
-            console.log(`[fix-cuotas] ${r.nombre} cuota #${c.number}: dueDate ${dueDay} → ${paidDay} (pagada antes de vencer)`);
+            console.log(`[fix-cuotas] ${r.nombre} cuota #${c.number}: dueDate ${dueDay} → ${paidDay}`);
             c.dueDate = c.paidDate;
             changed = true;
           }
         }
       }
+
+      // Recalcular pendientes desde fechaInicio (cada 15 días)
+      if (changed && r.fechaInicio) {
+        const pendientes = cuotas.filter((c: any) => c.status !== 'paid');
+        const start = new Date(r.fechaInicio);
+        pendientes.forEach((c: any, i: number) => {
+          const d = new Date(start);
+          d.setUTCDate(d.getUTCDate() + i * 15);
+          c.dueDate = d.toISOString();
+        });
+        console.log(`[fix-cuotas] ${r.nombre}: ${pendientes.length} pending cuotas rescheduled from ${r.fechaInicio.slice(0,10)}`);
+      }
+
       if (changed) {
         await db.collection('financing').updateOne({ id: r.id }, { $set: { cuotas } });
         dateFixes++;
       }
     }
-    if (dateFixes > 0) console.log(`[fix-cuotas] Fixed ${dateFixes} records with wrong paid dates`);
+    if (dateFixes > 0) console.log(`[fix-cuotas] Fixed ${dateFixes} records`);
   } catch (err) {
     console.error('[fix-cuotas] Error:', err);
   }
