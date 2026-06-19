@@ -2405,6 +2405,400 @@ app.delete('/api/xiaomi-payments/:id', async (req, res) => {
 });
 
 // ====================================================================
+// 📦  SISTEMA DE INVENTARIO, FACTURACIÓN Y CAJA
+// ====================================================================
+
+// --- Métodos de pago (config) ---
+
+app.get('/api/inventario/metodos-pago', async (_req, res) => {
+  try {
+    const methods = await db.collection('payment_methods').find().sort({ orden: 1 }).toArray();
+    if (methods.length === 0) {
+      // Seed defaults
+      const defaults = [
+        { id: crypto.randomUUID(), nombre: 'Efectivo', clave: 'efectivo', diasPendiente: 0, activo: true, orden: 1 },
+        { id: crypto.randomUUID(), nombre: 'Transferencia', clave: 'transferencia', diasPendiente: 0, activo: true, orden: 2 },
+        { id: crypto.randomUUID(), nombre: 'Datáfono BOD', clave: 'datafonoBOD', diasPendiente: 1, activo: true, orden: 3 },
+        { id: crypto.randomUUID(), nombre: 'ADDI', clave: 'addi', diasPendiente: 5, activo: true, orden: 4 },
+      ];
+      await db.collection('payment_methods').insertMany(defaults);
+      return res.json(defaults);
+    }
+    res.json(methods);
+  } catch (error) {
+    console.error('[inventario] Error metodos-pago:', error);
+    res.status(500).json({ error: 'Error al cargar métodos de pago' });
+  }
+});
+
+app.post('/api/inventario/metodos-pago', async (req, res) => {
+  try {
+    const { nombre, diasPendiente } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+    const clave = nombre.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+    const count = await db.collection('payment_methods').countDocuments();
+    const method = {
+      id: crypto.randomUUID(),
+      nombre,
+      clave,
+      diasPendiente: Number(diasPendiente || 0),
+      activo: true,
+      orden: count + 1,
+    };
+    await db.collection('payment_methods').insertOne(method);
+    res.status(201).json(method);
+  } catch (error) {
+    console.error('[inventario] Error creating metodo:', error);
+    res.status(500).json({ error: 'Error al crear método de pago' });
+  }
+});
+
+app.delete('/api/inventario/metodos-pago/:id', async (req, res) => {
+  try {
+    await db.collection('payment_methods').deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar' });
+  }
+});
+
+// --- Inventario físico (items) ---
+
+app.get('/api/inventario/items', async (req, res) => {
+  try {
+    const filter: Record<string, unknown> = {};
+    if (req.query.estado) filter.estado = req.query.estado;
+    if (req.query.proveedor) filter.proveedor = req.query.proveedor;
+    const items = await db.collection('inventory').find(filter).sort({ fechaIngreso: -1 }).toArray();
+    res.json(items);
+  } catch (error) {
+    console.error('[inventario] Error listing items:', error);
+    res.status(500).json({ error: 'Error al cargar inventario' });
+  }
+});
+
+app.post('/api/inventario/items', async (req, res) => {
+  try {
+    const { producto, imei, categoria, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
+    if (!producto) return res.status(400).json({ error: 'Producto requerido' });
+
+    // Check duplicate IMEI
+    if (imei) {
+      const existing = await db.collection('inventory').findOne({ imei, estado: { $ne: 'vendido' } });
+      if (existing) return res.status(400).json({ error: `IMEI ${imei} ya existe en inventario` });
+    }
+
+    const item = {
+      id: crypto.randomUUID(),
+      producto,
+      imei: imei || '',
+      categoria: categoria || 'general',
+      precioCompra: Number(precioCompra || 0),
+      precioVenta: Number(precioVenta || 0),
+      proveedor: esPropio ? 'Propio' : (proveedor || ''),
+      esPropio: Boolean(esPropio),
+      estado: 'disponible',
+      notas: notas || '',
+      fechaIngreso: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await db.collection('inventory').insertOne(item);
+    res.status(201).json(item);
+  } catch (error) {
+    console.error('[inventario] Error creating item:', error);
+    res.status(500).json({ error: 'Error al agregar item' });
+  }
+});
+
+app.put('/api/inventario/items/:id', async (req, res) => {
+  try {
+    const { producto, imei, categoria, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
+    const $set: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    if (producto !== undefined) $set.producto = producto;
+    if (imei !== undefined) $set.imei = imei;
+    if (categoria !== undefined) $set.categoria = categoria;
+    if (precioCompra !== undefined) $set.precioCompra = Number(precioCompra);
+    if (precioVenta !== undefined) $set.precioVenta = Number(precioVenta);
+    if (proveedor !== undefined) $set.proveedor = proveedor;
+    if (esPropio !== undefined) $set.esPropio = Boolean(esPropio);
+    if (estado !== undefined) $set.estado = estado;
+    if (notas !== undefined) $set.notas = notas;
+
+    await db.collection('inventory').updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection('inventory').findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error('[inventario] Error updating item:', error);
+    res.status(500).json({ error: 'Error al actualizar' });
+  }
+});
+
+app.delete('/api/inventario/items/:id', async (req, res) => {
+  try {
+    await db.collection('inventory').deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar' });
+  }
+});
+
+// --- Ventas del día (daily sales / facturación) ---
+
+app.get('/api/inventario/ventas', async (req, res) => {
+  try {
+    const filter: Record<string, unknown> = {};
+    if (req.query.fecha) filter.fecha = req.query.fecha;
+    const ventas = await db.collection('daily_sales').find(filter).sort({ createdAt: -1 }).toArray();
+    res.json(ventas);
+  } catch (error) {
+    console.error('[inventario] Error listing ventas:', error);
+    res.status(500).json({ error: 'Error al cargar ventas' });
+  }
+});
+
+app.post('/api/inventario/ventas', async (req, res) => {
+  try {
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId } = req.body;
+    if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: 'Faltan campos requeridos' });
+
+    const compra = Number(precioCompra || 0);
+    const venta = Number(precioVenta);
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    // Calculate expected date for pending payments
+    let expectedDate = fechaEsperada;
+    if (!expectedDate && estadoPago === 'pendiente') {
+      const methods = await db.collection('payment_methods').find().toArray();
+      const method = methods.find((m: any) => m.clave === metodoPago);
+      if (method && method.diasPendiente > 0) {
+        const d = new Date();
+        d.setDate(d.getDate() + method.diasPendiente);
+        // Skip weekends for business days
+        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+        expectedDate = d.toISOString();
+      }
+    }
+
+    const venta_record = {
+      id: crypto.randomUUID(),
+      fecha: hoy,
+      orderId: orderId || null,
+      inventarioId: inventarioId || null,
+      cliente,
+      producto,
+      imei: imei || '',
+      esPropio: Boolean(esPropio),
+      proveedor: esPropio ? '' : (proveedor || ''),
+      precioCompra: compra,
+      precioVenta: venta,
+      ganancia: venta - compra,
+      metodoPago: metodoPago || 'efectivo',
+      estadoPago: estadoPago || 'recibido',
+      fechaEsperada: expectedDate || null,
+      notas: notas || '',
+      creadoPor: orderId ? 'web' : 'manual',
+      createdAt: new Date().toISOString(),
+    };
+
+    await db.collection('daily_sales').insertOne(venta_record);
+
+    // Mark inventory item as sold if linked
+    if (inventarioId) {
+      await db.collection('inventory').updateOne(
+        { id: inventarioId },
+        { $set: { estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } }
+      );
+    }
+
+    res.status(201).json(venta_record);
+  } catch (error) {
+    console.error('[inventario] Error creating venta:', error);
+    res.status(500).json({ error: 'Error al registrar venta' });
+  }
+});
+
+app.put('/api/inventario/ventas/:id', async (req, res) => {
+  try {
+    const $set: Record<string, unknown> = {};
+    const allowed = ['cliente', 'producto', 'imei', 'esPropio', 'proveedor', 'precioCompra', 'precioVenta', 'metodoPago', 'estadoPago', 'fechaEsperada', 'notas'];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) $set[key] = req.body[key];
+    }
+    if ($set.precioCompra !== undefined || $set.precioVenta !== undefined) {
+      const current = await db.collection('daily_sales').findOne({ id: req.params.id });
+      const pc = Number($set.precioCompra ?? current?.precioCompra ?? 0);
+      const pv = Number($set.precioVenta ?? current?.precioVenta ?? 0);
+      $set.ganancia = pv - pc;
+    }
+    await db.collection('daily_sales').updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection('daily_sales').findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar venta' });
+  }
+});
+
+app.delete('/api/inventario/ventas/:id', async (req, res) => {
+  try {
+    const venta = await db.collection('daily_sales').findOne({ id: req.params.id });
+    if (venta?.inventarioId) {
+      await db.collection('inventory').updateOne(
+        { id: venta.inventarioId },
+        { $set: { estado: 'disponible', ventaId: null, updatedAt: new Date().toISOString() } }
+      );
+    }
+    await db.collection('daily_sales').deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar venta' });
+  }
+});
+
+// --- Resumen del día ---
+
+app.get('/api/inventario/resumen-dia', async (req, res) => {
+  try {
+    const fecha = (req.query.fecha as string) || new Date().toISOString().slice(0, 10);
+    const ventas = await db.collection('daily_sales').find({ fecha }).toArray();
+    const gastos = await db.collection('petty_cash').find({ fecha }).toArray();
+    const methods = await db.collection('payment_methods').find({ activo: true }).sort({ orden: 1 }).toArray();
+
+    const totalVentas = ventas.reduce((s: number, v: any) => s + v.precioVenta, 0);
+    const totalGanancia = ventas.reduce((s: number, v: any) => s + v.ganancia, 0);
+    const totalGastos = gastos.reduce((s: number, g: any) => s + g.monto, 0);
+
+    // Per-method breakdown
+    const porMetodo: Record<string, { total: number; pendiente: number; recibido: number }> = {};
+    for (const m of methods) {
+      porMetodo[m.clave] = { total: 0, pendiente: 0, recibido: 0 };
+    }
+    for (const v of ventas) {
+      const key = v.metodoPago || 'efectivo';
+      if (!porMetodo[key]) porMetodo[key] = { total: 0, pendiente: 0, recibido: 0 };
+      porMetodo[key].total += v.precioVenta;
+      if (v.estadoPago === 'pendiente') porMetodo[key].pendiente += v.precioVenta;
+      else porMetodo[key].recibido += v.precioVenta;
+    }
+
+    // Supplier debts from today
+    const deudasHoy: Record<string, number> = {};
+    for (const v of ventas) {
+      if (!v.esPropio && v.proveedor) {
+        deudasHoy[v.proveedor] = (deudasHoy[v.proveedor] || 0) + v.precioCompra;
+      }
+    }
+
+    const efectivoRecibido = porMetodo['efectivo']?.recibido || 0;
+    const cajaDisponible = efectivoRecibido - totalGastos;
+
+    res.json({
+      fecha,
+      totalVentas,
+      totalGanancia,
+      totalGastos,
+      cajaDisponible,
+      cantidadVentas: ventas.length,
+      porMetodo,
+      deudasHoy,
+    });
+  } catch (error) {
+    console.error('[inventario] Error resumen:', error);
+    res.status(500).json({ error: 'Error al generar resumen' });
+  }
+});
+
+// --- Deudas a proveedores (global) ---
+
+app.get('/api/inventario/deudas-proveedores', async (_req, res) => {
+  try {
+    const ventas = await db.collection('daily_sales').find({ esPropio: false, proveedor: { $ne: '' } }).toArray();
+    const deudas: Record<string, { total: number; ventas: number }> = {};
+    for (const v of ventas as any[]) {
+      if (!v.proveedor) continue;
+      if (!deudas[v.proveedor]) deudas[v.proveedor] = { total: 0, ventas: 0 };
+      deudas[v.proveedor].total += v.precioCompra;
+      deudas[v.proveedor].ventas += 1;
+    }
+    res.json(deudas);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cargar deudas' });
+  }
+});
+
+// --- Dinero pendiente (en el aire) ---
+
+app.get('/api/inventario/dinero-pendiente', async (_req, res) => {
+  try {
+    const ventas = await db.collection('daily_sales').find({ estadoPago: 'pendiente' }).sort({ fechaEsperada: 1 }).toArray();
+    const porMetodo: Record<string, { total: number; items: any[] }> = {};
+    for (const v of ventas as any[]) {
+      const key = v.metodoPago;
+      if (!porMetodo[key]) porMetodo[key] = { total: 0, items: [] };
+      porMetodo[key].total += v.precioVenta;
+      porMetodo[key].items.push({ id: v.id, cliente: v.cliente, monto: v.precioVenta, fecha: v.fecha, fechaEsperada: v.fechaEsperada });
+    }
+    res.json(porMetodo);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cargar dinero pendiente' });
+  }
+});
+
+// Marcar dinero pendiente como recibido
+app.post('/api/inventario/ventas/:id/recibido', async (req, res) => {
+  try {
+    await db.collection('daily_sales').updateOne(
+      { id: req.params.id },
+      { $set: { estadoPago: 'recibido' } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al marcar como recibido' });
+  }
+});
+
+// --- Caja menor (petty cash / gastos rápidos) ---
+
+app.get('/api/inventario/caja-menor', async (req, res) => {
+  try {
+    const filter: Record<string, unknown> = {};
+    if (req.query.fecha) filter.fecha = req.query.fecha;
+    const gastos = await db.collection('petty_cash').find(filter).sort({ createdAt: -1 }).toArray();
+    res.json(gastos);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cargar gastos' });
+  }
+});
+
+app.post('/api/inventario/caja-menor', async (req, res) => {
+  try {
+    const { monto, concepto, tipo } = req.body;
+    if (!monto || !concepto) return res.status(400).json({ error: 'Monto y concepto requeridos' });
+
+    const gasto = {
+      id: crypto.randomUUID(),
+      fecha: new Date().toISOString().slice(0, 10),
+      monto: Number(monto),
+      concepto,
+      tipo: tipo || 'gasto',
+      createdAt: new Date().toISOString(),
+    };
+    await db.collection('petty_cash').insertOne(gasto);
+    res.status(201).json(gasto);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al registrar gasto' });
+  }
+});
+
+app.delete('/api/inventario/caja-menor/:id', async (req, res) => {
+  try {
+    await db.collection('petty_cash').deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar gasto' });
+  }
+});
+
+// ====================================================================
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);

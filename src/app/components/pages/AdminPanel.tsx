@@ -15,6 +15,7 @@ import { AdminLinkGenerator } from './AdminLinkGenerator';
 import { WhatsAppPanel } from '../WhatsAppPanel';
 import { ReviewsManager } from '../ReviewsManager';
 import { FinancingManager } from '../FinancingManager';
+import { InventarioPanel } from '../inventario/InventarioPanel';
 import { toast } from 'sonner';
 import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
 const SOCKET_URL = '';
@@ -540,6 +541,7 @@ export function AdminPanel() {
             )}
           </TabsTrigger>
           <TabsTrigger value="financing" className="font-bold text-blue-700 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">CrediLock</TabsTrigger>
+          <TabsTrigger value="inventario" className="font-bold text-violet-700 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700">Inventario</TabsTrigger>
           <TabsTrigger value="links" className="font-bold text-sky-700 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-700">Links VIP</TabsTrigger>
           <TabsTrigger value="banner">Banners</TabsTrigger>
           <TabsTrigger value="ticket">Ticket</TabsTrigger>
@@ -560,6 +562,11 @@ export function AdminPanel() {
         {/* TAB DE FINANCIAMIENTO / CUOTAS */}
         <TabsContent value="financing">
           <FinancingManager />
+        </TabsContent>
+
+        {/* TAB DE INVENTARIO */}
+        <TabsContent value="inventario">
+          <InventarioPanel />
         </TabsContent>
 
         {/* TAB DE LINKS VIP */}

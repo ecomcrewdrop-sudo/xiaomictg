@@ -300927,6 +300927,341 @@ app.delete("/api/xiaomi-payments/:id", async (req, res) => {
     res.status(500).json({ error: "Error al eliminar pago" });
   }
 });
+app.get("/api/inventario/metodos-pago", async (_req, res) => {
+  try {
+    const methods = await db.collection("payment_methods").find().sort({ orden: 1 }).toArray();
+    if (methods.length === 0) {
+      const defaults = [
+        { id: crypto.randomUUID(), nombre: "Efectivo", clave: "efectivo", diasPendiente: 0, activo: true, orden: 1 },
+        { id: crypto.randomUUID(), nombre: "Transferencia", clave: "transferencia", diasPendiente: 0, activo: true, orden: 2 },
+        { id: crypto.randomUUID(), nombre: "Dat\xE1fono BOD", clave: "datafonoBOD", diasPendiente: 1, activo: true, orden: 3 },
+        { id: crypto.randomUUID(), nombre: "ADDI", clave: "addi", diasPendiente: 5, activo: true, orden: 4 }
+      ];
+      await db.collection("payment_methods").insertMany(defaults);
+      return res.json(defaults);
+    }
+    res.json(methods);
+  } catch (error) {
+    console.error("[inventario] Error metodos-pago:", error);
+    res.status(500).json({ error: "Error al cargar m\xE9todos de pago" });
+  }
+});
+app.post("/api/inventario/metodos-pago", async (req, res) => {
+  try {
+    const { nombre, diasPendiente } = req.body;
+    if (!nombre) return res.status(400).json({ error: "Nombre requerido" });
+    const clave = nombre.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+    const count = await db.collection("payment_methods").countDocuments();
+    const method = {
+      id: crypto.randomUUID(),
+      nombre,
+      clave,
+      diasPendiente: Number(diasPendiente || 0),
+      activo: true,
+      orden: count + 1
+    };
+    await db.collection("payment_methods").insertOne(method);
+    res.status(201).json(method);
+  } catch (error) {
+    console.error("[inventario] Error creating metodo:", error);
+    res.status(500).json({ error: "Error al crear m\xE9todo de pago" });
+  }
+});
+app.delete("/api/inventario/metodos-pago/:id", async (req, res) => {
+  try {
+    await db.collection("payment_methods").deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar" });
+  }
+});
+app.get("/api/inventario/items", async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.estado) filter.estado = req.query.estado;
+    if (req.query.proveedor) filter.proveedor = req.query.proveedor;
+    const items = await db.collection("inventory").find(filter).sort({ fechaIngreso: -1 }).toArray();
+    res.json(items);
+  } catch (error) {
+    console.error("[inventario] Error listing items:", error);
+    res.status(500).json({ error: "Error al cargar inventario" });
+  }
+});
+app.post("/api/inventario/items", async (req, res) => {
+  try {
+    const { producto, imei, categoria, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
+    if (!producto) return res.status(400).json({ error: "Producto requerido" });
+    if (imei) {
+      const existing = await db.collection("inventory").findOne({ imei, estado: { $ne: "vendido" } });
+      if (existing) return res.status(400).json({ error: `IMEI ${imei} ya existe en inventario` });
+    }
+    const item = {
+      id: crypto.randomUUID(),
+      producto,
+      imei: imei || "",
+      categoria: categoria || "general",
+      precioCompra: Number(precioCompra || 0),
+      precioVenta: Number(precioVenta || 0),
+      proveedor: esPropio ? "Propio" : proveedor || "",
+      esPropio: Boolean(esPropio),
+      estado: "disponible",
+      notas: notas || "",
+      fechaIngreso: (/* @__PURE__ */ new Date()).toISOString(),
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("inventory").insertOne(item);
+    res.status(201).json(item);
+  } catch (error) {
+    console.error("[inventario] Error creating item:", error);
+    res.status(500).json({ error: "Error al agregar item" });
+  }
+});
+app.put("/api/inventario/items/:id", async (req, res) => {
+  try {
+    const { producto, imei, categoria, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
+    const $set = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    if (producto !== void 0) $set.producto = producto;
+    if (imei !== void 0) $set.imei = imei;
+    if (categoria !== void 0) $set.categoria = categoria;
+    if (precioCompra !== void 0) $set.precioCompra = Number(precioCompra);
+    if (precioVenta !== void 0) $set.precioVenta = Number(precioVenta);
+    if (proveedor !== void 0) $set.proveedor = proveedor;
+    if (esPropio !== void 0) $set.esPropio = Boolean(esPropio);
+    if (estado !== void 0) $set.estado = estado;
+    if (notas !== void 0) $set.notas = notas;
+    await db.collection("inventory").updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection("inventory").findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    console.error("[inventario] Error updating item:", error);
+    res.status(500).json({ error: "Error al actualizar" });
+  }
+});
+app.delete("/api/inventario/items/:id", async (req, res) => {
+  try {
+    await db.collection("inventory").deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar" });
+  }
+});
+app.get("/api/inventario/ventas", async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.fecha) filter.fecha = req.query.fecha;
+    const ventas = await db.collection("daily_sales").find(filter).sort({ createdAt: -1 }).toArray();
+    res.json(ventas);
+  } catch (error) {
+    console.error("[inventario] Error listing ventas:", error);
+    res.status(500).json({ error: "Error al cargar ventas" });
+  }
+});
+app.post("/api/inventario/ventas", async (req, res) => {
+  try {
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId } = req.body;
+    if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: "Faltan campos requeridos" });
+    const compra = Number(precioCompra || 0);
+    const venta = Number(precioVenta);
+    const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    let expectedDate = fechaEsperada;
+    if (!expectedDate && estadoPago === "pendiente") {
+      const methods = await db.collection("payment_methods").find().toArray();
+      const method = methods.find((m) => m.clave === metodoPago);
+      if (method && method.diasPendiente > 0) {
+        const d = /* @__PURE__ */ new Date();
+        d.setDate(d.getDate() + method.diasPendiente);
+        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+        expectedDate = d.toISOString();
+      }
+    }
+    const venta_record = {
+      id: crypto.randomUUID(),
+      fecha: hoy,
+      orderId: orderId || null,
+      inventarioId: inventarioId || null,
+      cliente,
+      producto,
+      imei: imei || "",
+      esPropio: Boolean(esPropio),
+      proveedor: esPropio ? "" : proveedor || "",
+      precioCompra: compra,
+      precioVenta: venta,
+      ganancia: venta - compra,
+      metodoPago: metodoPago || "efectivo",
+      estadoPago: estadoPago || "recibido",
+      fechaEsperada: expectedDate || null,
+      notas: notas || "",
+      creadoPor: orderId ? "web" : "manual",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("daily_sales").insertOne(venta_record);
+    if (inventarioId) {
+      await db.collection("inventory").updateOne(
+        { id: inventarioId },
+        { $set: { estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
+    res.status(201).json(venta_record);
+  } catch (error) {
+    console.error("[inventario] Error creating venta:", error);
+    res.status(500).json({ error: "Error al registrar venta" });
+  }
+});
+app.put("/api/inventario/ventas/:id", async (req, res) => {
+  try {
+    const $set = {};
+    const allowed = ["cliente", "producto", "imei", "esPropio", "proveedor", "precioCompra", "precioVenta", "metodoPago", "estadoPago", "fechaEsperada", "notas"];
+    for (const key of allowed) {
+      if (req.body[key] !== void 0) $set[key] = req.body[key];
+    }
+    if ($set.precioCompra !== void 0 || $set.precioVenta !== void 0) {
+      const current = await db.collection("daily_sales").findOne({ id: req.params.id });
+      const pc = Number($set.precioCompra ?? current?.precioCompra ?? 0);
+      const pv = Number($set.precioVenta ?? current?.precioVenta ?? 0);
+      $set.ganancia = pv - pc;
+    }
+    await db.collection("daily_sales").updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection("daily_sales").findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Error al actualizar venta" });
+  }
+});
+app.delete("/api/inventario/ventas/:id", async (req, res) => {
+  try {
+    const venta = await db.collection("daily_sales").findOne({ id: req.params.id });
+    if (venta?.inventarioId) {
+      await db.collection("inventory").updateOne(
+        { id: venta.inventarioId },
+        { $set: { estado: "disponible", ventaId: null, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
+    await db.collection("daily_sales").deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar venta" });
+  }
+});
+app.get("/api/inventario/resumen-dia", async (req, res) => {
+  try {
+    const fecha = req.query.fecha || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const ventas = await db.collection("daily_sales").find({ fecha }).toArray();
+    const gastos = await db.collection("petty_cash").find({ fecha }).toArray();
+    const methods = await db.collection("payment_methods").find({ activo: true }).sort({ orden: 1 }).toArray();
+    const totalVentas = ventas.reduce((s, v) => s + v.precioVenta, 0);
+    const totalGanancia = ventas.reduce((s, v) => s + v.ganancia, 0);
+    const totalGastos = gastos.reduce((s, g) => s + g.monto, 0);
+    const porMetodo = {};
+    for (const m of methods) {
+      porMetodo[m.clave] = { total: 0, pendiente: 0, recibido: 0 };
+    }
+    for (const v of ventas) {
+      const key = v.metodoPago || "efectivo";
+      if (!porMetodo[key]) porMetodo[key] = { total: 0, pendiente: 0, recibido: 0 };
+      porMetodo[key].total += v.precioVenta;
+      if (v.estadoPago === "pendiente") porMetodo[key].pendiente += v.precioVenta;
+      else porMetodo[key].recibido += v.precioVenta;
+    }
+    const deudasHoy = {};
+    for (const v of ventas) {
+      if (!v.esPropio && v.proveedor) {
+        deudasHoy[v.proveedor] = (deudasHoy[v.proveedor] || 0) + v.precioCompra;
+      }
+    }
+    const efectivoRecibido = porMetodo["efectivo"]?.recibido || 0;
+    const cajaDisponible = efectivoRecibido - totalGastos;
+    res.json({
+      fecha,
+      totalVentas,
+      totalGanancia,
+      totalGastos,
+      cajaDisponible,
+      cantidadVentas: ventas.length,
+      porMetodo,
+      deudasHoy
+    });
+  } catch (error) {
+    console.error("[inventario] Error resumen:", error);
+    res.status(500).json({ error: "Error al generar resumen" });
+  }
+});
+app.get("/api/inventario/deudas-proveedores", async (_req, res) => {
+  try {
+    const ventas = await db.collection("daily_sales").find({ esPropio: false, proveedor: { $ne: "" } }).toArray();
+    const deudas = {};
+    for (const v of ventas) {
+      if (!v.proveedor) continue;
+      if (!deudas[v.proveedor]) deudas[v.proveedor] = { total: 0, ventas: 0 };
+      deudas[v.proveedor].total += v.precioCompra;
+      deudas[v.proveedor].ventas += 1;
+    }
+    res.json(deudas);
+  } catch (error) {
+    res.status(500).json({ error: "Error al cargar deudas" });
+  }
+});
+app.get("/api/inventario/dinero-pendiente", async (_req, res) => {
+  try {
+    const ventas = await db.collection("daily_sales").find({ estadoPago: "pendiente" }).sort({ fechaEsperada: 1 }).toArray();
+    const porMetodo = {};
+    for (const v of ventas) {
+      const key = v.metodoPago;
+      if (!porMetodo[key]) porMetodo[key] = { total: 0, items: [] };
+      porMetodo[key].total += v.precioVenta;
+      porMetodo[key].items.push({ id: v.id, cliente: v.cliente, monto: v.precioVenta, fecha: v.fecha, fechaEsperada: v.fechaEsperada });
+    }
+    res.json(porMetodo);
+  } catch (error) {
+    res.status(500).json({ error: "Error al cargar dinero pendiente" });
+  }
+});
+app.post("/api/inventario/ventas/:id/recibido", async (req, res) => {
+  try {
+    await db.collection("daily_sales").updateOne(
+      { id: req.params.id },
+      { $set: { estadoPago: "recibido" } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al marcar como recibido" });
+  }
+});
+app.get("/api/inventario/caja-menor", async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.fecha) filter.fecha = req.query.fecha;
+    const gastos = await db.collection("petty_cash").find(filter).sort({ createdAt: -1 }).toArray();
+    res.json(gastos);
+  } catch (error) {
+    res.status(500).json({ error: "Error al cargar gastos" });
+  }
+});
+app.post("/api/inventario/caja-menor", async (req, res) => {
+  try {
+    const { monto, concepto, tipo } = req.body;
+    if (!monto || !concepto) return res.status(400).json({ error: "Monto y concepto requeridos" });
+    const gasto = {
+      id: crypto.randomUUID(),
+      fecha: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
+      monto: Number(monto),
+      concepto,
+      tipo: tipo || "gasto",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("petty_cash").insertOne(gasto);
+    res.status(201).json(gasto);
+  } catch (error) {
+    res.status(500).json({ error: "Error al registrar gasto" });
+  }
+});
+app.delete("/api/inventario/caja-menor/:id", async (req, res) => {
+  try {
+    await db.collection("petty_cash").deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar gasto" });
+  }
+});
 io2.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
   socket.on("disconnect", () => {
