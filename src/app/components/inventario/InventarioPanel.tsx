@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { StockManager } from './StockManager';
 import { DailySales } from './DailySales';
 import { PettyCash } from './PettyCash';
-import { Package, Receipt, Wallet, TrendingUp } from 'lucide-react';
 import { SupplierDebts } from './SupplierDebts';
+import { Package, Receipt, Wallet, TrendingUp } from 'lucide-react';
+
+const TABS = [
+  { key: 'ventas', label: 'Ventas del Dia', icon: Receipt },
+  { key: 'inventario', label: 'Inventario', icon: Package },
+  { key: 'caja', label: 'Caja Menor', icon: Wallet },
+  { key: 'proveedores', label: 'Proveedores', icon: TrendingUp },
+] as const;
 
 export function InventarioPanel() {
   const [activeTab, setActiveTab] = useState('ventas');
@@ -15,39 +21,37 @@ export function InventarioPanel() {
         <Package className="w-7 h-7 text-violet-600" />
         <div>
           <h2 className="text-xl font-black text-gray-900">Sistema de Inventario</h2>
-          <p className="text-xs text-gray-400">Inventario, facturaci&oacute;n, caja y proveedores</p>
+          <p className="text-xs text-gray-400">Inventario, facturacion, caja y proveedores</p>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start bg-gray-100 rounded-xl p-1 gap-1">
-          <TabsTrigger value="ventas" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg text-sm font-semibold">
-            <Receipt className="w-4 h-4" /> Ventas del D&iacute;a
-          </TabsTrigger>
-          <TabsTrigger value="inventario" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg text-sm font-semibold">
-            <Package className="w-4 h-4" /> Inventario
-          </TabsTrigger>
-          <TabsTrigger value="caja" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg text-sm font-semibold">
-            <Wallet className="w-4 h-4" /> Caja Menor
-          </TabsTrigger>
-          <TabsTrigger value="proveedores" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg text-sm font-semibold">
-            <TrendingUp className="w-4 h-4" /> Proveedores
-          </TabsTrigger>
-        </TabsList>
+      {/* Sub-tabs (sin Radix para evitar conflicto con tabs padre) */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-white text-violet-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-        <TabsContent value="ventas">
-          <DailySales />
-        </TabsContent>
-        <TabsContent value="inventario">
-          <StockManager />
-        </TabsContent>
-        <TabsContent value="caja">
-          <PettyCash />
-        </TabsContent>
-        <TabsContent value="proveedores">
-          <SupplierDebts />
-        </TabsContent>
-      </Tabs>
+      {/* Content */}
+      {activeTab === 'ventas' && <DailySales />}
+      {activeTab === 'inventario' && <StockManager />}
+      {activeTab === 'caja' && <PettyCash />}
+      {activeTab === 'proveedores' && <SupplierDebts />}
     </div>
   );
 }
