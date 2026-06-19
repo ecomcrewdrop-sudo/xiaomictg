@@ -540,6 +540,7 @@ export function AdminPanel() {
             )}
           </TabsTrigger>
           <TabsTrigger value="financing" className="font-bold text-blue-700 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">CrediLock</TabsTrigger>
+          <TabsTrigger value="links" className="font-bold text-sky-700 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-700">Links VIP</TabsTrigger>
           <TabsTrigger value="banner">Banners</TabsTrigger>
           <TabsTrigger value="ticket">Ticket</TabsTrigger>
           <TabsTrigger value="backup">Respaldo</TabsTrigger>
