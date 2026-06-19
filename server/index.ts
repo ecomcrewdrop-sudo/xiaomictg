@@ -2144,7 +2144,6 @@ app.put('/api/financing/:id', async (req, res) => {
     if (costoEquipo !== undefined) $set.costoEquipo = Number(costoEquipo);
     if (horaBloqueo !== undefined) $set.horaBloqueo = String(horaBloqueo);
 
-    // Solo recalcular cuotas si los datos financieros REALMENTE cambiaron
     const existing = await db.collection('financing').findOne({ id: req.params.id });
     if (!existing) return res.status(404).json({ error: 'No encontrado' });
 
@@ -2161,11 +2160,27 @@ app.put('/api/financing/:id', async (req, res) => {
     $set.costoTotal = newCostoTotal;
     $set.fechaInicio = newFechaInicio;
 
-    // Solo regenerar cuotas si # cuotas o fecha de inicio cambió (no regenerar si solo cambian datos básicos)
+    // Comparar fechas normalizadas para evitar falsos positivos por formato
+    const normDate = (d: string) => new Date(d).toISOString().slice(0, 10);
     const cuotasChanged = newNumCuotas !== existing.numeroCuotas;
-    const fechaChanged = newFechaInicio !== existing.fechaInicio;
+    const fechaChanged = normDate(newFechaInicio) !== normDate(existing.fechaInicio);
+
     if (cuotasChanged || fechaChanged) {
-      $set.cuotas = generateInstallments(newFechaInicio, newNumCuotas);
+      // NUNCA perder pagos — generar nuevas cuotas pero PRESERVAR el estado de las ya pagadas
+      const oldCuotas: FinancingInstallment[] = existing.cuotas || [];
+      const newCuotas = generateInstallments(newFechaInicio, newNumCuotas);
+
+      // Transferir estado pagado de cuotas anteriores a las nuevas
+      for (const nc of newCuotas) {
+        const oldMatch = oldCuotas.find(oc => oc.number === nc.number);
+        if (oldMatch && oldMatch.status === 'paid') {
+          nc.status = 'paid';
+          nc.paidDate = oldMatch.paidDate;
+        }
+      }
+
+      $set.cuotas = newCuotas;
+      console.log(`[financing] Regenerated cuotas for ${existing.nombre}: preserved ${newCuotas.filter((c: FinancingInstallment) => c.status === 'paid').length} paid cuotas`);
     }
 
     if (Object.keys($set).length === 0) {
