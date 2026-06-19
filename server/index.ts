@@ -2345,6 +2345,51 @@ financingReminderInterval = setInterval(checkFinancingReminders, 60 * 60 * 1000)
 setTimeout(checkFinancingReminders, 30000);
 
 // ====================================================================
+// 💳  PAGOS A XIAOMI
+// ====================================================================
+
+app.get('/api/xiaomi-payments', async (_req, res) => {
+  try {
+    const payments = await db.collection('xiaomi_payments').find().sort({ date: -1 }).toArray();
+    res.json(payments);
+  } catch (error) {
+    console.error('[xiaomi-payments] Error loading:', error);
+    res.status(500).json({ error: 'Error al cargar pagos' });
+  }
+});
+
+app.post('/api/xiaomi-payments', async (req, res) => {
+  try {
+    const { amount, note } = req.body;
+    if (!amount || Number(amount) <= 0) return res.status(400).json({ error: 'Monto inválido' });
+
+    const payment = {
+      id: crypto.randomUUID(),
+      amount: Number(amount),
+      note: note || '',
+      date: new Date().toISOString(),
+    };
+
+    await db.collection('xiaomi_payments').insertOne(payment);
+    res.status(201).json(payment);
+  } catch (error) {
+    console.error('[xiaomi-payments] Error creating:', error);
+    res.status(500).json({ error: 'Error al registrar pago' });
+  }
+});
+
+app.delete('/api/xiaomi-payments/:id', async (req, res) => {
+  try {
+    const result = await db.collection('xiaomi_payments').deleteOne({ id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[xiaomi-payments] Error deleting:', error);
+    res.status(500).json({ error: 'Error al eliminar pago' });
+  }
+});
+
+// ====================================================================
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
