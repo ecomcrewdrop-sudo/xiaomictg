@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -7,8 +7,17 @@ import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Trash2, DollarSign, TrendingUp, CreditCard, Wallet,
-  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone
+  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone, Search, X
 } from 'lucide-react';
+
+interface CatalogProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  stock: number;
+  storageVariants?: { storage: string; price: number }[];
+}
 
 interface PaymentMethod {
   id: string;
@@ -61,6 +70,14 @@ export function DailySales() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Product catalog search
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<string>('');
+  const productSearchRef = useRef<HTMLDivElement>(null);
+
   const [form, setForm] = useState({
     cliente: '',
     producto: '',
@@ -93,10 +110,77 @@ export function DailySales() {
 
   useEffect(() => { setLoading(true); loadData(); }, [loadData]);
 
-  const resetForm = () => setForm({
-    cliente: '', producto: '', imei: '', esPropio: true, proveedor: '',
-    precioCompra: '', precioVenta: '', metodoPago: 'efectivo', estadoPago: 'recibido', notas: '',
-  });
+  // Load product catalog when dialog opens
+  useEffect(() => {
+    if (!dialogOpen) return;
+    (async () => {
+      try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/products`);
+        if (res.ok) {
+          const products = await res.json();
+          setCatalogProducts(products);
+        }
+      } catch (err) { console.error('[catalog] Error loading products:', err); }
+    })();
+  }, [dialogOpen]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (productSearchRef.current && !productSearchRef.current.contains(e.target as Node)) {
+        setShowProductDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Filter catalog products based on search
+  const filteredCatalog = useMemo(() => {
+    if (!productSearch.trim()) return catalogProducts.slice(0, 8);
+    const q = productSearch.toLowerCase();
+    return catalogProducts.filter(p =>
+      p.name.toLowerCase().includes(q)
+    ).slice(0, 8);
+  }, [productSearch, catalogProducts]);
+
+  const handleSelectProduct = (product: CatalogProduct, variantStorage?: string) => {
+    setSelectedProduct(product);
+    let price = product.price;
+    let nombre = product.name;
+    if (variantStorage && product.storageVariants) {
+      const variant = product.storageVariants.find(v => v.storage === variantStorage);
+      if (variant) {
+        price = variant.price;
+        nombre = `${product.name} ${variantStorage}`;
+        setSelectedVariant(variantStorage);
+      }
+    }
+    setForm(prev => ({
+      ...prev,
+      producto: nombre,
+      precioVenta: price.toString(),
+    }));
+    setProductSearch(nombre);
+    setShowProductDropdown(false);
+  };
+
+  const handleClearProduct = () => {
+    setSelectedProduct(null);
+    setSelectedVariant('');
+    setProductSearch('');
+    setForm(prev => ({ ...prev, producto: '', precioVenta: '' }));
+  };
+
+  const resetForm = () => {
+    setForm({
+      cliente: '', producto: '', imei: '', esPropio: true, proveedor: '',
+      precioCompra: '', precioVenta: '', metodoPago: 'efectivo', estadoPago: 'recibido', notas: '',
+    });
+    setSelectedProduct(null);
+    setSelectedVariant('');
+    setProductSearch('');
+  };
 
   const handleSave = async () => {
     if (!form.cliente || !form.producto || !form.precioVenta) {
@@ -357,9 +441,106 @@ export function DailySales() {
                 <Label>Cliente *</Label>
                 <Input value={form.cliente} onChange={e => setForm({ ...form, cliente: e.target.value })} placeholder="Nombre del cliente" />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-2" ref={productSearchRef}>
                 <Label>Producto *</Label>
-                <Input value={form.producto} onChange={e => setForm({ ...form, producto: e.target.value })} placeholder="Ej: Xiaomi 14 Ultra" />
+                {selectedProduct ? (
+                  <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-lg p-2">
+                    {selectedProduct.image && (
+                      <img
+                        src={selectedProduct.image}
+                        alt={selectedProduct.name}
+                        className="w-10 h-10 rounded-lg object-cover bg-white border"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-900 truncate">{form.producto}</p>
+                      <p className="text-xs text-violet-600 font-bold">{fmt(Number(form.precioVenta))}</p>
+                    </div>
+                    <button
+                      onClick={handleClearProduct}
+                      className="p-1 hover:bg-violet-100 rounded-full text-violet-500"
+                      type="button"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      value={productSearch}
+                      onChange={e => {
+                        setProductSearch(e.target.value);
+                        setForm(prev => ({ ...prev, producto: e.target.value }));
+                        setShowProductDropdown(true);
+                      }}
+                      onFocus={() => setShowProductDropdown(true)}
+                      placeholder="Buscar producto del catalogo..."
+                      className="pl-10"
+                    />
+                    {showProductDropdown && (
+                      <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                        {filteredCatalog.length === 0 ? (
+                          <div className="p-4 text-center text-gray-400 text-sm">
+                            <p className="font-semibold">No se encontraron productos</p>
+                            <p className="text-xs mt-1">Puedes escribir el nombre manualmente</p>
+                          </div>
+                        ) : (
+                          filteredCatalog.map(product => (
+                            <div key={product.id}>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectProduct(product)}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-violet-50 transition-colors text-left border-b border-gray-50 last:border-0"
+                              >
+                                {product.image ? (
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-10 h-10 rounded-lg object-cover bg-gray-100 border flex-shrink-0"
+                                    onError={e => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).className = 'w-10 h-10 rounded-lg bg-gray-100 border flex-shrink-0'; }}
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-gray-100 border flex-shrink-0 flex items-center justify-center">
+                                    <Smartphone className="w-5 h-5 text-gray-300" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm text-gray-900 truncate">{product.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-violet-600">{fmt(product.price)}</span>
+                                    {product.stock > 0 && (
+                                      <span className="text-[10px] text-green-600 font-semibold">Stock: {product.stock}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {product.storageVariants && product.storageVariants.length > 0 && (
+                                  <span className="text-[10px] text-gray-400 flex-shrink-0">{product.storageVariants.length} variantes</span>
+                                )}
+                              </button>
+                              {/* Show storage variants inline */}
+                              {product.storageVariants && product.storageVariants.length > 0 && (
+                                <div className="flex gap-1 px-3 pb-2 ml-13">
+                                  {product.storageVariants.map(v => (
+                                    <button
+                                      key={v.storage}
+                                      type="button"
+                                      onClick={() => handleSelectProduct(product, v.storage)}
+                                      className="px-2 py-1 rounded-md bg-gray-100 hover:bg-violet-100 text-[11px] font-semibold text-gray-600 hover:text-violet-700 transition-colors"
+                                    >
+                                      {v.storage} - {fmt(v.price)}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <Label>IMEI</Label>
