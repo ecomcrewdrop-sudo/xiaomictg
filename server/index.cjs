@@ -298948,6 +298948,27 @@ async function fixCorruptedCuotas() {
     }
     if (fixCount > 0) console.log(`[fix-cuotas] Repaired ${fixCount} records`);
     else console.log("[fix-cuotas] All records OK");
+    let dateFixes = 0;
+    for (const r of records) {
+      const cuotas = r.cuotas || [];
+      let changed = false;
+      for (const c of cuotas) {
+        if (c.status === "paid" && c.paidDate) {
+          const dueDay = new Date(c.dueDate).toISOString().slice(0, 10);
+          const paidDay = new Date(c.paidDate).toISOString().slice(0, 10);
+          if (dueDay > paidDay) {
+            console.log(`[fix-cuotas] ${r.nombre} cuota #${c.number}: dueDate ${dueDay} \u2192 ${paidDay} (pagada antes de vencer)`);
+            c.dueDate = c.paidDate;
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        await db.collection("financing").updateOne({ id: r.id }, { $set: { cuotas } });
+        dateFixes++;
+      }
+    }
+    if (dateFixes > 0) console.log(`[fix-cuotas] Fixed ${dateFixes} records with wrong paid dates`);
   } catch (err) {
     console.error("[fix-cuotas] Error:", err);
   }
