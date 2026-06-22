@@ -1822,6 +1822,8 @@ app.post('/api/orders', async (req, res) => {
       const qty = Number(item.quantity || 1);
 
       // Buscar item disponible en inventario que coincida con el producto
+      // Ignorar palabras genéricas para mejor matching
+      const stopWords = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con', 'pro', 'plus', 'max'];
       const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       let invItem = await db.collection('inventory').findOne({
         estado: 'disponible',
@@ -1829,15 +1831,28 @@ app.post('/api/orders', async (req, res) => {
         producto: { $regex: escapedName, $options: 'i' },
       });
       if (!invItem) {
-        // Match parcial por palabras clave
-        const keywords = nombreProducto.split(/\s+/).filter((w: string) => w.length > 3);
+        // Match por palabras clave significativas (>2 chars, no stop words)
+        const keywords = nombreProducto.split(/[\s+()]/g)
+          .filter((w: string) => w.length > 2 && !stopWords.includes(w.toLowerCase()))
+          .map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         if (keywords.length > 0) {
-          const regexPattern = keywords.map((w: string) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`).join('');
+          // Intentar con todas las keywords primero
+          let regexPattern = keywords.map((w: string) => `(?=.*${w})`).join('');
           invItem = await db.collection('inventory').findOne({
             estado: 'disponible',
             cantidad: { $gte: 1 },
             producto: { $regex: regexPattern, $options: 'i' },
           });
+          // Si no, intentar con las 2-3 keywords más importantes (marca + modelo)
+          if (!invItem && keywords.length > 2) {
+            const coreKeys = keywords.slice(0, 3);
+            regexPattern = coreKeys.map((w: string) => `(?=.*${w})`).join('');
+            invItem = await db.collection('inventory').findOne({
+              estado: 'disponible',
+              cantidad: { $gte: 1 },
+              producto: { $regex: regexPattern, $options: 'i' },
+            });
+          }
         }
       }
 
@@ -2942,6 +2957,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
         }
       } else {
         // Buscar match automático por nombre de producto
+        const stopWords2 = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con', 'pro', 'plus', 'max'];
         const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         let invItem = await db.collection('inventory').findOne({
           estado: 'disponible',
@@ -2949,14 +2965,25 @@ app.post('/api/inventario/ventas', async (req, res) => {
           producto: { $regex: escapedName, $options: 'i' },
         });
         if (!invItem) {
-          const keywords = producto.split(/\s+/).filter((w: string) => w.length > 3);
+          const keywords = producto.split(/[\s+()]/g)
+            .filter((w: string) => w.length > 2 && !stopWords2.includes(w.toLowerCase()))
+            .map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
           if (keywords.length > 0) {
-            const regexPattern = keywords.map((w: string) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`).join('');
+            let regexPattern = keywords.map((w: string) => `(?=.*${w})`).join('');
             invItem = await db.collection('inventory').findOne({
               estado: 'disponible',
               cantidad: { $gte: 1 },
               producto: { $regex: regexPattern, $options: 'i' },
             });
+            if (!invItem && keywords.length > 2) {
+              const coreKeys = keywords.slice(0, 3);
+              regexPattern = coreKeys.map((w: string) => `(?=.*${w})`).join('');
+              invItem = await db.collection('inventory').findOne({
+                estado: 'disponible',
+                cantidad: { $gte: 1 },
+                producto: { $regex: regexPattern, $options: 'i' },
+              });
+            }
           }
         }
         if (invItem) {

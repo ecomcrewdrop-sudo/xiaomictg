@@ -300439,6 +300439,7 @@ app.post("/api/orders", async (req, res) => {
       const storage = item.selectedStorage ? ` ${item.selectedStorage}` : "";
       const nombreProducto = (item.product?.name || item.name || item.productName || "Producto") + storage;
       const qty = Number(item.quantity || 1);
+      const stopWords = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con", "pro", "plus", "max"];
       const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       let invItem = await db.collection("inventory").findOne({
         estado: "disponible",
@@ -300446,14 +300447,23 @@ app.post("/api/orders", async (req, res) => {
         producto: { $regex: escapedName, $options: "i" }
       });
       if (!invItem) {
-        const keywords = nombreProducto.split(/\s+/).filter((w) => w.length > 3);
+        const keywords = nombreProducto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords.includes(w.toLowerCase())).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
         if (keywords.length > 0) {
-          const regexPattern = keywords.map((w) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`).join("");
+          let regexPattern = keywords.map((w) => `(?=.*${w})`).join("");
           invItem = await db.collection("inventory").findOne({
             estado: "disponible",
             cantidad: { $gte: 1 },
             producto: { $regex: regexPattern, $options: "i" }
           });
+          if (!invItem && keywords.length > 2) {
+            const coreKeys = keywords.slice(0, 3);
+            regexPattern = coreKeys.map((w) => `(?=.*${w})`).join("");
+            invItem = await db.collection("inventory").findOne({
+              estado: "disponible",
+              cantidad: { $gte: 1 },
+              producto: { $regex: regexPattern, $options: "i" }
+            });
+          }
         }
       }
       const venta_auto = {
@@ -301366,6 +301376,7 @@ app.post("/api/inventario/ventas", async (req, res) => {
           }
         }
       } else {
+        const stopWords2 = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con", "pro", "plus", "max"];
         const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         let invItem = await db.collection("inventory").findOne({
           estado: "disponible",
@@ -301373,14 +301384,23 @@ app.post("/api/inventario/ventas", async (req, res) => {
           producto: { $regex: escapedName, $options: "i" }
         });
         if (!invItem) {
-          const keywords = producto.split(/\s+/).filter((w) => w.length > 3);
+          const keywords = producto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords2.includes(w.toLowerCase())).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
           if (keywords.length > 0) {
-            const regexPattern = keywords.map((w) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`).join("");
+            let regexPattern = keywords.map((w) => `(?=.*${w})`).join("");
             invItem = await db.collection("inventory").findOne({
               estado: "disponible",
               cantidad: { $gte: 1 },
               producto: { $regex: regexPattern, $options: "i" }
             });
+            if (!invItem && keywords.length > 2) {
+              const coreKeys = keywords.slice(0, 3);
+              regexPattern = coreKeys.map((w) => `(?=.*${w})`).join("");
+              invItem = await db.collection("inventory").findOne({
+                estado: "disponible",
+                cantidad: { $gte: 1 },
+                producto: { $regex: regexPattern, $options: "i" }
+              });
+            }
           }
         }
         if (invItem) {
