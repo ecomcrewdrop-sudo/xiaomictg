@@ -301355,10 +301355,46 @@ app.post("/api/inventario/ventas", async (req, res) => {
     };
     await db.collection("daily_sales").insertOne(venta_record);
     if (inventarioId) {
-      await db.collection("inventory").updateOne(
-        { id: inventarioId },
-        { $set: { estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
-      );
+      const invItem = await db.collection("inventory").findOne({ id: inventarioId });
+      if (invItem) {
+        const newCant = (invItem.cantidad || 1) - 1;
+        if (newCant <= 0) {
+          await db.collection("inventory").updateOne({ id: inventarioId }, { $set: { cantidad: 0, estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+        } else {
+          await db.collection("inventory").updateOne({ id: inventarioId }, { $set: { cantidad: newCant, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+        }
+      }
+    } else if (tipo !== "servicio") {
+      const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      let invItem = await db.collection("inventory").findOne({
+        estado: "disponible",
+        cantidad: { $gte: 1 },
+        producto: { $regex: escapedName, $options: "i" }
+      });
+      if (!invItem) {
+        const keywords = producto.split(/\s+/).filter((w) => w.length > 3);
+        if (keywords.length > 0) {
+          const regexPattern = keywords.map((w) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`).join("");
+          invItem = await db.collection("inventory").findOne({
+            estado: "disponible",
+            cantidad: { $gte: 1 },
+            producto: { $regex: regexPattern, $options: "i" }
+          });
+        }
+      }
+      if (invItem) {
+        const newCant = (invItem.cantidad || 1) - 1;
+        const ventaUpdate = { inventarioId: invItem.id };
+        if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
+        if (Object.keys(ventaUpdate).length > 0) {
+          await db.collection("daily_sales").updateOne({ id: venta_record.id }, { $set: ventaUpdate });
+        }
+        if (newCant <= 0) {
+          await db.collection("inventory").updateOne({ id: invItem.id }, { $set: { cantidad: 0, estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+        } else {
+          await db.collection("inventory").updateOne({ id: invItem.id }, { $set: { cantidad: newCant, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+        }
+      }
     }
     res.status(201).json(venta_record);
   } catch (error) {
