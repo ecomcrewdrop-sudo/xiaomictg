@@ -2927,49 +2927,50 @@ app.post('/api/inventario/ventas', async (req, res) => {
 
     await db.collection('daily_sales').insertOne(venta_record);
 
-    // Descontar del inventario: buscar producto que coincida y restar 1 unidad
-    if (inventarioId) {
-      // Link directo a un item de inventario
-      const invItem = await db.collection('inventory').findOne({ id: inventarioId });
-      if (invItem) {
-        const newCant = (invItem.cantidad || 1) - 1;
-        if (newCant <= 0) {
-          await db.collection('inventory').updateOne({ id: inventarioId }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
-        } else {
-          await db.collection('inventory').updateOne({ id: inventarioId }, { $set: { cantidad: newCant, updatedAt: new Date().toISOString() } });
+    // Solo descontar del inventario si es producto PROPIO
+    if (Boolean(esPropio) && tipo !== 'servicio') {
+      if (inventarioId) {
+        // Link directo a un item de inventario
+        const invItem = await db.collection('inventory').findOne({ id: inventarioId });
+        if (invItem) {
+          const newCant = (invItem.cantidad || 1) - 1;
+          if (newCant <= 0) {
+            await db.collection('inventory').updateOne({ id: inventarioId }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
+          } else {
+            await db.collection('inventory').updateOne({ id: inventarioId }, { $set: { cantidad: newCant, updatedAt: new Date().toISOString() } });
+          }
         }
-      }
-    } else if (tipo !== 'servicio') {
-      // Buscar match automático por nombre de producto
-      const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      let invItem = await db.collection('inventory').findOne({
-        estado: 'disponible',
-        cantidad: { $gte: 1 },
-        producto: { $regex: escapedName, $options: 'i' },
-      });
-      if (!invItem) {
-        const keywords = producto.split(/\s+/).filter((w: string) => w.length > 3);
-        if (keywords.length > 0) {
-          const regexPattern = keywords.map((w: string) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`).join('');
-          invItem = await db.collection('inventory').findOne({
-            estado: 'disponible',
-            cantidad: { $gte: 1 },
-            producto: { $regex: regexPattern, $options: 'i' },
-          });
+      } else {
+        // Buscar match automático por nombre de producto
+        const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let invItem = await db.collection('inventory').findOne({
+          estado: 'disponible',
+          cantidad: { $gte: 1 },
+          producto: { $regex: escapedName, $options: 'i' },
+        });
+        if (!invItem) {
+          const keywords = producto.split(/\s+/).filter((w: string) => w.length > 3);
+          if (keywords.length > 0) {
+            const regexPattern = keywords.map((w: string) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`).join('');
+            invItem = await db.collection('inventory').findOne({
+              estado: 'disponible',
+              cantidad: { $gte: 1 },
+              producto: { $regex: regexPattern, $options: 'i' },
+            });
+          }
         }
-      }
-      if (invItem) {
-        const newCant = (invItem.cantidad || 1) - 1;
-        // Actualizar la venta con datos del inventario si no los tenía
-        const ventaUpdate: Record<string, unknown> = { inventarioId: invItem.id };
-        if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
-        if (Object.keys(ventaUpdate).length > 0) {
-          await db.collection('daily_sales').updateOne({ id: venta_record.id }, { $set: ventaUpdate });
-        }
-        if (newCant <= 0) {
-          await db.collection('inventory').updateOne({ id: invItem.id }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
-        } else {
-          await db.collection('inventory').updateOne({ id: invItem.id }, { $set: { cantidad: newCant, updatedAt: new Date().toISOString() } });
+        if (invItem) {
+          const newCant = (invItem.cantidad || 1) - 1;
+          const ventaUpdate: Record<string, unknown> = { inventarioId: invItem.id };
+          if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
+          if (Object.keys(ventaUpdate).length > 0) {
+            await db.collection('daily_sales').updateOne({ id: venta_record.id }, { $set: ventaUpdate });
+          }
+          if (newCant <= 0) {
+            await db.collection('inventory').updateOne({ id: invItem.id }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
+          } else {
+            await db.collection('inventory').updateOne({ id: invItem.id }, { $set: { cantidad: newCant, updatedAt: new Date().toISOString() } });
+          }
         }
       }
     }
