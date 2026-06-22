@@ -1814,8 +1814,10 @@ app.post('/api/orders', async (req, res) => {
     // Auto-agregar cada item a ventas del día con matching inteligente de inventario
     const hoy = new Date().toISOString().slice(0, 10);
     for (const item of items) {
-      const precioVenta = Number(item.price || item.total || 0);
-      const nombreProducto = item.name || item.productName || 'Producto';
+      // El cart envía { product: { name, price, ... }, quantity, selectedStorage }
+      const precioVenta = Number(item.product?.price || item.price || item.total || 0);
+      const storage = item.selectedStorage ? ` ${item.selectedStorage}` : '';
+      const nombreProducto = (item.product?.name || item.name || item.productName || 'Producto') + storage;
       const qty = Number(item.quantity || 1);
 
       // Buscar item disponible en inventario que coincida con el producto

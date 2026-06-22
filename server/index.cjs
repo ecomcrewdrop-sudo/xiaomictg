@@ -300434,8 +300434,9 @@ app.post("/api/orders", async (req, res) => {
     }
     const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     for (const item of items) {
-      const precioVenta = Number(item.price || item.total || 0);
-      const nombreProducto = item.name || item.productName || "Producto";
+      const precioVenta = Number(item.product?.price || item.price || item.total || 0);
+      const storage = item.selectedStorage ? ` ${item.selectedStorage}` : "";
+      const nombreProducto = (item.product?.name || item.name || item.productName || "Producto") + storage;
       const qty = Number(item.quantity || 1);
       const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       let invItem = await db.collection("inventory").findOne({

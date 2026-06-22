@@ -122,7 +122,7 @@ export function StockManager() {
   const totalUnidades = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.cantidad || 1), 0);
   const vendidos = items.filter(i => i.estado === 'vendido').reduce((s, i) => s + (i.cantidad || 1), 0);
   const valorInventario = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.precioCompra * (i.cantidad || 1)), 0);
-  const valorVenta = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.precioVenta * (i.cantidad || 1)), 0);
+  // valorVenta removed per owner request - only cost matters in inventory
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -131,7 +131,7 @@ export function StockManager() {
   return (
     <div className="space-y-4">
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
           <p className="text-xs font-bold uppercase tracking-wider opacity-80">Unidades disponibles</p>
           <p className="text-2xl font-black">{totalUnidades}</p>
@@ -143,14 +143,9 @@ export function StockManager() {
           <p className="text-[10px] opacity-60">unidades</p>
         </div>
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
-          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor inventario</p>
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Dinero en inventario</p>
           <p className="text-2xl font-black">{fmt(valorInventario)}</p>
           <p className="text-[10px] opacity-60">costo total</p>
-        </div>
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
-          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor de venta</p>
-          <p className="text-2xl font-black">{fmt(valorVenta)}</p>
-          <p className="text-[10px] opacity-60">ganancia potencial: {fmt(valorVenta - valorInventario)}</p>
         </div>
       </div>
 
