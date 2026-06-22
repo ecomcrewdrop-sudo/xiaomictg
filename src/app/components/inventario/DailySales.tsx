@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Trash2, DollarSign, TrendingUp, CreditCard, Wallet,
-  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone, Search, X, Pencil
+  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone, Search, X, Pencil, Wrench
 } from 'lucide-react';
 
 interface CatalogProduct {
@@ -32,6 +32,7 @@ interface Sale {
   fecha: string;
   orderId?: string;
   inventarioId?: string;
+  tipo?: 'venta' | 'servicio';
   cliente: string;
   producto: string;
   imei: string;
@@ -84,6 +85,18 @@ export function DailySales() {
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>('');
   const productSearchRef = useRef<HTMLDivElement>(null);
+
+  // Service dialog
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [savingService, setSavingService] = useState(false);
+  const [serviceForm, setServiceForm] = useState({
+    cliente: '',
+    descripcion: '',
+    valor: '',
+    costoRepuestos: '',
+    metodoPago: 'efectivo',
+    notas: '',
+  });
 
   const [form, setForm] = useState({
     cliente: '',
@@ -281,6 +294,50 @@ export function DailySales() {
     } catch { toast.error('Error'); }
   };
 
+  const resetServiceForm = () => {
+    setServiceForm({ cliente: '', descripcion: '', valor: '', costoRepuestos: '', metodoPago: 'efectivo', notas: '' });
+  };
+
+  const handleSaveService = async () => {
+    if (!serviceForm.cliente || !serviceForm.descripcion || !serviceForm.valor) {
+      toast.error('Cliente, descripción y valor son requeridos');
+      return;
+    }
+    setSavingService(true);
+    try {
+      const valor = Number(serviceForm.valor);
+      const costoRepuestos = Number(serviceForm.costoRepuestos || 0);
+      const payload = {
+        tipo: 'servicio',
+        cliente: serviceForm.cliente,
+        producto: serviceForm.descripcion,
+        imei: '',
+        esPropio: true,
+        proveedor: '',
+        precioCompra: costoRepuestos,
+        precioVenta: valor,
+        metodoPago: serviceForm.metodoPago,
+        estadoPago: 'recibido',
+        notas: serviceForm.notas || '',
+      };
+      const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success('Servicio técnico registrado');
+        setServiceDialogOpen(false);
+        resetServiceForm();
+        await loadData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Error al guardar');
+      }
+    } catch { toast.error('Error de conexión'); }
+    setSavingService(false);
+  };
+
   const changeDate = (days: number) => {
     const d = new Date(fecha);
     d.setDate(d.getDate() + days);
@@ -368,12 +425,17 @@ export function DailySales() {
         </div>
       )}
 
-      {/* Add sale button */}
+      {/* Add sale / service buttons */}
       <div className="flex justify-between items-center">
         <h3 className="font-bold text-gray-700 text-sm">Ventas registradas</h3>
-        <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1">
-          <Plus className="w-4 h-4" /> Agregar Venta
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => { resetServiceForm(); setServiceDialogOpen(true); }} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white gap-1">
+            <Wrench className="w-4 h-4" /> Servicio Técnico
+          </Button>
+          <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1">
+            <Plus className="w-4 h-4" /> Agregar Venta
+          </Button>
+        </div>
       </div>
 
       {/* Sales table */}
@@ -407,12 +469,21 @@ export function DailySales() {
                     <tr key={v.id} className="border-t hover:bg-gray-50/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {v.creadoPor === 'web' && <Smartphone className="w-3.5 h-3.5 text-violet-500" title="Orden web" />}
+                          {v.tipo === 'servicio' ? (
+                            <Wrench className="w-3.5 h-3.5 text-cyan-500" title="Servicio técnico" />
+                          ) : v.creadoPor === 'web' ? (
+                            <Smartphone className="w-3.5 h-3.5 text-violet-500" title="Orden web" />
+                          ) : null}
                           <span className="font-medium text-gray-900">{v.cliente}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-gray-700">{v.producto}</span>
+                        <div className="flex items-center gap-1.5">
+                          {v.tipo === 'servicio' && (
+                            <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 text-[10px] font-bold uppercase">Servicio</span>
+                          )}
+                          <span className="text-gray-700">{v.producto}</span>
+                        </div>
                         {v.imei && <span className="text-xs text-gray-400 block font-mono">{v.imei}</span>}
                       </td>
                       <td className="px-4 py-2">
@@ -707,6 +778,102 @@ export function DailySales() {
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="flex-1">Cancelar</Button>
               <Button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white">
                 {saving ? 'Guardando...' : editing ? 'Guardar Cambios' : 'Registrar Venta'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Service dialog */}
+      <Dialog open={serviceDialogOpen} onOpenChange={(v) => { setServiceDialogOpen(v); if (!v) resetServiceForm(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-cyan-600" />
+              Servicio Técnico
+            </DialogTitle>
+            <DialogDescription>Registra un servicio técnico manual (no se factura por la web)</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Cliente *</Label>
+              <Input
+                value={serviceForm.cliente}
+                onChange={e => setServiceForm({ ...serviceForm, cliente: e.target.value })}
+                placeholder="Nombre del cliente"
+              />
+            </div>
+
+            <div>
+              <Label>Descripción del servicio *</Label>
+              <Input
+                value={serviceForm.descripcion}
+                onChange={e => setServiceForm({ ...serviceForm, descripcion: e.target.value })}
+                placeholder="Ej: Cambio de pantalla, reparación placa..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Valor del servicio *</Label>
+                <Input
+                  type="number"
+                  value={serviceForm.valor}
+                  onChange={e => setServiceForm({ ...serviceForm, valor: e.target.value })}
+                  placeholder="0"
+                />
+                <p className="text-[10px] text-gray-400 mt-0.5">Lo que paga el cliente</p>
+              </div>
+              <div>
+                <Label>Costo de repuestos</Label>
+                <Input
+                  type="number"
+                  value={serviceForm.costoRepuestos}
+                  onChange={e => setServiceForm({ ...serviceForm, costoRepuestos: e.target.value })}
+                  placeholder="0"
+                />
+                <p className="text-[10px] text-gray-400 mt-0.5">Opcional</p>
+              </div>
+            </div>
+
+            {serviceForm.valor && (
+              <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-center">
+                <p className="text-xs text-emerald-600 font-semibold">GANANCIA DEL SERVICIO</p>
+                <p className="text-2xl font-black text-emerald-700">
+                  {fmt(Number(serviceForm.valor) - Number(serviceForm.costoRepuestos || 0))}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <Label>Método de pago</Label>
+              <select
+                value={serviceForm.metodoPago}
+                onChange={e => setServiceForm({ ...serviceForm, metodoPago: e.target.value })}
+                className="w-full h-10 rounded-md border border-gray-200 px-3 text-sm"
+              >
+                {methods.filter(m => m.activo).map(m => (
+                  <option key={m.clave} value={m.clave}>{m.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label>Notas</Label>
+              <Input
+                value={serviceForm.notas}
+                onChange={e => setServiceForm({ ...serviceForm, notas: e.target.value })}
+                placeholder="Detalles adicionales..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => { setServiceDialogOpen(false); resetServiceForm(); }} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveService} disabled={savingService} className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white">
+                {savingService ? 'Guardando...' : 'Registrar Servicio'}
               </Button>
             </div>
           </div>

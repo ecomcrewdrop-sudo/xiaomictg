@@ -2804,11 +2804,14 @@ app.post('/api/inventario/ventas', async (req, res) => {
       }
     }
 
+    const tipo = req.body.tipo || 'venta';
+
     const venta_record = {
       id: crypto.randomUUID(),
       fecha: hoy,
       orderId: orderId || null,
       inventarioId: inventarioId || null,
+      tipo,
       cliente,
       producto,
       imei: imei || '',
@@ -2845,7 +2848,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
 app.put('/api/inventario/ventas/:id', async (req, res) => {
   try {
     const $set: Record<string, unknown> = {};
-    const allowed = ['cliente', 'producto', 'imei', 'esPropio', 'proveedor', 'precioCompra', 'precioVenta', 'metodoPago', 'estadoPago', 'fechaEsperada', 'notas'];
+    const allowed = ['cliente', 'producto', 'imei', 'esPropio', 'proveedor', 'precioCompra', 'precioVenta', 'metodoPago', 'estadoPago', 'fechaEsperada', 'notas', 'tipo'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) $set[key] = req.body[key];
     }
