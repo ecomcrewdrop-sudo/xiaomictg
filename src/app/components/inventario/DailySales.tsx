@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Trash2, DollarSign, TrendingUp, CreditCard, Wallet,
-  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone, Search, X
+  Clock, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Smartphone, Search, X, Pencil
 } from 'lucide-react';
 
 interface CatalogProduct {
@@ -73,6 +73,7 @@ export function DailySales() {
   const [summary, setSummary] = useState<DaySummary | null>(null);
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Sale | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -181,6 +182,7 @@ export function DailySales() {
   };
 
   const resetForm = () => {
+    setEditing(null);
     setForm({
       cliente: '', producto: '', imei: '', esPropio: true, proveedor: '',
       precioCompra: '', precioVenta: '', metodoPago: 'efectivo', estadoPago: 'recibido', notas: '',
@@ -188,6 +190,24 @@ export function DailySales() {
     setSelectedProduct(null);
     setSelectedVariant('');
     setProductSearch('');
+  };
+
+  const openEdit = (sale: Sale) => {
+    setEditing(sale);
+    setForm({
+      cliente: sale.cliente,
+      producto: sale.producto,
+      imei: sale.imei,
+      esPropio: sale.esPropio,
+      proveedor: sale.proveedor,
+      precioCompra: sale.precioCompra.toString(),
+      precioVenta: sale.precioVenta.toString(),
+      metodoPago: sale.metodoPago,
+      estadoPago: sale.estadoPago,
+      notas: sale.notas || '',
+    });
+    setProductSearch(sale.producto);
+    setDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -199,14 +219,18 @@ export function DailySales() {
     try {
       const method = methods.find(m => m.clave === form.metodoPago);
       const estadoPago = method && method.diasPendiente > 0 ? 'pendiente' : form.estadoPago;
+      const payload = { ...form, precioCompra: Number(form.precioCompra || 0), precioVenta: Number(form.precioVenta), estadoPago };
 
-      const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas`, {
-        method: 'POST',
+      const url = editing
+        ? `${API_BASE_URL}/inventario/ventas/${editing.id}`
+        : `${API_BASE_URL}/inventario/ventas`;
+      const res = await fetchWithTimeout(url, {
+        method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, precioCompra: Number(form.precioCompra || 0), precioVenta: Number(form.precioVenta), estadoPago }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        toast.success('Venta registrada');
+        toast.success(editing ? 'Venta actualizada' : 'Venta registrada');
         setDialogOpen(false);
         resetForm();
         await loadData();
@@ -396,9 +420,14 @@ export function DailySales() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => handleDelete(v.id)} className="text-red-400 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openEdit(v)} className="p-1 rounded hover:bg-violet-50 text-gray-400 hover:text-violet-600 transition-colors" title="Editar">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(v.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -436,10 +465,10 @@ export function DailySales() {
       )}
 
       {/* New sale dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Registrar Venta</DialogTitle>
+            <DialogTitle>{editing ? 'Editar Venta' : 'Registrar Venta'}</DialogTitle>
             <DialogDescription>Agrega una venta manual al registro del dia</DialogDescription>
           </DialogHeader>
 
@@ -633,7 +662,7 @@ export function DailySales() {
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="flex-1">Cancelar</Button>
               <Button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white">
-                {saving ? 'Guardando...' : 'Registrar Venta'}
+                {saving ? 'Guardando...' : editing ? 'Guardar Cambios' : 'Registrar Venta'}
               </Button>
             </div>
           </div>
