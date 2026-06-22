@@ -242,6 +242,31 @@ export function DailySales() {
     setSaving(false);
   };
 
+  const handleInlineUpdate = async (id: string, fields: Record<string, unknown>) => {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (res.ok) { await loadData(); }
+      else { toast.error('Error al actualizar'); }
+    } catch { toast.error('Error de conexión'); }
+  };
+
+  const handleOrigenChange = async (id: string, value: string) => {
+    if (value === 'propio') {
+      await handleInlineUpdate(id, { esPropio: true, proveedor: '' });
+    } else {
+      await handleInlineUpdate(id, { esPropio: false, proveedor: value });
+    }
+  };
+
+  const handleCostoBlur = async (id: string, value: string) => {
+    const costo = Number(value || 0);
+    await handleInlineUpdate(id, { precioCompra: costo });
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas/${id}`, { method: 'DELETE' });
@@ -390,14 +415,33 @@ export function DailySales() {
                         <span className="text-gray-700">{v.producto}</span>
                         {v.imei && <span className="text-xs text-gray-400 block font-mono">{v.imei}</span>}
                       </td>
-                      <td className="px-4 py-3">
-                        {v.esPropio ? (
-                          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">Propio</span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">{v.proveedor}</span>
-                        )}
+                      <td className="px-4 py-2">
+                        <select
+                          value={v.esPropio ? 'propio' : v.proveedor}
+                          onChange={e => handleOrigenChange(v.id, e.target.value)}
+                          className={`w-full h-8 rounded-lg border text-xs font-semibold px-2 appearance-none cursor-pointer transition-colors ${
+                            v.esPropio
+                              ? 'bg-blue-50 border-blue-200 text-blue-700'
+                              : 'bg-orange-50 border-orange-200 text-orange-700'
+                          }`}
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center' }}
+                        >
+                          <option value="propio">Propio</option>
+                          {suppliers.map(s => (
+                            <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                          ))}
+                        </select>
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-500">{fmt(v.precioCompra)}</td>
+                      <td className="px-4 py-2 text-right">
+                        <input
+                          type="number"
+                          defaultValue={v.precioCompra || ''}
+                          onBlur={e => handleCostoBlur(v.id, e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          placeholder="0"
+                          className="w-24 h-8 rounded-lg border border-gray-200 px-2 text-right text-xs font-semibold text-gray-700 focus:border-violet-400 focus:ring-1 focus:ring-violet-200 outline-none transition-colors ml-auto block"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(v.precioVenta)}</td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-600">{fmt(v.ganancia)}</td>
                       <td className="px-4 py-3 text-center">
