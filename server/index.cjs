@@ -300434,6 +300434,7 @@ app.post("/api/orders", async (req, res) => {
     }
     const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     for (const item of items) {
+      console.log("[auto-venta] item keys:", Object.keys(item), "product keys:", item.product ? Object.keys(item.product) : "NO PRODUCT", "name:", item.product?.name || item.name || "NONE");
       const precioVenta = Number(item.product?.price || item.price || item.total || 0);
       const storage = item.selectedStorage ? ` ${item.selectedStorage}` : "";
       const nombreProducto = (item.product?.name || item.name || item.productName || "Producto") + storage;
