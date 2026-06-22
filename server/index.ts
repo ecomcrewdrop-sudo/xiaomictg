@@ -1782,6 +1782,33 @@ app.post('/api/orders', async (req, res) => {
     
     await db.collection('orders').insertOne(order);
 
+    // Auto-agregar cada item a ventas del día
+    const hoy = new Date().toISOString().slice(0, 10);
+    for (const item of items) {
+      const precioVenta = Number(item.price || item.total || 0);
+      const venta_auto = {
+        id: crypto.randomUUID(),
+        fecha: hoy,
+        orderId: id,
+        inventarioId: null,
+        cliente: customerInfo?.name || 'Cliente web',
+        producto: item.name || item.productName || 'Producto',
+        imei: '',
+        esPropio: true,
+        proveedor: '',
+        precioCompra: 0,
+        precioVenta: precioVenta * (item.quantity || 1),
+        ganancia: 0, // Se actualiza después cuando pongan el costo
+        metodoPago: paymentMethod || 'efectivo',
+        estadoPago: status === 'paid' ? 'recibido' : 'pendiente',
+        fechaEsperada: null,
+        notas: `Auto - Orden ${orderNumber}`,
+        creadoPor: 'web',
+        createdAt: new Date().toISOString(),
+      };
+      await db.collection('daily_sales').insertOne(venta_auto);
+    }
+
     const notification = {
       orderId: id,
       orderNumber,
@@ -2902,6 +2929,65 @@ app.get('/api/inventario/resumen-dia', async (req, res) => {
   } catch (error) {
     console.error('[inventario] Error resumen:', error);
     res.status(500).json({ error: 'Error al generar resumen' });
+  }
+});
+
+// --- Proveedores CRUD ---
+
+app.get('/api/inventario/proveedores', async (_req, res) => {
+  try {
+    const proveedores = await db.collection('suppliers').find().sort({ nombre: 1 }).toArray();
+    res.json(proveedores);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cargar proveedores' });
+  }
+});
+
+app.post('/api/inventario/proveedores', async (req, res) => {
+  try {
+    const { nombre, telefono, notas } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'El nombre es requerido' });
+
+    const existing = await db.collection('suppliers').findOne({ nombre: { $regex: new RegExp(`^${nombre.trim()}$`, 'i') } });
+    if (existing) return res.status(409).json({ error: 'Ya existe un proveedor con ese nombre' });
+
+    const proveedor = {
+      id: crypto.randomUUID(),
+      nombre: nombre.trim(),
+      telefono: telefono || '',
+      notas: notas || '',
+      createdAt: new Date().toISOString(),
+    };
+    await db.collection('suppliers').insertOne(proveedor);
+    res.status(201).json(proveedor);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear proveedor' });
+  }
+});
+
+app.put('/api/inventario/proveedores/:id', async (req, res) => {
+  try {
+    const { nombre, telefono, notas } = req.body;
+    const $set: Record<string, unknown> = {};
+    if (nombre !== undefined) $set.nombre = nombre.trim();
+    if (telefono !== undefined) $set.telefono = telefono;
+    if (notas !== undefined) $set.notas = notas;
+    $set.updatedAt = new Date().toISOString();
+
+    await db.collection('suppliers').updateOne({ id: req.params.id }, { $set });
+    const updated = await db.collection('suppliers').findOne({ id: req.params.id });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar proveedor' });
+  }
+});
+
+app.delete('/api/inventario/proveedores/:id', async (req, res) => {
+  try {
+    await db.collection('suppliers').deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar proveedor' });
   }
 });
 

@@ -61,9 +61,15 @@ interface DaySummary {
 
 const fmt = (n: number) => `$${n.toLocaleString('es-CO')}`;
 
+interface Supplier {
+  id: string;
+  nombre: string;
+}
+
 export function DailySales() {
   const [ventas, setVentas] = useState<Sale[]>([]);
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [summary, setSummary] = useState<DaySummary | null>(null);
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -93,14 +99,16 @@ export function DailySales() {
 
   const loadData = useCallback(async () => {
     try {
-      const [ventasRes, methodsRes, summaryRes] = await Promise.all([
+      const [ventasRes, methodsRes, summaryRes, suppliersRes] = await Promise.all([
         fetchWithTimeout(`${API_BASE_URL}/inventario/ventas?fecha=${fecha}`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/metodos-pago`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/resumen-dia?fecha=${fecha}`),
+        fetchWithTimeout(`${API_BASE_URL}/inventario/proveedores`),
       ]);
       if (ventasRes.ok) setVentas(await ventasRes.json());
       if (methodsRes.ok) setMethods(await methodsRes.json());
       if (summaryRes.ok) setSummary(await summaryRes.json());
+      if (suppliersRes.ok) setSuppliers(await suppliersRes.json());
     } catch (err) {
       console.error('[ventas] Error loading:', err);
     } finally {
@@ -561,8 +569,13 @@ export function DailySales() {
 
             {!form.esPropio && (
               <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-                <Label className="text-orange-700">Nombre del proveedor *</Label>
-                <Input value={form.proveedor} onChange={e => setForm({ ...form, proveedor: e.target.value })} placeholder="Ej: Distribuidor Andino" className="mt-1" />
+                <Label className="text-orange-700">Proveedor *</Label>
+                <select value={form.proveedor} onChange={e => setForm({ ...form, proveedor: e.target.value })} className="w-full h-10 rounded-md border border-orange-200 px-3 text-sm mt-1 bg-white">
+                  <option value="">Seleccionar proveedor...</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                  ))}
+                </select>
               </div>
             )}
 

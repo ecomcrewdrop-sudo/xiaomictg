@@ -21,10 +21,18 @@ interface InventoryItem {
   fechaIngreso: string;
 }
 
+interface Supplier {
+  id: string;
+  nombre: string;
+  telefono: string;
+  notas: string;
+}
+
 const fmt = (n: number) => `$${n.toLocaleString('es-CO')}`;
 
 export function StockManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
@@ -39,8 +47,12 @@ export function StockManager() {
 
   const loadItems = useCallback(async () => {
     try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/items`);
-      if (res.ok) setItems(await res.json());
+      const [itemsRes, suppliersRes] = await Promise.all([
+        fetchWithTimeout(`${API_BASE_URL}/inventario/items`),
+        fetchWithTimeout(`${API_BASE_URL}/inventario/proveedores`),
+      ]);
+      if (itemsRes.ok) setItems(await itemsRes.json());
+      if (suppliersRes.ok) setSuppliers(await suppliersRes.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, []);
@@ -248,7 +260,12 @@ export function StockManager() {
             {!form.esPropio && (
               <div>
                 <Label>Proveedor</Label>
-                <Input value={form.proveedor} onChange={e => setForm({ ...form, proveedor: e.target.value })} placeholder="Nombre del proveedor" />
+                <select value={form.proveedor} onChange={e => setForm({ ...form, proveedor: e.target.value })} className="w-full h-10 rounded-md border border-gray-200 px-3 text-sm">
+                  <option value="">Seleccionar proveedor...</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                  ))}
+                </select>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

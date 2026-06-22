@@ -1,7 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
-import { TrendingUp, Clock, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Trash2, Pencil, Users, Phone, FileText } from 'lucide-react';
+
+interface Supplier {
+  id: string;
+  nombre: string;
+  telefono: string;
+  notas: string;
+  createdAt: string;
+}
 
 interface PendingItem {
   id: string;
@@ -14,18 +26,27 @@ interface PendingItem {
 const fmt = (n: number) => `$${n.toLocaleString('es-CO')}`;
 
 export function SupplierDebts() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [deudas, setDeudas] = useState<Record<string, { total: number; ventas: number }>>({});
   const [pendiente, setPendiente] = useState<Record<string, { total: number; items: PendingItem[] }>>({});
   const [methods, setMethods] = useState<{ nombre: string; clave: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Supplier form
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ nombre: '', telefono: '', notas: '' });
+
   const loadData = useCallback(async () => {
     try {
-      const [deudasRes, pendienteRes, methodsRes] = await Promise.all([
+      const [suppliersRes, deudasRes, pendienteRes, methodsRes] = await Promise.all([
+        fetchWithTimeout(`${API_BASE_URL}/inventario/proveedores`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/deudas-proveedores`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/dinero-pendiente`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/metodos-pago`),
       ]);
+      if (suppliersRes.ok) setSuppliers(await suppliersRes.json());
       if (deudasRes.ok) setDeudas(await deudasRes.json());
       if (pendienteRes.ok) setPendiente(await pendienteRes.json());
       if (methodsRes.ok) setMethods(await methodsRes.json());
@@ -34,6 +55,50 @@ export function SupplierDebts() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const resetForm = () => {
+    setEditing(null);
+    setForm({ nombre: '', telefono: '', notas: '' });
+  };
+
+  const openEdit = (s: Supplier) => {
+    setEditing(s);
+    setForm({ nombre: s.nombre, telefono: s.telefono, notas: s.notas });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.nombre.trim()) return toast.error('El nombre es requerido');
+    setSaving(true);
+    try {
+      const url = editing
+        ? `${API_BASE_URL}/inventario/proveedores/${editing.id}`
+        : `${API_BASE_URL}/inventario/proveedores`;
+      const res = await fetchWithTimeout(url, {
+        method: editing ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        toast.success(editing ? 'Proveedor actualizado' : 'Proveedor agregado');
+        setDialogOpen(false);
+        resetForm();
+        await loadData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Error');
+      }
+    } catch { toast.error('Error de conexion'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string, nombre: string) => {
+    if (!confirm(`¿Eliminar a ${nombre}?`)) return;
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/proveedores/${id}`, { method: 'DELETE' });
+      if (res.ok) { toast.success('Proveedor eliminado'); await loadData(); }
+    } catch { toast.error('Error'); }
+  };
 
   const handleMarkReceived = async (id: string) => {
     try {
@@ -52,11 +117,19 @@ export function SupplierDebts() {
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-5 h-5 opacity-80" />
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Proveedores</span>
+          </div>
+          <p className="text-3xl font-black">{suppliers.length}</p>
+          <p className="text-xs opacity-70">Registrados</p>
+        </div>
         <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-lg">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="w-5 h-5 opacity-80" />
-            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Deuda total proveedores</span>
+            <span className="text-sm font-bold uppercase tracking-wider opacity-80">Deuda proveedores</span>
           </div>
           <p className="text-3xl font-black">{fmt(totalDeudas)}</p>
           <p className="text-xs opacity-70">{Object.keys(deudas).length} proveedores</p>
@@ -71,17 +144,72 @@ export function SupplierDebts() {
         </div>
       </div>
 
-      {/* Supplier debts */}
+      {/* Supplier management */}
       <div>
-        <h3 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4" /> Deudas por proveedor
-        </h3>
-        {Object.keys(deudas).length === 0 ? (
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-gray-700 text-sm flex items-center gap-2">
+            <Users className="w-4 h-4" /> Gestión de proveedores
+          </h3>
+          <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-violet-600 hover:bg-violet-700 text-white gap-1">
+            <Plus className="w-4 h-4" /> Agregar
+          </Button>
+        </div>
+        {suppliers.length === 0 ? (
           <div className="bg-white rounded-xl border text-center py-8 text-gray-400">
-            <CheckCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="font-semibold">No hay deudas con proveedores</p>
+            <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <p className="font-semibold">No hay proveedores registrados</p>
+            <p className="text-xs mt-1">Agrega proveedores para controlar de quién es cada teléfono</p>
           </div>
         ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {suppliers.map(s => {
+              const deuda = deudas[s.nombre];
+              return (
+                <div key={s.id} className="bg-white rounded-xl border p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-bold text-gray-900">{s.nombre}</p>
+                      {s.telefono && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <Phone className="w-3 h-3" /> {s.telefono}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-violet-600 transition-colors">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => handleDelete(s.id, s.nombre)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  {s.notas && <p className="text-xs text-gray-400 mb-2 flex items-center gap-1"><FileText className="w-3 h-3" /> {s.notas}</p>}
+                  {deuda ? (
+                    <div className="bg-orange-50 rounded-lg px-3 py-2">
+                      <p className="text-lg font-black text-orange-600">{fmt(deuda.total)}</p>
+                      <p className="text-xs text-orange-400">{deuda.ventas} ventas pendientes</p>
+                    </div>
+                  ) : (
+                    <div className="bg-green-50 rounded-lg px-3 py-2">
+                      <p className="text-xs font-semibold text-green-600 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Sin deuda
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Supplier debts */}
+      {Object.keys(deudas).length > 0 && (
+        <div>
+          <h3 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" /> Deudas por proveedor
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {Object.entries(deudas).sort((a, b) => b[1].total - a[1].total).map(([prov, data]) => (
               <div key={prov} className="bg-white rounded-xl border p-4 hover:shadow-md transition-shadow">
@@ -93,8 +221,8 @@ export function SupplierDebts() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Pending money */}
       <div>
@@ -147,6 +275,35 @@ export function SupplierDebts() {
           </div>
         )}
       </div>
+
+      {/* Add/Edit Supplier Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Editar proveedor' : 'Nuevo proveedor'}</DialogTitle>
+            <DialogDescription>
+              {editing ? 'Actualiza los datos del proveedor' : 'Registra un nuevo proveedor para asignar productos'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Nombre *</Label>
+              <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Ej: Distribuidora XYZ" className="mt-1" />
+            </div>
+            <div>
+              <Label>Teléfono</Label>
+              <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} placeholder="300 123 4567" className="mt-1" />
+            </div>
+            <div>
+              <Label>Notas</Label>
+              <Input value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} placeholder="Información adicional..." className="mt-1" />
+            </div>
+            <Button onClick={handleSave} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white">
+              {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Agregar proveedor'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
