@@ -280,6 +280,10 @@ export function DailySales() {
     await handleInlineUpdate(id, { precioCompra: costo });
   };
 
+  const handleMetodoChange = async (id: string, value: string) => {
+    await handleInlineUpdate(id, { metodoPago: value });
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas/${id}`, { method: 'DELETE' });
@@ -515,10 +519,17 @@ export function DailySales() {
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(v.precioVenta)}</td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-600">{fmt(v.ganancia)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
-                          {method?.nombre || v.metodoPago}
-                        </span>
+                      <td className="px-4 py-2 text-center">
+                        <select
+                          value={v.metodoPago}
+                          onChange={e => handleMetodoChange(v.id, e.target.value)}
+                          className="h-8 rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold px-2 cursor-pointer hover:border-violet-300 transition-colors appearance-none text-gray-700"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '22px' }}
+                        >
+                          {methods.filter(m => m.activo).map(m => (
+                            <option key={m.clave} value={m.clave}>{m.nombre}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {v.estadoPago === 'pendiente' ? (
