@@ -1818,52 +1818,60 @@ app.post('/api/orders', async (req, res) => {
       const nombreProducto = item.name || item.productName || 'Producto';
       const qty = Number(item.quantity || 1);
 
-      // Buscar items disponibles en inventario que coincidan con el producto
-      // Intenta match exacto primero, luego parcial (el nombre del inventario contiene parte del nombre del producto o viceversa)
-      for (let u = 0; u < qty; u++) {
-        let invItem = await db.collection('inventory').findOne({
-          estado: 'disponible',
-          producto: { $regex: nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
-        });
-        if (!invItem) {
-          // Intentar match parcial: buscar si alguna palabra clave del producto coincide
-          const keywords = nombreProducto.split(/\s+/).filter((w: string) => w.length > 3);
-          if (keywords.length > 0) {
-            const regexPattern = keywords.map((w: string) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`).join('');
-            invItem = await db.collection('inventory').findOne({
-              estado: 'disponible',
-              producto: { $regex: regexPattern, $options: 'i' },
-            });
-          }
+      // Buscar item disponible en inventario que coincida con el producto
+      const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let invItem = await db.collection('inventory').findOne({
+        estado: 'disponible',
+        cantidad: { $gte: 1 },
+        producto: { $regex: escapedName, $options: 'i' },
+      });
+      if (!invItem) {
+        // Match parcial por palabras clave
+        const keywords = nombreProducto.split(/\s+/).filter((w: string) => w.length > 3);
+        if (keywords.length > 0) {
+          const regexPattern = keywords.map((w: string) => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`).join('');
+          invItem = await db.collection('inventory').findOne({
+            estado: 'disponible',
+            cantidad: { $gte: 1 },
+            producto: { $regex: regexPattern, $options: 'i' },
+          });
         }
+      }
 
-        const venta_auto: Record<string, unknown> = {
-          id: crypto.randomUUID(),
-          fecha: hoy,
-          orderId: id,
-          inventarioId: invItem?.id || null,
-          cliente: customerInfo?.name || 'Cliente web',
-          producto: nombreProducto,
-          imei: invItem?.imei || '',
-          esPropio: invItem ? Boolean(invItem.esPropio) : true,
-          proveedor: invItem?.proveedor || '',
-          precioCompra: invItem?.precioCompra || 0,
-          precioVenta: precioVenta,
-          ganancia: precioVenta - (invItem?.precioCompra || 0),
-          metodoPago: paymentMethod || 'efectivo',
-          estadoPago: status === 'paid' ? 'recibido' : 'pendiente',
-          fechaEsperada: null,
-          notas: invItem ? `Auto - Orden ${orderNumber} (inv: ${invItem.imei || invItem.producto})` : `Auto - Orden ${orderNumber}`,
-          creadoPor: 'web',
-          createdAt: new Date().toISOString(),
-        };
-        await db.collection('daily_sales').insertOne(venta_auto);
+      const venta_auto: Record<string, unknown> = {
+        id: crypto.randomUUID(),
+        fecha: hoy,
+        orderId: id,
+        inventarioId: invItem?.id || null,
+        cliente: customerInfo?.name || 'Cliente web',
+        producto: nombreProducto,
+        imei: invItem?.imei || '',
+        esPropio: invItem ? Boolean(invItem.esPropio) : true,
+        proveedor: invItem?.proveedor || '',
+        precioCompra: invItem?.precioCompra || 0,
+        precioVenta: precioVenta * qty,
+        ganancia: (precioVenta - (invItem?.precioCompra || 0)) * qty,
+        metodoPago: paymentMethod || 'efectivo',
+        estadoPago: status === 'paid' ? 'recibido' : 'pendiente',
+        fechaEsperada: null,
+        notas: invItem ? `Auto - Orden ${orderNumber} (inv: ${invItem.producto})` : `Auto - Orden ${orderNumber}`,
+        creadoPor: 'web',
+        createdAt: new Date().toISOString(),
+      };
+      await db.collection('daily_sales').insertOne(venta_auto);
 
-        // Marcar item del inventario como vendido
-        if (invItem) {
+      // Descontar cantidad del inventario
+      if (invItem) {
+        const newCantidad = (invItem.cantidad || 1) - qty;
+        if (newCantidad <= 0) {
           await db.collection('inventory').updateOne(
             { id: invItem.id },
-            { $set: { estado: 'vendido', ventaId: venta_auto.id, updatedAt: new Date().toISOString() } }
+            { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_auto.id, updatedAt: new Date().toISOString() } }
+          );
+        } else {
+          await db.collection('inventory').updateOne(
+            { id: invItem.id },
+            { $set: { cantidad: newCantidad, updatedAt: new Date().toISOString() } }
           );
         }
       }
@@ -2788,7 +2796,7 @@ app.get('/api/inventario/items', async (req, res) => {
 
 app.post('/api/inventario/items', async (req, res) => {
   try {
-    const { producto, imei, categoria, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
+    const { producto, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
     if (!producto) return res.status(400).json({ error: 'Producto requerido' });
 
     // Check duplicate IMEI
@@ -2802,6 +2810,7 @@ app.post('/api/inventario/items', async (req, res) => {
       producto,
       imei: imei || '',
       categoria: categoria || 'general',
+      cantidad: Number(cantidad || 1),
       precioCompra: Number(precioCompra || 0),
       precioVenta: Number(precioVenta || 0),
       proveedor: esPropio ? 'Propio' : (proveedor || ''),
@@ -2821,11 +2830,12 @@ app.post('/api/inventario/items', async (req, res) => {
 
 app.put('/api/inventario/items/:id', async (req, res) => {
   try {
-    const { producto, imei, categoria, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
+    const { producto, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
     const $set: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (producto !== undefined) $set.producto = producto;
     if (imei !== undefined) $set.imei = imei;
     if (categoria !== undefined) $set.categoria = categoria;
+    if (cantidad !== undefined) $set.cantidad = Number(cantidad);
     if (precioCompra !== undefined) $set.precioCompra = Number(precioCompra);
     if (precioVenta !== undefined) $set.precioVenta = Number(precioVenta);
     if (proveedor !== undefined) $set.proveedor = proveedor;

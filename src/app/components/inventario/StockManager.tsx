@@ -5,13 +5,14 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
-import { Plus, Trash2, Pencil, Search, Package } from 'lucide-react';
+import { Plus, Trash2, Pencil, Search, Package, Hash } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
   producto: string;
   imei: string;
   categoria: string;
+  cantidad: number;
   precioCompra: number;
   precioVenta: number;
   proveedor: string;
@@ -41,7 +42,7 @@ export function StockManager() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    producto: '', imei: '', categoria: 'moviles', precioCompra: '', precioVenta: '',
+    producto: '', imei: '', categoria: 'moviles', cantidad: '1', precioCompra: '', precioVenta: '',
     proveedor: '', esPropio: true, notas: '',
   });
 
@@ -61,13 +62,14 @@ export function StockManager() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ producto: '', imei: '', categoria: 'moviles', precioCompra: '', precioVenta: '', proveedor: '', esPropio: true, notas: '' });
+    setForm({ producto: '', imei: '', categoria: 'moviles', cantidad: '1', precioCompra: '', precioVenta: '', proveedor: '', esPropio: true, notas: '' });
   };
 
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
     setForm({
       producto: item.producto, imei: item.imei, categoria: item.categoria,
+      cantidad: (item.cantidad || 1).toString(),
       precioCompra: item.precioCompra.toString(), precioVenta: item.precioVenta.toString(),
       proveedor: item.proveedor, esPropio: item.esPropio, notas: item.notas,
     });
@@ -84,12 +86,14 @@ export function StockManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          cantidad: Number(form.cantidad || 1),
           precioCompra: Number(form.precioCompra || 0),
           precioVenta: Number(form.precioVenta || 0),
         }),
       });
       if (res.ok) {
-        toast.success(editing ? 'Item actualizado' : 'Item agregado');
+        const cant = Number(form.cantidad || 1);
+        toast.success(editing ? 'Item actualizado' : `${cant > 1 ? cant + ' unidades agregadas' : 'Item agregado'}`);
         setDialogOpen(false);
         resetForm();
         await loadItems();
@@ -115,9 +119,10 @@ export function StockManager() {
     return matchSearch && matchEstado;
   });
 
-  const disponibles = items.filter(i => i.estado === 'disponible').length;
-  const vendidos = items.filter(i => i.estado === 'vendido').length;
-  const valorInventario = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + i.precioVenta, 0);
+  const totalUnidades = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.cantidad || 1), 0);
+  const vendidos = items.filter(i => i.estado === 'vendido').reduce((s, i) => s + (i.cantidad || 1), 0);
+  const valorInventario = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.precioCompra * (i.cantidad || 1)), 0);
+  const valorVenta = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.precioVenta * (i.cantidad || 1)), 0);
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -126,18 +131,26 @@ export function StockManager() {
   return (
     <div className="space-y-4">
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl border p-3">
-          <p className="text-xs text-gray-400 font-semibold uppercase">Disponibles</p>
-          <p className="text-2xl font-bold text-violet-700">{disponibles}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Unidades disponibles</p>
+          <p className="text-2xl font-black">{totalUnidades}</p>
+          <p className="text-[10px] opacity-60">{items.filter(i => i.estado === 'disponible').length} productos</p>
         </div>
-        <div className="bg-white rounded-xl border p-3">
-          <p className="text-xs text-gray-400 font-semibold uppercase">Vendidos</p>
-          <p className="text-2xl font-bold text-emerald-600">{vendidos}</p>
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Vendidos</p>
+          <p className="text-2xl font-black">{vendidos}</p>
+          <p className="text-[10px] opacity-60">unidades</p>
         </div>
-        <div className="bg-white rounded-xl border p-3">
-          <p className="text-xs text-gray-400 font-semibold uppercase">Valor inventario</p>
-          <p className="text-2xl font-bold text-gray-900">{fmt(valorInventario)}</p>
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor inventario</p>
+          <p className="text-2xl font-black">{fmt(valorInventario)}</p>
+          <p className="text-[10px] opacity-60">costo total</p>
+        </div>
+        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor de venta</p>
+          <p className="text-2xl font-black">{fmt(valorVenta)}</p>
+          <p className="text-[10px] opacity-60">ganancia potencial: {fmt(valorVenta - valorInventario)}</p>
         </div>
       </div>
 
@@ -148,7 +161,6 @@ export function StockManager() {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por producto, IMEI, proveedor..." className="pl-10" />
         </div>
         <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-gray-400" />
           <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} className="h-10 rounded-md border border-gray-200 px-3 text-sm">
             <option value="todos">Todos</option>
             <option value="disponible">Disponible</option>
@@ -174,6 +186,7 @@ export function StockManager() {
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
                   <th className="text-left px-4 py-3">Producto</th>
+                  <th className="text-center px-4 py-3">Cant.</th>
                   <th className="text-left px-4 py-3">IMEI</th>
                   <th className="text-left px-4 py-3">Proveedor</th>
                   <th className="text-right px-4 py-3">Costo</th>
@@ -187,6 +200,11 @@ export function StockManager() {
                 {filtered.map(item => (
                   <tr key={item.id} className="border-t hover:bg-gray-50/50">
                     <td className="px-4 py-3 font-medium text-gray-900">{item.producto}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-bold">
+                        <Hash className="w-3 h-3" />{item.cantidad || 1}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.imei || '—'}</td>
                     <td className="px-4 py-3">
                       {item.esPropio ? (
@@ -217,6 +235,16 @@ export function StockManager() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+                  <td className="px-4 py-3">TOTALES</td>
+                  <td className="px-4 py-3 text-center text-violet-700">{filtered.reduce((s, i) => s + (i.cantidad || 1), 0)}</td>
+                  <td colSpan={2}></td>
+                  <td className="px-4 py-3 text-right text-gray-500">{fmt(filtered.reduce((s, i) => s + (i.precioCompra * (i.cantidad || 1)), 0))}</td>
+                  <td className="px-4 py-3 text-right text-gray-900">{fmt(filtered.reduce((s, i) => s + (i.precioVenta * (i.cantidad || 1)), 0))}</td>
+                  <td colSpan={3}></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
@@ -227,16 +255,22 @@ export function StockManager() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar Item' : 'Agregar al Inventario'}</DialogTitle>
-            <DialogDescription>Registra un equipo en el inventario fisico</DialogDescription>
+            <DialogDescription>Registra productos en el inventario fisico</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Producto *</Label>
               <Input value={form.producto} onChange={e => setForm({ ...form, producto: e.target.value })} placeholder="Xiaomi 14 Ultra 512GB" />
             </div>
-            <div>
-              <Label>IMEI</Label>
-              <Input value={form.imei} onChange={e => setForm({ ...form, imei: e.target.value })} placeholder="860012345678901" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Cantidad</Label>
+                <Input type="number" min="1" value={form.cantidad} onChange={e => setForm({ ...form, cantidad: e.target.value })} placeholder="1" />
+              </div>
+              <div>
+                <Label>IMEI</Label>
+                <Input value={form.imei} onChange={e => setForm({ ...form, imei: e.target.value })} placeholder="Opcional" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -270,14 +304,32 @@ export function StockManager() {
             )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Precio compra</Label>
+                <Label>Costo unitario</Label>
                 <Input type="number" value={form.precioCompra} onChange={e => setForm({ ...form, precioCompra: e.target.value })} placeholder="0" />
+                <p className="text-[10px] text-gray-400 mt-0.5">Lo que costó cada unidad</p>
               </div>
               <div>
                 <Label>Precio venta</Label>
                 <Input type="number" value={form.precioVenta} onChange={e => setForm({ ...form, precioVenta: e.target.value })} placeholder="0" />
+                <p className="text-[10px] text-gray-400 mt-0.5">A cuánto se vende</p>
               </div>
             </div>
+
+            {form.precioCompra && form.cantidad && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="flex justify-between text-xs">
+                  <span className="text-blue-600 font-semibold">Costo total ({form.cantidad} uds)</span>
+                  <span className="font-black text-blue-800">{fmt(Number(form.precioCompra) * Number(form.cantidad || 1))}</span>
+                </div>
+                {form.precioVenta && (
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-emerald-600 font-semibold">Ganancia potencial</span>
+                    <span className="font-black text-emerald-700">{fmt((Number(form.precioVenta) - Number(form.precioCompra)) * Number(form.cantidad || 1))}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <Label>Notas</Label>
               <Input value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} placeholder="Opcional" />
@@ -285,7 +337,7 @@ export function StockManager() {
             <div className="flex gap-3 mt-4">
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="flex-1">Cancelar</Button>
               <Button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white">
-                {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Agregar'}
+                {saving ? 'Guardando...' : editing ? 'Actualizar' : `Agregar${Number(form.cantidad) > 1 ? ` (${form.cantidad} uds)` : ''}`}
               </Button>
             </div>
           </div>
