@@ -1782,6 +1782,35 @@ app.post('/api/orders', async (req, res) => {
     
     await db.collection('orders').insertOne(order);
 
+    // Descontar stock del catálogo de productos
+    for (const item of items) {
+      const productId = item.product?.id || item.productId;
+      const qty = Number(item.quantity || 1);
+      if (!productId) continue;
+
+      // Decrementar stock general
+      await db.collection('products').updateOne(
+        { id: productId, stock: { $gte: qty } },
+        { $inc: { stock: -qty } }
+      );
+
+      // Decrementar stock de variante de almacenamiento si aplica
+      if (item.selectedStorage) {
+        await db.collection('products').updateOne(
+          { id: productId, 'storageVariants.storage': item.selectedStorage },
+          { $inc: { 'storageVariants.$.stock': -qty } }
+        );
+      }
+
+      // Decrementar stock de variante de color si aplica
+      if (item.selectedColor) {
+        await db.collection('products').updateOne(
+          { id: productId, 'colorVariants.color': item.selectedColor },
+          { $inc: { 'colorVariants.$.stock': -qty } }
+        );
+      }
+    }
+
     // Auto-agregar cada item a ventas del día
     const hoy = new Date().toISOString().slice(0, 10);
     for (const item of items) {
@@ -1883,6 +1912,30 @@ app.delete('/api/orders', async (req, res) => {
   try {
     const id = req.body?.id;
     if (!id) return res.status(400).json({ error: 'id requerido' });
+
+    // Restaurar stock antes de eliminar
+    const order = await db.collection('orders').findOne({ id: String(id) });
+    if (order?.items && Array.isArray(order.items)) {
+      for (const item of order.items) {
+        const productId = item.product?.id || item.productId;
+        const qty = Number(item.quantity || 1);
+        if (!productId) continue;
+        await db.collection('products').updateOne({ id: productId }, { $inc: { stock: qty } });
+        if (item.selectedStorage) {
+          await db.collection('products').updateOne(
+            { id: productId, 'storageVariants.storage': item.selectedStorage },
+            { $inc: { 'storageVariants.$.stock': qty } }
+          );
+        }
+        if (item.selectedColor) {
+          await db.collection('products').updateOne(
+            { id: productId, 'colorVariants.color': item.selectedColor },
+            { $inc: { 'colorVariants.$.stock': qty } }
+          );
+        }
+      }
+    }
+
     const result = await db.collection('orders').deleteOne({ id: String(id) });
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Order not found' });
