@@ -300439,13 +300439,21 @@ app.post("/api/orders", async (req, res) => {
       const storage = item.selectedStorage ? ` ${item.selectedStorage}` : "";
       const nombreProducto = (item.product?.name || item.name || item.productName || "Producto") + storage;
       const qty = Number(item.quantity || 1);
+      const productId = item.product?.id || item.productId;
       const stopWords = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con", "pro", "plus", "max"];
-      const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      let invItem = await db.collection("inventory").findOne({
+      let invItem = productId ? await db.collection("inventory").findOne({
         estado: "disponible",
         cantidad: { $gte: 1 },
-        producto: { $regex: escapedName, $options: "i" }
-      });
+        productoId: productId
+      }) : null;
+      if (!invItem) {
+        const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        invItem = await db.collection("inventory").findOne({
+          estado: "disponible",
+          cantidad: { $gte: 1 },
+          producto: { $regex: escapedName, $options: "i" }
+        });
+      }
       if (!invItem) {
         const keywords = nombreProducto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords.includes(w.toLowerCase())).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
         if (keywords.length > 0) {
@@ -301254,7 +301262,7 @@ app.get("/api/inventario/items", async (req, res) => {
 });
 app.post("/api/inventario/items", async (req, res) => {
   try {
-    const { producto, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
+    const { producto, productoId, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
     if (!producto) return res.status(400).json({ error: "Producto requerido" });
     if (imei) {
       const existing = await db.collection("inventory").findOne({ imei, estado: { $ne: "vendido" } });
@@ -301263,6 +301271,7 @@ app.post("/api/inventario/items", async (req, res) => {
     const item = {
       id: crypto.randomUUID(),
       producto,
+      productoId: productoId || null,
       imei: imei || "",
       categoria: categoria || "general",
       cantidad: Number(cantidad || 1),
@@ -301284,9 +301293,10 @@ app.post("/api/inventario/items", async (req, res) => {
 });
 app.put("/api/inventario/items/:id", async (req, res) => {
   try {
-    const { producto, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
+    const { producto, productoId, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
     const $set = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
     if (producto !== void 0) $set.producto = producto;
+    if (productoId !== void 0) $set.productoId = productoId;
     if (imei !== void 0) $set.imei = imei;
     if (categoria !== void 0) $set.categoria = categoria;
     if (cantidad !== void 0) $set.cantidad = Number(cantidad);

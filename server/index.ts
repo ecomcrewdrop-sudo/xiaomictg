@@ -1822,14 +1822,22 @@ app.post('/api/orders', async (req, res) => {
       const qty = Number(item.quantity || 1);
 
       // Buscar item disponible en inventario que coincida con el producto
-      // Ignorar palabras genéricas para mejor matching
+      // Primero por productoId (match exacto), luego por nombre
+      const productId = item.product?.id || item.productId;
       const stopWords = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con', 'pro', 'plus', 'max'];
-      const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      let invItem = await db.collection('inventory').findOne({
+      let invItem = productId ? await db.collection('inventory').findOne({
         estado: 'disponible',
         cantidad: { $gte: 1 },
-        producto: { $regex: escapedName, $options: 'i' },
-      });
+        productoId: productId,
+      }) : null;
+      if (!invItem) {
+        const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        invItem = await db.collection('inventory').findOne({
+          estado: 'disponible',
+          cantidad: { $gte: 1 },
+          producto: { $regex: escapedName, $options: 'i' },
+        });
+      }
       if (!invItem) {
         // Match por palabras clave significativas (>2 chars, no stop words)
         const keywords = nombreProducto.split(/[\s+()]/g)
@@ -2814,7 +2822,7 @@ app.get('/api/inventario/items', async (req, res) => {
 
 app.post('/api/inventario/items', async (req, res) => {
   try {
-    const { producto, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
+    const { producto, productoId, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, notas } = req.body;
     if (!producto) return res.status(400).json({ error: 'Producto requerido' });
 
     // Check duplicate IMEI
@@ -2826,6 +2834,7 @@ app.post('/api/inventario/items', async (req, res) => {
     const item = {
       id: crypto.randomUUID(),
       producto,
+      productoId: productoId || null,
       imei: imei || '',
       categoria: categoria || 'general',
       cantidad: Number(cantidad || 1),
@@ -2848,9 +2857,10 @@ app.post('/api/inventario/items', async (req, res) => {
 
 app.put('/api/inventario/items/:id', async (req, res) => {
   try {
-    const { producto, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
+    const { producto, productoId, imei, categoria, cantidad, precioCompra, precioVenta, proveedor, esPropio, estado, notas } = req.body;
     const $set: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (producto !== undefined) $set.producto = producto;
+    if (productoId !== undefined) $set.productoId = productoId;
     if (imei !== undefined) $set.imei = imei;
     if (categoria !== undefined) $set.categoria = categoria;
     if (cantidad !== undefined) $set.cantidad = Number(cantidad);

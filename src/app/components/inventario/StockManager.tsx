@@ -5,11 +5,19 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
-import { Plus, Trash2, Pencil, Search, Package, Hash } from 'lucide-react';
+import { Plus, Trash2, Pencil, Search, Package, Hash, ChevronDown } from 'lucide-react';
+
+interface CatalogProduct {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+}
 
 interface InventoryItem {
   id: string;
   producto: string;
+  productoId?: string;
   imei: string;
   categoria: string;
   cantidad: number;
@@ -34,6 +42,7 @@ const fmt = (n: number) => `$${n.toLocaleString('es-CO')}`;
 export function StockManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
@@ -42,18 +51,20 @@ export function StockManager() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    producto: '', imei: '', categoria: 'moviles', cantidad: '1', precioCompra: '', precioVenta: '',
+    producto: '', productoId: '', imei: '', categoria: 'moviles', cantidad: '1', precioCompra: '', precioVenta: '',
     proveedor: '', esPropio: true, notas: '',
   });
 
   const loadItems = useCallback(async () => {
     try {
-      const [itemsRes, suppliersRes] = await Promise.all([
+      const [itemsRes, suppliersRes, productsRes] = await Promise.all([
         fetchWithTimeout(`${API_BASE_URL}/inventario/items`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/proveedores`),
+        fetchWithTimeout(`${API_BASE_URL}/products`),
       ]);
       if (itemsRes.ok) setItems(await itemsRes.json());
       if (suppliersRes.ok) setSuppliers(await suppliersRes.json());
+      if (productsRes.ok) setCatalogProducts(await productsRes.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, []);
@@ -62,18 +73,34 @@ export function StockManager() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ producto: '', imei: '', categoria: 'moviles', cantidad: '1', precioCompra: '', precioVenta: '', proveedor: '', esPropio: true, notas: '' });
+    setForm({ producto: '', productoId: '', imei: '', categoria: 'moviles', cantidad: '1', precioCompra: '', precioVenta: '', proveedor: '', esPropio: true, notas: '' });
   };
 
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
     setForm({
-      producto: item.producto, imei: item.imei, categoria: item.categoria,
+      producto: item.producto, productoId: item.productoId || '', imei: item.imei, categoria: item.categoria,
       cantidad: (item.cantidad || 1).toString(),
       precioCompra: item.precioCompra.toString(), precioVenta: item.precioVenta.toString(),
       proveedor: item.proveedor, esPropio: item.esPropio, notas: item.notas,
     });
     setDialogOpen(true);
+  };
+
+  const handleSelectCatalogProduct = (productId: string) => {
+    if (!productId) {
+      setForm(prev => ({ ...prev, productoId: '', producto: '' }));
+      return;
+    }
+    const product = catalogProducts.find(p => p.id === productId);
+    if (product) {
+      setForm(prev => ({
+        ...prev,
+        productoId: product.id,
+        producto: product.name,
+        precioVenta: prev.precioVenta || product.price.toString(),
+      }));
+    }
   };
 
   const handleSave = async () => {
@@ -122,7 +149,6 @@ export function StockManager() {
   const totalUnidades = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.cantidad || 1), 0);
   const vendidos = items.filter(i => i.estado === 'vendido').reduce((s, i) => s + (i.cantidad || 1), 0);
   const valorInventario = items.filter(i => i.estado === 'disponible').reduce((s, i) => s + (i.precioCompra * (i.cantidad || 1)), 0);
-  // valorVenta removed per owner request - only cost matters in inventory
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -255,7 +281,25 @@ export function StockManager() {
           <div className="space-y-3">
             <div>
               <Label>Producto *</Label>
-              <Input value={form.producto} onChange={e => setForm({ ...form, producto: e.target.value })} placeholder="Xiaomi 14 Ultra 512GB" />
+              <div className="relative">
+                <select
+                  value={form.productoId}
+                  onChange={e => handleSelectCatalogProduct(e.target.value)}
+                  className="w-full h-10 rounded-md border border-gray-200 px-3 pr-8 text-sm appearance-none cursor-pointer"
+                >
+                  <option value="">— Seleccionar del catálogo —</option>
+                  {catalogProducts.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} - {fmt(p.price)}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              <Input
+                value={form.producto}
+                onChange={e => setForm({ ...form, producto: e.target.value, productoId: '' })}
+                placeholder="O escribe el nombre manualmente"
+                className="mt-1.5"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
