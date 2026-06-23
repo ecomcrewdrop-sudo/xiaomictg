@@ -687,7 +687,8 @@ function processWhatsAppTemplate(template: string, order: any): string {
     .map((item: any) => {
       const baseTotal = (item.product?.price || 0) * (item.quantity || 1);
       const itemAddi = isAddi ? Math.round(baseTotal * 0.20) : 0;
-      return `• ${item.product?.name || 'Producto'} x${item.quantity || 1}\n  *Financiado por Addi:* $${(baseTotal + itemAddi).toLocaleString('es-CO')} COP`;
+      const priceLabel = isAddi ? 'Financiado por Addi' : 'Precio';
+      return `• ${item.product?.name || 'Producto'} x${item.quantity || 1}\n  ${priceLabel}: $${(baseTotal + itemAddi).toLocaleString('es-CO')} COP`;
     })
     .join('\n') + extrasStr;
 

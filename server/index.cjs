@@ -299470,8 +299470,9 @@ function processWhatsAppTemplate(template, order) {
   const productsList = items.map((item) => {
     const baseTotal = (item.product?.price || 0) * (item.quantity || 1);
     const itemAddi = isAddi ? Math.round(baseTotal * 0.2) : 0;
+    const priceLabel = isAddi ? "Financiado por Addi" : "Precio";
     return `\u2022 ${item.product?.name || "Producto"} x${item.quantity || 1}
-  *Financiado por Addi:* $${(baseTotal + itemAddi).toLocaleString("es-CO")} COP`;
+  ${priceLabel}: $${(baseTotal + itemAddi).toLocaleString("es-CO")} COP`;
   }).join("\n") + extrasStr;
   const vars = {
     "{{nombre}}": order.customerInfo?.name || "Cliente",
