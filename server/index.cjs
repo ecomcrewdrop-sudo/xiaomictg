@@ -300871,6 +300871,15 @@ app.post("/api/financing", async (req, res) => {
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     await db.collection("financing").insertOne(record);
+    if (Number(costoEquipo) > 0) {
+      const debtDoc = await db.collection("settings").findOne({ key: "xiaomi_debt" });
+      if (debtDoc?.deudaReal !== null && debtDoc?.deudaReal !== void 0) {
+        await db.collection("settings").updateOne(
+          { key: "xiaomi_debt" },
+          { $inc: { deudaReal: Number(costoEquipo) }, $set: { updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+        );
+      }
+    }
     res.json(record);
   } catch (error) {
     console.error("[financing] Error creating:", error);
@@ -301184,6 +301193,14 @@ app.post("/api/xiaomi-payments", async (req, res) => {
       date: (/* @__PURE__ */ new Date()).toISOString()
     };
     await db.collection("xiaomi_payments").insertOne(payment);
+    const debtDoc = await db.collection("settings").findOne({ key: "xiaomi_debt" });
+    if (debtDoc?.deudaReal !== null && debtDoc?.deudaReal !== void 0) {
+      const newDebt = Math.max(0, debtDoc.deudaReal - Number(amount));
+      await db.collection("settings").updateOne(
+        { key: "xiaomi_debt" },
+        { $set: { deudaReal: newDebt, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
     res.status(201).json(payment);
   } catch (error) {
     console.error("[xiaomi-payments] Error creating:", error);
@@ -301192,12 +301209,46 @@ app.post("/api/xiaomi-payments", async (req, res) => {
 });
 app.delete("/api/xiaomi-payments/:id", async (req, res) => {
   try {
+    const payment = await db.collection("xiaomi_payments").findOne({ id: req.params.id });
     const result = await db.collection("xiaomi_payments").deleteOne({ id: req.params.id });
     if (result.deletedCount === 0) return res.status(404).json({ error: "No encontrado" });
+    if (payment) {
+      const debtDoc = await db.collection("settings").findOne({ key: "xiaomi_debt" });
+      if (debtDoc?.deudaReal !== null && debtDoc?.deudaReal !== void 0) {
+        await db.collection("settings").updateOne(
+          { key: "xiaomi_debt" },
+          { $inc: { deudaReal: payment.amount }, $set: { updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+        );
+      }
+    }
     res.json({ success: true });
   } catch (error) {
     console.error("[xiaomi-payments] Error deleting:", error);
     res.status(500).json({ error: "Error al eliminar pago" });
+  }
+});
+app.get("/api/xiaomi-debt", async (_req, res) => {
+  try {
+    const doc = await db.collection("settings").findOne({ key: "xiaomi_debt" });
+    res.json({ deudaReal: doc?.deudaReal ?? null, updatedAt: doc?.updatedAt ?? null });
+  } catch (error) {
+    res.status(500).json({ error: "Error al obtener deuda" });
+  }
+});
+app.post("/api/xiaomi-debt", async (req, res) => {
+  try {
+    const { deudaReal } = req.body;
+    if (deudaReal === void 0 || deudaReal === null) {
+      return res.status(400).json({ error: "Monto requerido" });
+    }
+    await db.collection("settings").updateOne(
+      { key: "xiaomi_debt" },
+      { $set: { key: "xiaomi_debt", deudaReal: Number(deudaReal), updatedAt: (/* @__PURE__ */ new Date()).toISOString() } },
+      { upsert: true }
+    );
+    res.json({ success: true, deudaReal: Number(deudaReal) });
+  } catch (error) {
+    res.status(500).json({ error: "Error al actualizar deuda" });
   }
 });
 app.get("/api/inventario/metodos-pago", async (_req, res) => {

@@ -66,6 +66,7 @@ export function FinancingManager() {
   const [payXiaomiAmount, setPayXiaomiAmount] = useState('');
   const [payXiaomiNote, setPayXiaomiNote] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
+  const [deudaManual, setDeudaManual] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     nombre: '',
@@ -107,7 +108,19 @@ export function FinancingManager() {
     }
   }, []);
 
-  useEffect(() => { loadRecords(); loadXiaomiPayments(); }, [loadRecords, loadXiaomiPayments]);
+  const loadDeudaManual = useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/xiaomi-debt`);
+      if (res.ok) {
+        const data = await res.json();
+        setDeudaManual(data.deudaReal);
+      }
+    } catch (err) {
+      console.error('[xiaomi-debt] Error loading:', err);
+    }
+  }, []);
+
+  useEffect(() => { loadRecords(); loadXiaomiPayments(); loadDeudaManual(); }, [loadRecords, loadXiaomiPayments, loadDeudaManual]);
 
   const handleSave = async () => {
     if (!form.nombre || !form.cedula || !form.telefono || !form.imei || !form.valorCuota || !form.numeroCuotas || !form.fechaInicio) {
@@ -270,6 +283,7 @@ export function FinancingManager() {
         setPayXiaomiAmount('');
         setPayXiaomiNote('');
         await loadXiaomiPayments();
+        await loadDeudaManual();
       }
     } catch { toast.error('Error de conexión'); }
     setSavingPayment(false);
@@ -281,6 +295,25 @@ export function FinancingManager() {
       if (res.ok) {
         toast.success('Pago eliminado');
         await loadXiaomiPayments();
+        await loadDeudaManual();
+      }
+    } catch { toast.error('Error de conexión'); }
+  };
+
+  const handleAjustarDeuda = async () => {
+    const input = prompt('¿Cuánto le debes realmente a Xiaomi?\n\nEscribe el monto actual de la deuda (ej: 500000).\nEsto corrige el saldo para que coincida con la realidad.');
+    if (input === null) return;
+    const monto = Number(input.replace(/[^0-9]/g, ''));
+    if (isNaN(monto) || monto < 0) { toast.error('Monto inválido'); return; }
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/xiaomi-debt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deudaReal: monto }),
+      });
+      if (res.ok) {
+        toast.success(`Deuda ajustada a $${monto.toLocaleString('es-CO')}`);
+        setDeudaManual(monto);
       }
     } catch { toast.error('Error de conexión'); }
   };
@@ -414,10 +447,11 @@ export function FinancingManager() {
       return sum + cuotasVencidas * r.valorCuota;
     }, 0);
 
-    // 🏪 DEUDA CON XIAOMI — costo total de equipos menos pagos directos a Xiaomi
+    // 🏪 DEUDA CON XIAOMI — usa deuda manual si existe, sino calcula
     const costoTotalEquipos = records.reduce((sum, r) => sum + (r.costoEquipo || 0), 0);
     const totalPagadoXiaomi = xiaomiPayments.reduce((sum, p) => sum + p.amount, 0);
-    const deudaXiaomi = Math.max(0, costoTotalEquipos - totalPagadoXiaomi);
+    const deudaXiaomiCalculada = Math.max(0, costoTotalEquipos - totalPagadoXiaomi);
+    const deudaXiaomi = deudaManual !== null ? Math.max(0, deudaManual) : deudaXiaomiCalculada;
 
     // 💚 GANANCIA — lo recaudado que ya NO le pertenece a Xiaomi (es ganancia pura)
     const ganancia = records.reduce((sum, r) => {
@@ -442,7 +476,7 @@ export function FinancingManager() {
       totalPagadoXiaomi,
       ganancia,
     };
-  }, [records, xiaomiPayments]);
+  }, [records, xiaomiPayments, deudaManual]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -505,12 +539,20 @@ export function FinancingManager() {
               <Smartphone className="w-5 h-5 opacity-80" />
               <span className="text-sm font-bold uppercase tracking-wider opacity-80">Por pagar a Xiaomi</span>
             </div>
-            <button
-              onClick={() => setShowPayXiaomiDialog(true)}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full transition-colors flex items-center gap-1"
-            >
-              <Minus className="w-3 h-3" /> Abonar
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={handleAjustarDeuda}
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+              >
+                <Pencil className="w-3 h-3" /> Ajustar
+              </button>
+              <button
+                onClick={() => setShowPayXiaomiDialog(true)}
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+              >
+                <Minus className="w-3 h-3" /> Abonar
+              </button>
+            </div>
           </div>
           <p className="text-2xl font-black">{formatCurrency(kpis.deudaXiaomi)}</p>
           {kpis.totalPagadoXiaomi > 0 && (

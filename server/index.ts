@@ -2367,6 +2367,18 @@ app.post('/api/financing', async (req, res) => {
     };
 
     await db.collection('financing').insertOne(record);
+
+    // Si existe deuda manual de Xiaomi, incrementar con el costo del equipo
+    if (Number(costoEquipo) > 0) {
+      const debtDoc = await db.collection('settings').findOne({ key: 'xiaomi_debt' });
+      if (debtDoc?.deudaReal !== null && debtDoc?.deudaReal !== undefined) {
+        await db.collection('settings').updateOne(
+          { key: 'xiaomi_debt' },
+          { $inc: { deudaReal: Number(costoEquipo) }, $set: { updatedAt: new Date().toISOString() } }
+        );
+      }
+    }
+
     res.json(record);
   } catch (error) {
     console.error('[financing] Error creating:', error);
@@ -2729,6 +2741,17 @@ app.post('/api/xiaomi-payments', async (req, res) => {
     };
 
     await db.collection('xiaomi_payments').insertOne(payment);
+
+    // Si existe deuda manual, decrementar
+    const debtDoc = await db.collection('settings').findOne({ key: 'xiaomi_debt' });
+    if (debtDoc?.deudaReal !== null && debtDoc?.deudaReal !== undefined) {
+      const newDebt = Math.max(0, debtDoc.deudaReal - Number(amount));
+      await db.collection('settings').updateOne(
+        { key: 'xiaomi_debt' },
+        { $set: { deudaReal: newDebt, updatedAt: new Date().toISOString() } }
+      );
+    }
+
     res.status(201).json(payment);
   } catch (error) {
     console.error('[xiaomi-payments] Error creating:', error);
@@ -2738,12 +2761,56 @@ app.post('/api/xiaomi-payments', async (req, res) => {
 
 app.delete('/api/xiaomi-payments/:id', async (req, res) => {
   try {
+    // Encontrar el pago antes de eliminarlo para restaurar deuda
+    const payment = await db.collection('xiaomi_payments').findOne({ id: req.params.id });
     const result = await db.collection('xiaomi_payments').deleteOne({ id: req.params.id });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'No encontrado' });
+
+    // Restaurar deuda manual si existe
+    if (payment) {
+      const debtDoc = await db.collection('settings').findOne({ key: 'xiaomi_debt' });
+      if (debtDoc?.deudaReal !== null && debtDoc?.deudaReal !== undefined) {
+        await db.collection('settings').updateOne(
+          { key: 'xiaomi_debt' },
+          { $inc: { deudaReal: payment.amount }, $set: { updatedAt: new Date().toISOString() } }
+        );
+      }
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error('[xiaomi-payments] Error deleting:', error);
     res.status(500).json({ error: 'Error al eliminar pago' });
+  }
+});
+
+// --- Deuda Xiaomi: ajuste manual ---
+// Permite al dueño fijar la deuda real. A partir de ahí el sistema
+// la incrementa con cada nuevo CrediLock y la decrementa con pagos.
+
+app.get('/api/xiaomi-debt', async (_req, res) => {
+  try {
+    const doc = await db.collection('settings').findOne({ key: 'xiaomi_debt' });
+    res.json({ deudaReal: doc?.deudaReal ?? null, updatedAt: doc?.updatedAt ?? null });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener deuda' });
+  }
+});
+
+app.post('/api/xiaomi-debt', async (req, res) => {
+  try {
+    const { deudaReal } = req.body;
+    if (deudaReal === undefined || deudaReal === null) {
+      return res.status(400).json({ error: 'Monto requerido' });
+    }
+    await db.collection('settings').updateOne(
+      { key: 'xiaomi_debt' },
+      { $set: { key: 'xiaomi_debt', deudaReal: Number(deudaReal), updatedAt: new Date().toISOString() } },
+      { upsert: true }
+    );
+    res.json({ success: true, deudaReal: Number(deudaReal) });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar deuda' });
   }
 });
 
