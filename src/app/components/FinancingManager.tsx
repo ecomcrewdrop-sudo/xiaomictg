@@ -416,19 +416,20 @@ export function FinancingManager() {
       return sum + cuotasVencidas * r.valorCuota;
     }, 0);
 
-    // 🏪 DEUDA CON XIAOMI — automático: para cada cliente, cuánto del costo del equipo
-    // aún no se ha cubierto con los pagos recibidos del cliente
+    // 🏪 DEUDA CON XIAOMI
+    // Fórmula: sum(costoEquipo) - sum(cuotaInicial) - sum(abonos a Xiaomi)
+    // La cuota inicial la agarra Xiaomi de una vez.
+    // Las cuotas de clientes NO bajan la deuda — el dueño abona cuando quiere.
     const costoTotalEquipos = records.reduce((sum, r) => sum + (r.costoEquipo || 0), 0);
+    const totalCuotasIniciales = records.reduce((sum, r) => sum + (r.cuotaInicial || 0), 0);
     const totalPagadoXiaomi = xiaomiPayments.reduce((sum, p) => sum + p.amount, 0);
+    const deudaXiaomi = Math.max(0, costoTotalEquipos - totalCuotasIniciales - totalPagadoXiaomi);
     const desgloseDeuda = records.map(r => {
       const costoEquipo = r.costoEquipo || 0;
-      const previas = r.cuotasPrevias || 0;
-      const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
-      const recaudado = r.cuotaInicial + ((previas + cuotasPagadas) * r.valorCuota);
-      const deudaCliente = Math.max(0, costoEquipo - recaudado);
-      return { nombre: r.nombre, costoEquipo, recaudado, deudaCliente, cuotaInicial: r.cuotaInicial, cuotasPagadas: previas + cuotasPagadas, totalCuotas: r.numeroCuotas };
-    }).filter(d => d.costoEquipo > 0).sort((a, b) => b.deudaCliente - a.deudaCliente);
-    const deudaXiaomi = desgloseDeuda.reduce((sum, d) => sum + d.deudaCliente, 0);
+      const cuotaInicial = r.cuotaInicial || 0;
+      const pendiente = Math.max(0, costoEquipo - cuotaInicial);
+      return { nombre: r.nombre, costoEquipo, cuotaInicial, pendiente, totalCuotas: r.numeroCuotas };
+    }).filter(d => d.costoEquipo > 0).sort((a, b) => b.pendiente - a.pendiente);
 
     // 💚 GANANCIA — lo recaudado que ya NO le pertenece a Xiaomi (es ganancia pura)
     const ganancia = records.reduce((sum, r) => {
@@ -525,6 +526,9 @@ export function FinancingManager() {
             </button>
           </div>
           <p className="text-2xl font-black">{formatCurrency(kpis.deudaXiaomi)}</p>
+          {kpis.totalPagadoXiaomi > 0 && (
+            <p className="text-xs opacity-70 mt-0.5">Abonado: {formatCurrency(kpis.totalPagadoXiaomi)}</p>
+          )}
           <button
             onClick={() => setShowDeudaDesglose(!showDeudaDesglose)}
             className="text-xs opacity-70 mt-0.5 underline hover:opacity-100 transition-opacity"
@@ -547,33 +551,44 @@ export function FinancingManager() {
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden mb-4">
           <div className="bg-amber-50 px-4 py-2 border-b">
             <p className="text-sm font-bold text-amber-800">Desglose: Deuda por cliente</p>
-            <p className="text-[10px] text-amber-600">Costo equipo − Dinero recaudado del cliente = Lo que falta por cubrir</p>
+            <p className="text-[10px] text-amber-600">Costo equipo − Cuota inicial (Xiaomi la toma de una vez) = Pendiente</p>
           </div>
           <div className="divide-y max-h-80 overflow-y-auto">
-            <div className="grid grid-cols-[1fr_90px_90px_90px_60px] gap-1 px-4 py-2 bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+            <div className="grid grid-cols-[1fr_100px_100px_100px] gap-1 px-4 py-2 bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
               <span>Cliente</span>
               <span className="text-right">Costo Equipo</span>
-              <span className="text-right">Recaudado</span>
-              <span className="text-right">Deuda</span>
-              <span className="text-center">Cuotas</span>
+              <span className="text-right">Cuota Inicial</span>
+              <span className="text-right">Pendiente</span>
             </div>
             {kpis.desgloseDeuda.map((d, i) => (
-              <div key={i} className={`grid grid-cols-[1fr_90px_90px_90px_60px] gap-1 px-4 py-2 text-sm ${d.deudaCliente === 0 ? 'bg-green-50/50' : ''}`}>
+              <div key={i} className={`grid grid-cols-[1fr_100px_100px_100px] gap-1 px-4 py-2 text-sm ${d.pendiente === 0 ? 'bg-green-50/50' : ''}`}>
                 <span className="font-medium text-gray-900 truncate capitalize">{d.nombre.toLowerCase()}</span>
                 <span className="text-right text-gray-600">{formatCurrency(d.costoEquipo)}</span>
-                <span className="text-right text-green-600 font-medium">{formatCurrency(d.recaudado)}</span>
-                <span className={`text-right font-bold ${d.deudaCliente > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {d.deudaCliente > 0 ? formatCurrency(d.deudaCliente) : '✅ $0'}
+                <span className="text-right text-green-600 font-medium">{formatCurrency(d.cuotaInicial)}</span>
+                <span className={`text-right font-bold ${d.pendiente > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {d.pendiente > 0 ? formatCurrency(d.pendiente) : '✅ $0'}
                 </span>
-                <span className="text-center text-gray-500 text-xs">{d.cuotasPagadas}/{d.totalCuotas}</span>
               </div>
             ))}
-            <div className="grid grid-cols-[1fr_90px_90px_90px_60px] gap-1 px-4 py-2 bg-amber-50 font-bold text-sm border-t-2 border-amber-200">
-              <span className="text-amber-800">TOTAL</span>
+            <div className="grid grid-cols-[1fr_100px_100px_100px] gap-1 px-4 py-2 bg-amber-50 font-bold text-sm border-t-2 border-amber-200">
+              <span className="text-amber-800">SUBTOTAL</span>
               <span className="text-right text-gray-700">{formatCurrency(kpis.desgloseDeuda.reduce((s, d) => s + d.costoEquipo, 0))}</span>
-              <span className="text-right text-green-700">{formatCurrency(kpis.desgloseDeuda.reduce((s, d) => s + d.recaudado, 0))}</span>
-              <span className="text-right text-red-700">{formatCurrency(kpis.deudaXiaomi)}</span>
+              <span className="text-right text-green-700">{formatCurrency(kpis.desgloseDeuda.reduce((s, d) => s + d.cuotaInicial, 0))}</span>
+              <span className="text-right text-red-700">{formatCurrency(kpis.desgloseDeuda.reduce((s, d) => s + d.pendiente, 0))}</span>
+            </div>
+            {kpis.totalPagadoXiaomi > 0 && (
+              <div className="grid grid-cols-[1fr_100px_100px_100px] gap-1 px-4 py-2 bg-green-50 font-bold text-sm">
+                <span className="text-green-800">− Abonos a Xiaomi</span>
+                <span></span>
+                <span></span>
+                <span className="text-right text-green-700">−{formatCurrency(kpis.totalPagadoXiaomi)}</span>
+              </div>
+            )}
+            <div className="grid grid-cols-[1fr_100px_100px_100px] gap-1 px-4 py-3 bg-red-50 font-black text-base border-t-2 border-red-300">
+              <span className="text-red-800">DEUDA TOTAL</span>
               <span></span>
+              <span></span>
+              <span className="text-right text-red-700">{formatCurrency(kpis.deudaXiaomi)}</span>
             </div>
           </div>
         </div>
