@@ -66,6 +66,7 @@ export function FinancingManager() {
   const [payXiaomiAmount, setPayXiaomiAmount] = useState('');
   const [payXiaomiNote, setPayXiaomiNote] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
+  const [showDeudaDesglose, setShowDeudaDesglose] = useState(false);
 
   const [form, setForm] = useState({
     nombre: '',
@@ -419,15 +420,15 @@ export function FinancingManager() {
     // aún no se ha cubierto con los pagos recibidos del cliente
     const costoTotalEquipos = records.reduce((sum, r) => sum + (r.costoEquipo || 0), 0);
     const totalPagadoXiaomi = xiaomiPayments.reduce((sum, p) => sum + p.amount, 0);
-    const deudaXiaomi = records.reduce((sum, r) => {
+    const desgloseDeuda = records.map(r => {
       const costoEquipo = r.costoEquipo || 0;
-      if (costoEquipo === 0) return sum;
       const previas = r.cuotasPrevias || 0;
       const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
-      const recaudadoCliente = r.cuotaInicial + ((previas + cuotasPagadas) * r.valorCuota);
-      // Solo contar lo que aún no se cubre del costo del equipo
-      return sum + Math.max(0, costoEquipo - recaudadoCliente);
-    }, 0);
+      const recaudado = r.cuotaInicial + ((previas + cuotasPagadas) * r.valorCuota);
+      const deudaCliente = Math.max(0, costoEquipo - recaudado);
+      return { nombre: r.nombre, costoEquipo, recaudado, deudaCliente, cuotaInicial: r.cuotaInicial, cuotasPagadas: previas + cuotasPagadas, totalCuotas: r.numeroCuotas };
+    }).filter(d => d.costoEquipo > 0).sort((a, b) => b.deudaCliente - a.deudaCliente);
+    const deudaXiaomi = desgloseDeuda.reduce((sum, d) => sum + d.deudaCliente, 0);
 
     // 💚 GANANCIA — lo recaudado que ya NO le pertenece a Xiaomi (es ganancia pura)
     const ganancia = records.reduce((sum, r) => {
@@ -450,6 +451,7 @@ export function FinancingManager() {
       totalVencido,
       deudaXiaomi,
       totalPagadoXiaomi,
+      desgloseDeuda,
       ganancia,
     };
   }, [records, xiaomiPayments]);
@@ -523,7 +525,12 @@ export function FinancingManager() {
             </button>
           </div>
           <p className="text-2xl font-black">{formatCurrency(kpis.deudaXiaomi)}</p>
-          <p className="text-xs opacity-70 mt-0.5">Se actualiza automáticamente con cada pago de los clientes</p>
+          <button
+            onClick={() => setShowDeudaDesglose(!showDeudaDesglose)}
+            className="text-xs opacity-70 mt-0.5 underline hover:opacity-100 transition-opacity"
+          >
+            {showDeudaDesglose ? '▲ Ocultar desglose' : '▼ Ver desglose por cliente'}
+          </button>
         </div>
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
           <div className="flex items-center gap-2 mb-1">
@@ -534,6 +541,43 @@ export function FinancingManager() {
           <p className="text-xs opacity-70 mt-1">Dinero recaudado que ya es ganancia tuya</p>
         </div>
       </div>
+
+      {/* ── Desglose deuda Xiaomi ─────────────────────────────────────────── */}
+      {showDeudaDesglose && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden mb-4">
+          <div className="bg-amber-50 px-4 py-2 border-b">
+            <p className="text-sm font-bold text-amber-800">Desglose: Deuda por cliente</p>
+            <p className="text-[10px] text-amber-600">Costo equipo − Dinero recaudado del cliente = Lo que falta por cubrir</p>
+          </div>
+          <div className="divide-y max-h-80 overflow-y-auto">
+            <div className="grid grid-cols-[1fr_90px_90px_90px_60px] gap-1 px-4 py-2 bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+              <span>Cliente</span>
+              <span className="text-right">Costo Equipo</span>
+              <span className="text-right">Recaudado</span>
+              <span className="text-right">Deuda</span>
+              <span className="text-center">Cuotas</span>
+            </div>
+            {kpis.desgloseDeuda.map((d, i) => (
+              <div key={i} className={`grid grid-cols-[1fr_90px_90px_90px_60px] gap-1 px-4 py-2 text-sm ${d.deudaCliente === 0 ? 'bg-green-50/50' : ''}`}>
+                <span className="font-medium text-gray-900 truncate capitalize">{d.nombre.toLowerCase()}</span>
+                <span className="text-right text-gray-600">{formatCurrency(d.costoEquipo)}</span>
+                <span className="text-right text-green-600 font-medium">{formatCurrency(d.recaudado)}</span>
+                <span className={`text-right font-bold ${d.deudaCliente > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {d.deudaCliente > 0 ? formatCurrency(d.deudaCliente) : '✅ $0'}
+                </span>
+                <span className="text-center text-gray-500 text-xs">{d.cuotasPagadas}/{d.totalCuotas}</span>
+              </div>
+            ))}
+            <div className="grid grid-cols-[1fr_90px_90px_90px_60px] gap-1 px-4 py-2 bg-amber-50 font-bold text-sm border-t-2 border-amber-200">
+              <span className="text-amber-800">TOTAL</span>
+              <span className="text-right text-gray-700">{formatCurrency(kpis.desgloseDeuda.reduce((s, d) => s + d.costoEquipo, 0))}</span>
+              <span className="text-right text-green-700">{formatCurrency(kpis.desgloseDeuda.reduce((s, d) => s + d.recaudado, 0))}</span>
+              <span className="text-right text-red-700">{formatCurrency(kpis.deudaXiaomi)}</span>
+              <span></span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── KPI Cards secundarios ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
