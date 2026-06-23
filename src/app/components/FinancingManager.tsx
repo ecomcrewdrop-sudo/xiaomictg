@@ -418,8 +418,8 @@ export function FinancingManager() {
 
     // 🏪 DEUDA CON XIAOMI
     // Fórmula: sum(costoEquipo) - sum(cuotaInicial) - sum(abonos a Xiaomi)
-    // La cuota inicial la agarra Xiaomi de una vez.
-    // Las cuotas de clientes NO bajan la deuda — el dueño abona cuando quiere.
+    // La cuota inicial la agarra Xiaomi de una vez (auto-restada).
+    // Abonos = pagos ADICIONALES hechos a Xiaomi (NO incluir cuotas iniciales).
     const costoTotalEquipos = records.reduce((sum, r) => sum + (r.costoEquipo || 0), 0);
     const totalCuotasIniciales = records.reduce((sum, r) => sum + (r.cuotaInicial || 0), 0);
     const totalPagadoXiaomi = xiaomiPayments.reduce((sum, p) => sum + p.amount, 0);
