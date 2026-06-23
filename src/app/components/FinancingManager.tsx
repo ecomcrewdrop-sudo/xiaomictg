@@ -66,7 +66,6 @@ export function FinancingManager() {
   const [payXiaomiAmount, setPayXiaomiAmount] = useState('');
   const [payXiaomiNote, setPayXiaomiNote] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
-  const [deudaManual, setDeudaManual] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     nombre: '',
@@ -108,19 +107,7 @@ export function FinancingManager() {
     }
   }, []);
 
-  const loadDeudaManual = useCallback(async () => {
-    try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/xiaomi-debt`);
-      if (res.ok) {
-        const data = await res.json();
-        setDeudaManual(data.deudaReal);
-      }
-    } catch (err) {
-      console.error('[xiaomi-debt] Error loading:', err);
-    }
-  }, []);
-
-  useEffect(() => { loadRecords(); loadXiaomiPayments(); loadDeudaManual(); }, [loadRecords, loadXiaomiPayments, loadDeudaManual]);
+  useEffect(() => { loadRecords(); loadXiaomiPayments(); }, [loadRecords, loadXiaomiPayments]);
 
   const handleSave = async () => {
     if (!form.nombre || !form.cedula || !form.telefono || !form.imei || !form.valorCuota || !form.numeroCuotas || !form.fechaInicio) {
@@ -283,7 +270,6 @@ export function FinancingManager() {
         setPayXiaomiAmount('');
         setPayXiaomiNote('');
         await loadXiaomiPayments();
-        await loadDeudaManual();
       }
     } catch { toast.error('Error de conexión'); }
     setSavingPayment(false);
@@ -295,28 +281,10 @@ export function FinancingManager() {
       if (res.ok) {
         toast.success('Pago eliminado');
         await loadXiaomiPayments();
-        await loadDeudaManual();
       }
     } catch { toast.error('Error de conexión'); }
   };
 
-  const handleAjustarDeuda = async () => {
-    const input = prompt('¿Cuánto le debes realmente a Xiaomi?\n\nEscribe el monto actual de la deuda (ej: 500000).\nEsto corrige el saldo para que coincida con la realidad.');
-    if (input === null) return;
-    const monto = Number(input.replace(/[^0-9]/g, ''));
-    if (isNaN(monto) || monto < 0) { toast.error('Monto inválido'); return; }
-    try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/xiaomi-debt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deudaReal: monto }),
-      });
-      if (res.ok) {
-        toast.success(`Deuda ajustada a $${monto.toLocaleString('es-CO')}`);
-        setDeudaManual(monto);
-      }
-    } catch { toast.error('Error de conexión'); }
-  };
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -447,11 +415,19 @@ export function FinancingManager() {
       return sum + cuotasVencidas * r.valorCuota;
     }, 0);
 
-    // 🏪 DEUDA CON XIAOMI — usa deuda manual si existe, sino calcula
+    // 🏪 DEUDA CON XIAOMI — automático: para cada cliente, cuánto del costo del equipo
+    // aún no se ha cubierto con los pagos recibidos del cliente
     const costoTotalEquipos = records.reduce((sum, r) => sum + (r.costoEquipo || 0), 0);
     const totalPagadoXiaomi = xiaomiPayments.reduce((sum, p) => sum + p.amount, 0);
-    const deudaXiaomiCalculada = Math.max(0, costoTotalEquipos - totalPagadoXiaomi);
-    const deudaXiaomi = deudaManual !== null ? Math.max(0, deudaManual) : deudaXiaomiCalculada;
+    const deudaXiaomi = records.reduce((sum, r) => {
+      const costoEquipo = r.costoEquipo || 0;
+      if (costoEquipo === 0) return sum;
+      const previas = r.cuotasPrevias || 0;
+      const cuotasPagadas = r.cuotas.filter(c => c.status === 'paid').length;
+      const recaudadoCliente = r.cuotaInicial + ((previas + cuotasPagadas) * r.valorCuota);
+      // Solo contar lo que aún no se cubre del costo del equipo
+      return sum + Math.max(0, costoEquipo - recaudadoCliente);
+    }, 0);
 
     // 💚 GANANCIA — lo recaudado que ya NO le pertenece a Xiaomi (es ganancia pura)
     const ganancia = records.reduce((sum, r) => {
@@ -476,7 +452,7 @@ export function FinancingManager() {
       totalPagadoXiaomi,
       ganancia,
     };
-  }, [records, xiaomiPayments, deudaManual]);
+  }, [records, xiaomiPayments]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -539,26 +515,15 @@ export function FinancingManager() {
               <Smartphone className="w-5 h-5 opacity-80" />
               <span className="text-sm font-bold uppercase tracking-wider opacity-80">Por pagar a Xiaomi</span>
             </div>
-            <div className="flex gap-1">
-              <button
-                onClick={handleAjustarDeuda}
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full transition-colors flex items-center gap-1"
-              >
-                <Pencil className="w-3 h-3" /> Ajustar
-              </button>
-              <button
-                onClick={() => setShowPayXiaomiDialog(true)}
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full transition-colors flex items-center gap-1"
-              >
-                <Minus className="w-3 h-3" /> Abonar
-              </button>
-            </div>
+            <button
+              onClick={() => setShowPayXiaomiDialog(true)}
+              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+            >
+              <Minus className="w-3 h-3" /> Pagos
+            </button>
           </div>
           <p className="text-2xl font-black">{formatCurrency(kpis.deudaXiaomi)}</p>
-          {kpis.totalPagadoXiaomi > 0 && (
-            <p className="text-xs opacity-70 mt-1">Ya pagado: {formatCurrency(kpis.totalPagadoXiaomi)}</p>
-          )}
-          <p className="text-xs opacity-70 mt-0.5">Costo de equipos aún sin cubrir</p>
+          <p className="text-xs opacity-70 mt-0.5">Se actualiza automáticamente con cada pago de los clientes</p>
         </div>
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
           <div className="flex items-center gap-2 mb-1">
