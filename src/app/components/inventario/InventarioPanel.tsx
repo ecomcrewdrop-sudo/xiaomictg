@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { StockManager } from './StockManager';
 import { DailySales } from './DailySales';
+import { CashRegister } from './CashRegister';
 import { PettyCash } from './PettyCash';
 import { SupplierDebts } from './SupplierDebts';
-import { Package, CreditCard, Wallet, TrendingUp } from 'lucide-react';
+import { Package, CreditCard, Wallet, Landmark, TrendingUp, Receipt } from 'lucide-react';
 
 const TABS = [
-  { key: 'ventas', label: 'Ventas del Dia', icon: CreditCard },
+  { key: 'ventas', label: 'Ventas', icon: CreditCard },
   { key: 'inventario', label: 'Inventario', icon: Package },
-  { key: 'caja', label: 'Caja Menor', icon: Wallet },
+  { key: 'caja', label: 'Caja', icon: Landmark },
+  { key: 'gastos', label: 'Gastos', icon: Receipt },
   { key: 'proveedores', label: 'Proveedores', icon: TrendingUp },
 ] as const;
 
@@ -50,7 +52,8 @@ export function InventarioPanel() {
       {/* Content */}
       {activeTab === 'ventas' && <DailySales />}
       {activeTab === 'inventario' && <StockManager />}
-      {activeTab === 'caja' && <PettyCash />}
+      {activeTab === 'caja' && <CashRegister />}
+      {activeTab === 'gastos' && <PettyCash />}
       {activeTab === 'proveedores' && <SupplierDebts />}
     </div>
   );

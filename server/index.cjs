@@ -301691,6 +301691,94 @@ app.delete("/api/inventario/caja-menor/:id", async (req, res) => {
     res.status(500).json({ error: "Error al eliminar gasto" });
   }
 });
+app.get("/api/caja/saldos", async (_req, res) => {
+  try {
+    const movs = await db.collection("caja_movimientos").find({}).toArray();
+    let efectivo = 0;
+    let banco = 0;
+    for (const m of movs) {
+      const amount = m.tipo === "egreso" ? -m.monto : m.monto;
+      if (m.cuenta === "efectivo") efectivo += amount;
+      else if (m.cuenta === "banco") banco += amount;
+    }
+    res.json({ efectivo, banco });
+  } catch (error) {
+    console.error("[caja] Error saldos:", error);
+    res.status(500).json({ error: "Error al obtener saldos" });
+  }
+});
+app.get("/api/caja/movimientos", async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.cuenta) filter.cuenta = req.query.cuenta;
+    const limit = parseInt(req.query.limit) || 50;
+    const movs = await db.collection("caja_movimientos").find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
+    res.json(movs);
+  } catch (error) {
+    console.error("[caja] Error movimientos:", error);
+    res.status(500).json({ error: "Error al obtener movimientos" });
+  }
+});
+app.post("/api/caja/movimiento", async (req, res) => {
+  try {
+    const { tipo, cuenta, monto, concepto } = req.body;
+    if (!tipo || !cuenta || !monto) {
+      return res.status(400).json({ error: "tipo, cuenta y monto requeridos" });
+    }
+    const doc = {
+      id: crypto.randomUUID(),
+      tipo,
+      // 'ingreso' | 'egreso' | 'ajuste'
+      cuenta,
+      // 'efectivo' | 'banco'
+      monto: Number(monto),
+      concepto: concepto || "",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.collection("caja_movimientos").insertOne(doc);
+    res.status(201).json(doc);
+  } catch (error) {
+    console.error("[caja] Error crear movimiento:", error);
+    res.status(500).json({ error: "Error al crear movimiento" });
+  }
+});
+app.post("/api/caja/ajuste", async (req, res) => {
+  try {
+    const { cuenta, nuevoSaldo } = req.body;
+    if (!cuenta || nuevoSaldo == null) {
+      return res.status(400).json({ error: "cuenta y nuevoSaldo requeridos" });
+    }
+    const movs = await db.collection("caja_movimientos").find({ cuenta }).toArray();
+    let current = 0;
+    for (const m of movs) {
+      current += m.tipo === "egreso" ? -m.monto : m.monto;
+    }
+    const diff = Number(nuevoSaldo) - current;
+    if (diff === 0) return res.json({ message: "Saldo ya es correcto", saldo: current });
+    const doc = {
+      id: crypto.randomUUID(),
+      tipo: "ajuste",
+      cuenta,
+      monto: Math.abs(diff),
+      concepto: diff > 0 ? `Ajuste: se agregaron $${Math.abs(diff).toLocaleString("es-CO")}` : `Ajuste: se restaron $${Math.abs(diff).toLocaleString("es-CO")}`,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    if (diff < 0) doc.tipo = "egreso";
+    await db.collection("caja_movimientos").insertOne(doc);
+    res.status(201).json({ ...doc, nuevoSaldo: Number(nuevoSaldo) });
+  } catch (error) {
+    console.error("[caja] Error ajuste:", error);
+    res.status(500).json({ error: "Error al ajustar saldo" });
+  }
+});
+app.delete("/api/caja/movimiento/:id", async (req, res) => {
+  try {
+    await db.collection("caja_movimientos").deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar movimiento" });
+  }
+});
 io2.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
   socket.on("disconnect", () => {
