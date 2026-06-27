@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(powershell -Command \"if \\(Test-Path cpanel_dist.zip\\) { Remove-Item cpanel_dist.zip }; Compress-Archive -Path dist\\\\* -DestinationPath cpanel_dist.zip -Force\")",
+      "Bash(exist cpanel_dist.zip del cpanel_dist.zip)",
+      "Bash(powershell Compress-Archive -Path dist\\\\* -DestinationPath cpanel_dist.zip -Force)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://xiaomictg-production.up.railway.app/api/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://xiaomictg-production.up.railway.app/api/products)",
+      "Bash(curl -s \"https://xiaomictg-production.up.railway.app/api/financing\")",
+      "Bash(python -c ' *)",
+      "PowerShell($response = Invoke-RestMethod -Uri \"https://xiaomictg-production.up.railway.app/api/financing\" -Method Get; foreach \\($r in $response\\) { if \\($r.nombre -match 'edna'\\) { Write-Output \"Nombre: $\\($r.nombre\\)\"; Write-Output \"numeroCuotas: $\\($r.numeroCuotas\\)\"; Write-Output \"cuotasPrevias: $\\($r.cuotasPrevias\\)\"; Write-Output \"Total cuotas en array: $\\($r.cuotas.Count\\)\"; $paid = \\($r.cuotas | Where-Object { $_.status -eq 'paid' }\\).Count; $pending = \\($r.cuotas | Where-Object { $_.status -eq 'pending' -or $_.status -eq 'overdue' }\\).Count; Write-Output \"Pagadas en sistema: $paid\"; Write-Output \"Pendientes/vencidas: $pending\"; if \\($r.cuotas.Count -gt 0\\) { Write-Output \"Primera cuota #: $\\($r.cuotas[0].number\\)\"; Write-Output \"Ultima cuota #: $\\($r.cuotas[-1].number\\)\" }; break } })",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -X POST \"https://xiaomictg-production.up.railway.app/api/financing/fix-cuotas\" -H \"Content-Type: application/json\" -w \"\\\\nHTTP: %{http_code}\")"
+    ]
+  }
+}

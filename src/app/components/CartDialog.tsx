@@ -7,7 +7,7 @@ import { ThermalTicket } from './ThermalTicket';
 import { toast } from 'sonner';
 import { API_ORIGIN } from '../lib/api-base';
 
-const DELIVERY_FEE = 10000; // $10.000 COP domicilio
+const DELIVERY_FEE = 0; // Domicilio GRATIS en Cartagena
 
 type DeliveryMethod = 'delivery' | 'pickup';
 type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi';
@@ -468,7 +468,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                 >
                   <Truck className={`w-7 h-7 mb-2 ${deliveryMethod === 'delivery' ? 'text-orange-500' : 'text-gray-400'}`} />
                   <div className={`text-sm font-bold ${deliveryMethod === 'delivery' ? 'text-orange-900' : 'text-gray-700'}`}>Domicilio</div>
-                  <div className="text-xs text-orange-600 font-semibold mt-0.5">+$10.000 COP</div>
+                  <div className="text-xs text-green-600 font-semibold mt-0.5">GRATIS</div>
                 </button>
                 <button
                   type="button"

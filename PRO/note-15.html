@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redmi Note 15 | Xiaomi Cartagena — Desde $730.000</title>
+  <meta name="description" content="Redmi Note 15: Cámara 108MP, pantalla AMOLED 120Hz, MediaTek Helio G100 Ultra, batería 6000mAh. Cartagena desde $730.000 COP. Incluye audífonos de obsequio.">
+  <meta property="og:title" content="Redmi Note 15 — 108MP + AMOLED | Xiaomi Cartagena">
+  <meta property="og:description" content="108MP · AMOLED 120Hz · Helio G100 Ultra · Desde $730.000 COP · Audífonos gratis">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html{scroll-behavior:smooth;overflow-x:hidden}
+    body{font-family:'Plus Jakarta Sans',sans-serif;color:#1a1a1a;background:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    img{max-width:100%;display:block}
+    a{text-decoration:none;color:inherit}
+
+    .top-bar{background:#111;color:#fff;text-align:center;padding:10px 16px;font-size:12px;font-weight:600;letter-spacing:.3px;position:sticky;top:0;z-index:100}
+    .top-bar span{color:#818CF8}
+    .nav{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border-bottom:1px solid #f0f0f0;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:36px;z-index:99}
+    .nav-brand{display:flex;align-items:center;gap:8px}
+    .nav-brand img{height:32px;width:auto}
+    .nav-brand-text{display:flex;flex-direction:column;line-height:1.1}
+    .nav-brand-text span{font-size:10px;color:#999;font-weight:600;letter-spacing:.3px}
+    .nav-cta{background:#6366F1;color:#fff;font-size:12px;font-weight:700;padding:8px 20px;border-radius:50px;transition:all .2s;white-space:nowrap}
+    .nav-cta:hover{background:#4F46E5;transform:scale(1.03)}
+
+    /* HERO */
+    .hero{background:linear-gradient(180deg,#f8f7ff 0%,#eeecfa 50%,#e8e5f5 100%);padding:40px 20px 0;text-align:center;overflow:hidden}
+    .hero-tag{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e0e0e0;font-size:11px;font-weight:700;color:#6366F1;padding:6px 14px;border-radius:50px;margin-bottom:20px}
+    .hero-tag::before{content:'';width:6px;height:6px;background:#6366F1;border-radius:50%;animation:blink 1.5s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .hero h1{font-size:clamp(36px,9vw,58px);font-weight:800;line-height:.95;letter-spacing:-2px;margin-bottom:12px;color:#1a1a1a}
+    .hero h1 em{font-style:normal;color:#6366F1}
+    .hero-desc{font-size:16px;color:#666;margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.5;display:none}
+    .hero-specs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;max-width:340px;margin-left:auto;margin-right:auto;opacity:0;transform:translateY(30px);animation:heroReveal .8s cubic-bezier(.16,1,.3,1) forwards;animation-delay:.4s}
+    .spec-pill{display:flex;flex-direction:column;align-items:center;padding:14px 10px;border-radius:16px;background:rgba(255,255,255,.7);border:1.5px solid #e8e5f5;backdrop-filter:blur(8px);text-align:center;transition:border-color .3s;box-shadow:0 2px 12px rgba(99,102,241,.06)}
+    .spec-pill:hover{border-color:#818CF8}
+    .spec-pill .pill-val{font-size:22px;font-weight:800;color:#6366F1;line-height:1.1}
+    .spec-pill .pill-lbl{font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+    .hero-price{margin-bottom:24px}
+    .hero-price .from{font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+    .hero-price .amount{font-size:48px;font-weight:800;color:#1a1a1a;letter-spacing:-2px;line-height:1}
+    .hero-price .currency{font-size:13px;color:#666;font-weight:500}
+    .hero-ctas{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:32px}
+    .btn-wa{display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#fff;font-size:16px;font-weight:700;padding:16px 36px;border-radius:56px;box-shadow:0 4px 24px rgba(37,211,102,.3);transition:all .25s;width:100%;max-width:340px;justify-content:center}
+    .hero-gift-line{display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#6366F1;animation:giftBounce 2s ease-in-out infinite}
+    .hero-gift-line svg{width:16px;height:16px}
+    @keyframes giftBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    .btn-wa:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(37,211,102,.4)}
+    .btn-wa svg{width:20px;height:20px;flex-shrink:0}
+    .btn-ghost{font-size:13px;font-weight:600;color:#666;padding:10px 24px;border:1.5px solid #ddd;border-radius:50px;transition:all .2s}
+    .btn-ghost:hover{border-color:#6366F1;color:#6366F1}
+    .hero-image{max-width:300px;margin:0 auto;position:relative}
+    .hero-image img{width:100%;filter:drop-shadow(0 20px 40px rgba(99,102,241,.15));mix-blend-mode:multiply}
+
+    /* METRICS */
+    .metrics{background:#18163a;padding:28px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+    .metric{text-align:center;position:relative}
+    .metric:not(:last-child)::after{content:'';position:absolute;right:0;top:20%;height:60%;width:1px;background:rgba(255,255,255,.08)}
+    .metric-val{font-size:20px;font-weight:800;color:#fff;line-height:1}
+    .metric-val span{color:#818CF8}
+    .metric-lbl{font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.8px;margin-top:4px;font-weight:600}
+
+    /* SECTIONS */
+    .section{padding:56px 20px}
+    .container{max-width:560px;margin:0 auto}
+    .stag{font-size:11px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+    .sh{font-size:clamp(28px,6vw,38px);font-weight:800;line-height:1.1;letter-spacing:-.5px;margin-bottom:16px}
+    .sp{font-size:15px;color:#666;line-height:1.65;margin-bottom:28px}
+    .bg-light{background:#fafafa}
+    .bg-dark{background:#111;color:#fff}
+    .bg-dark .sp{color:rgba(255,255,255,.45)}
+    .bg-dark .stag{color:#818CF8}
+
+    /* FEATURE */
+    .feat{padding:48px 20px}
+    .feat-inner{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:24px}
+    .feat-img{border-radius:20px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+    .feat-img.dark{background:transparent}
+    .feat-img.light{background:transparent}
+    .feat-img img{width:80%;object-fit:contain;mix-blend-mode:multiply}
+    .feat-content{display:flex;flex-direction:column;justify-content:center}
+    .feat-content h3{font-size:24px;font-weight:800;margin-bottom:8px;letter-spacing:-.3px}
+    .feat-content p{font-size:14px;color:#666;line-height:1.65}
+    .feat-accent{color:#6366F1;font-weight:700}
+    .feat-stat{display:inline-flex;align-items:baseline;gap:4px;margin-bottom:12px}
+    .feat-stat-num{font-size:52px;font-weight:800;color:#6366F1;line-height:1;letter-spacing:-2px}
+    .feat-stat-unit{font-size:16px;font-weight:700;color:#6366F1}
+
+    /* AMOLED HIGHLIGHT */
+    .amoled-card{max-width:560px;margin:0 auto;background:#0a0a1a;border-radius:24px;padding:36px 24px;text-align:center;position:relative;overflow:hidden}
+    .amoled-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(99,102,241,.1) 0%,transparent 60%);pointer-events:none}
+    .amoled-card h3{font-size:28px;font-weight:800;color:#fff;margin-bottom:6px}
+    .amoled-card .sub{font-size:13px;color:rgba(255,255,255,.35);margin-bottom:24px}
+    .amoled-stats{display:flex;justify-content:center;gap:28px}
+    .amoled-stat .num{font-size:24px;font-weight:800;color:#A5B4FC}
+    .amoled-stat .lbl{font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.5px}
+
+    /* SPECS TABLE */
+    .specs-table{max-width:560px;margin:0 auto;border-radius:16px;overflow:hidden;border:1px solid #e8e8e8}
+    .specs-table-row{display:flex;justify-content:space-between;padding:14px 20px;font-size:14px;border-bottom:1px solid #f0f0f0}
+    .specs-table-row:last-child{border-bottom:none}
+    .specs-table-row:nth-child(even){background:#fafafa}
+    .specs-table-row .label{color:#666;font-weight:500}
+    .specs-table-row .value{font-weight:700;color:#1a1a1a;text-align:right}
+
+    /* VARIANTS */
+    .variant-list{max-width:560px;margin:0 auto;display:grid;gap:14px}
+    .variant{background:#fff;border:2px solid #e8e8e8;border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;transition:all .25s;cursor:pointer}
+    .variant:hover{border-color:#6366F1;box-shadow:0 4px 20px rgba(99,102,241,.1)}
+    .variant-pop{border-color:#6366F1;position:relative;background:linear-gradient(135deg,#f8f7ff,#fff)}
+    .variant-pop-tag{position:absolute;top:-10px;right:16px;background:#6366F1;color:#fff;font-size:10px;font-weight:800;padding:3px 12px;border-radius:50px;letter-spacing:.5px}
+    .variant h4{font-size:18px;font-weight:800;margin-bottom:2px}
+    .variant .v-sub{font-size:12px;color:#999}
+    .variant .v-price{font-size:26px;font-weight:800;color:#1a1a1a;letter-spacing:-1px}
+    .variant .v-cur{font-size:11px;color:#999;font-weight:500}
+
+    /* TRUST */
+    .trust-grid{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .trust-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;text-align:center}
+    .tc-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:rgba(255,255,255,.06);color:#A5B4FC}
+    .trust-card h4{font-size:14px;font-weight:700;margin-bottom:4px}
+    .trust-card p{font-size:11px;color:rgba(255,255,255,.35);line-height:1.4}
+
+    /* REVIEWS CAROUSEL */
+    .carousel-wrap{overflow:hidden;position:relative;width:100%;margin:0;padding:0 0 20px;cursor:grab}
+    .carousel-wrap:active{cursor:grabbing}
+    .carousel-track{display:flex;gap:14px;animation:scroll-reviews 30s linear infinite;width:max-content;padding:0 20px}
+    .carousel-wrap:hover .carousel-track,.carousel-wrap.dragging .carousel-track{animation-play-state:paused}
+    @keyframes scroll-reviews{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .review{min-width:300px;max-width:300px;background:#fff;border:1px solid #e8e8e8;border-radius:14px;padding:20px;position:relative;flex-shrink:0;user-select:none}
+    .review::before{content:'"';position:absolute;top:10px;right:16px;font-size:44px;color:#f0f0f0;font-family:Georgia,serif;line-height:1}
+    .review-stars{color:#F59E0B;font-size:13px;margin-bottom:8px;letter-spacing:2px}
+    .review-text{font-size:13px;color:#555;line-height:1.6;margin-bottom:12px}
+    .review-author{font-size:13px;font-weight:700;color:#1a1a1a}
+    .review-loc{font-size:11px;color:#999}
+    .carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:16px}
+    .carousel-dot{width:6px;height:6px;border-radius:50%;background:#ddd;transition:all .3s}
+    .carousel-dot.active{background:#6366F1;width:18px;border-radius:3px}
+
+    /* FAQ */
+    .faq{max-width:560px;margin:0 auto}
+    .faq-item{border-bottom:1px solid #eee}
+    .faq-q{width:100%;background:none;border:none;padding:18px 0;font-size:15px;font-weight:700;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:#1a1a1a;font-family:inherit;gap:12px}
+    .faq-q .arrow{width:20px;height:20px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:14px;color:#999;transition:all .3s;flex-shrink:0}
+    .faq-item.open .faq-q .arrow{background:#6366F1;color:#fff;transform:rotate(45deg)}
+    .faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease}
+    .faq-a-inner{padding:0 0 18px;font-size:14px;color:#666;line-height:1.65}
+    .faq-item.open .faq-a{max-height:300px}
+
+    /* GIFT EARBUDS */
+    .gift-section{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:56px 20px;text-align:center;position:relative;overflow:hidden}
+    .gift-section::before{content:'';position:absolute;top:-60px;right:-60px;width:300px;height:300px;background:radial-gradient(circle,rgba(99,102,241,.15) 0%,transparent 70%);pointer-events:none}
+    .gift-badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;font-size:12px;font-weight:800;padding:8px 20px;border-radius:50px;margin-bottom:20px;text-transform:uppercase;letter-spacing:1px;animation:giftPulse 2s ease-in-out infinite}
+    @keyframes giftPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    .gift-section h2{font-size:clamp(26px,6vw,38px);font-weight:800;color:#fff;letter-spacing:-1px;margin-bottom:8px;line-height:1.1}
+    .gift-section h2 em{font-style:normal;color:#818CF8}
+    .gift-section .gift-sub{font-size:15px;color:rgba(255,255,255,.6);margin-bottom:28px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.5}
+    .gift-card{background:rgba(255,255,255,.06);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:32px 24px;max-width:420px;margin:0 auto}
+    .gift-img{max-width:220px;margin:0 auto 20px}
+    .gift-img img{width:100%;filter:drop-shadow(0 10px 30px rgba(99,102,241,.3))}
+    .gift-name{font-size:18px;font-weight:800;color:#fff;margin-bottom:4px}
+    .gift-specs{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6}
+    .gift-features{display:flex;justify-content:center;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+    .gift-feat{text-align:center}
+    .gift-feat .gf-val{font-size:20px;font-weight:800;color:#818CF8}
+    .gift-feat .gf-lbl{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+    .gift-value{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px}
+    .gift-value .gv-old{font-size:14px;color:rgba(255,255,255,.3);text-decoration:line-through}
+    .gift-value .gv-free{font-size:16px;font-weight:800;color:#25D366;text-transform:uppercase}
+
+    /* FINAL CTA */
+    .final-cta{background:#111;padding:56px 20px;text-align:center;position:relative;overflow:hidden}
+    .final-cta::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,.08) 0%,transparent 70%);pointer-events:none}
+    .final-cta h2{font-size:clamp(30px,7vw,44px);font-weight:800;color:#fff;letter-spacing:-1px;margin-bottom:6px;line-height:1.05}
+    .final-cta h2 em{font-style:normal;color:#818CF8}
+    .final-cta .fp{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:24px}
+    .final-cta .btn-wa{max-width:360px}
+    .final-cta .store-info{margin-top:20px;font-size:12px;color:rgba(255,255,255,.25);line-height:1.6}
+
+    /* FLOAT */
+    .float-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-top:1px solid #eee;padding:10px 16px;z-index:99;display:flex;align-items:center;justify-content:center;gap:14px;transform:translateY(100%);transition:transform .4s ease}
+    .float-bar.show{transform:translateY(0)}
+    .float-bar .fb-info{text-align:left;line-height:1.2}
+    .float-bar .fb-name{font-size:12px;font-weight:700;color:#1a1a1a}
+    .float-bar .fb-price{font-size:11px;color:#999}
+    .float-bar .btn-wa{font-size:13px;padding:12px 24px;width:auto;max-width:none}
+
+    footer{background:#0a0a0a;padding:24px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,.2)}
+    footer a{color:rgba(255,255,255,.35)}
+
+    @media(min-width:640px){
+      .feat-inner{grid-template-columns:1fr 1fr}
+      .feat-reverse .feat-img{order:2}
+      .feat-reverse .feat-content{order:1}
+    }
+
+    /* === MOBILE OPTIMIZATIONS === */
+    @media(max-width:480px){
+      /* Top bar + Nav */
+      .top-bar{font-size:11px;padding:8px 12px}
+      .nav{padding:6px 12px;top:32px}
+      .nav-brand img{height:28px}
+      .nav-cta{font-size:11px;padding:7px 16px}
+
+      /* Hero */
+      .hero{padding:32px 16px 0}
+      .hero-specs{gap:8px;max-width:310px;margin-bottom:22px}
+      .spec-pill{padding:12px 8px;border-radius:14px}
+      .spec-pill .pill-val{font-size:20px}
+      .spec-pill .pill-lbl{font-size:9px;letter-spacing:.6px}
+      .hero-price .amount{font-size:42px}
+      .hero-price .currency{font-size:12px}
+      .hero-ctas{gap:8px;margin-bottom:24px}
+      .btn-wa{font-size:15px;padding:14px 28px}
+      .hero-gift-line{font-size:12px}
+      .hero-image{max-width:260px}
+
+      /* Metrics — 4 columns needs tighter sizing */
+      .metrics{padding:20px 10px}
+      .metric-val{font-size:16px}
+      .metric-lbl{font-size:8px;letter-spacing:.5px}
+
+      /* Sections */
+      .section{padding:40px 16px}
+      .sh{font-size:clamp(24px,6vw,34px)}
+      .sp{font-size:14px;margin-bottom:20px}
+      .stag{font-size:10px;letter-spacing:1.5px}
+
+      /* AMOLED stats */
+      .amoled-stats{gap:16px}
+      .amoled-stats .as-val{font-size:28px}
+      .amoled-stats .as-lbl{font-size:9px}
+
+      /* Features */
+      .feat{padding:36px 16px}
+      .feat-content h3{font-size:20px}
+      .feat-content p{font-size:13px}
+      .feat-stat-num{font-size:44px}
+      .feat-stat-unit{font-size:14px}
+
+      /* Specs table */
+      .specs-table-row{padding:12px 16px;font-size:13px}
+
+      /* Variants */
+      .variant{padding:16px 18px;border-radius:14px}
+      .variant h4{font-size:16px}
+      .variant .v-price{font-size:22px}
+
+      /* Gift section */
+      .gift-section{padding:40px 16px}
+      .gift-section h2{font-size:clamp(22px,5.5vw,32px)}
+      .gift-card{padding:24px 18px}
+      .gift-img{max-width:180px}
+      .gift-name{font-size:16px}
+      .gift-specs{font-size:12px}
+      .gift-feat .gf-val{font-size:18px}
+
+      /* Trust */
+      .trust-grid{gap:8px}
+      .trust-card{padding:16px 12px;border-radius:12px}
+      .trust-card h4{font-size:13px}
+      .trust-card p{font-size:10px}
+
+      /* Reviews */
+      .carousel-wrap{-webkit-overflow-scrolling:touch}
+      .review{min-width:270px;max-width:270px;padding:16px}
+      .review-text{font-size:12px}
+
+      /* FAQ */
+      .faq-q{font-size:14px;padding:16px 0}
+      .faq-a-inner{font-size:13px}
+
+      /* Final CTA */
+      .final-cta{padding:44px 16px}
+      .final-cta h2{font-size:clamp(26px,7vw,38px)}
+      .final-cta .fp{font-size:13px}
+
+      /* Float bar */
+      .float-bar{padding:8px 12px;gap:10px}
+      .float-bar .fb-name{font-size:11px}
+      .float-bar .fb-price{font-size:10px}
+    }
+
+    /* Very small screens */
+    @media(max-width:360px){
+      .hero h1{font-size:32px}
+      .hero-specs{gap:6px;max-width:280px}
+      .spec-pill .pill-val{font-size:18px}
+      .hero-price .amount{font-size:36px}
+      .metric-val{font-size:14px}
+      .metric-lbl{font-size:7px}
+      .review{min-width:250px;max-width:250px}
+      .variant .v-price{font-size:20px}
+      .gift-section h2{font-size:22px}
+    }
+
+    /* ============ ANIMATIONS ============ */
+
+    /* Hero text reveal */
+    .hero h1,.hero-desc,.hero-price,.hero-ctas,.hero-tag{opacity:0;transform:translateY(30px);animation:heroReveal .8s cubic-bezier(.16,1,.3,1) forwards}
+    .hero-tag{animation-delay:.1s}
+    .hero h1{animation-delay:.2s}
+    .hero-desc{animation-delay:.4s}
+    .hero-price{animation-delay:.55s}
+    .hero-ctas{animation-delay:.7s}
+    @keyframes heroReveal{to{opacity:1;transform:translateY(0)}}
+
+    /* Product image float */
+    .hero-image{opacity:0;transform:translateY(40px) scale(.95);animation:imgReveal .9s cubic-bezier(.16,1,.3,1) .5s forwards}
+    @keyframes imgReveal{to{opacity:1;transform:translateY(0) scale(1)}}
+    .hero-image img{animation:float 4s ease-in-out infinite}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+    /* Glow pulse on WA button */
+    .btn-wa{position:relative;overflow:hidden}
+    .btn-wa::after{content:'';position:absolute;inset:-2px;border-radius:inherit;background:inherit;filter:blur(16px);opacity:0;z-index:-1;animation:glowPulse 2.5s ease-in-out infinite}
+    @keyframes glowPulse{0%,100%{opacity:0;transform:scale(.9)}50%{opacity:.4;transform:scale(1.05)}}
+
+    /* Metrics counter flash */
+    .metric{opacity:0;transform:translateY(20px)}
+    .metric.counted{animation:counterIn .5s cubic-bezier(.16,1,.3,1) forwards}
+    .metric:nth-child(2).counted{animation-delay:.12s}
+    .metric:nth-child(3).counted{animation-delay:.24s}
+    .metric:nth-child(4).counted{animation-delay:.36s}
+    @keyframes counterIn{to{opacity:1;transform:translateY(0)}}
+
+    /* Scroll reveal system */
+    .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+    .reveal.vis{opacity:1;transform:translateY(0)}
+    .reveal-left{opacity:0;transform:translateX(-50px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+    .reveal-left.vis{opacity:1;transform:translateX(0)}
+    .reveal-right{opacity:0;transform:translateX(50px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+    .reveal-right.vis{opacity:1;transform:translateX(0)}
+    .reveal-scale{opacity:0;transform:scale(.85);transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)}
+    .reveal-scale.vis{opacity:1;transform:scale(1)}
+
+    /* Stagger children */
+    .stagger-children>*{opacity:0;transform:translateY(24px);transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1)}
+    .stagger-children.vis>*:nth-child(1){transition-delay:.05s;opacity:1;transform:translateY(0)}
+    .stagger-children.vis>*:nth-child(2){transition-delay:.12s;opacity:1;transform:translateY(0)}
+    .stagger-children.vis>*:nth-child(3){transition-delay:.19s;opacity:1;transform:translateY(0)}
+    .stagger-children.vis>*:nth-child(4){transition-delay:.26s;opacity:1;transform:translateY(0)}
+    .stagger-children.vis>*:nth-child(5){transition-delay:.33s;opacity:1;transform:translateY(0)}
+    .stagger-children.vis>*:nth-child(6){transition-delay:.4s;opacity:1;transform:translateY(0)}
+
+    /* Shimmer on specs table */
+    .specs-table{position:relative;overflow:hidden}
+    .specs-table::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(99,102,241,.04),transparent);animation:shimmerTable 4s ease-in-out infinite}
+    @keyframes shimmerTable{0%{left:-100%}100%{left:200%}}
+
+    /* Variant card hover lift */
+    .variant{transition:all .3s cubic-bezier(.16,1,.3,1)}
+    .variant:hover{transform:translateY(-4px) scale(1.01);box-shadow:0 12px 32px rgba(0,0,0,.08)}
+
+    /* Trust card hover */
+    .trust-card{transition:all .3s cubic-bezier(.16,1,.3,1)}
+    .trust-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(99,102,241,.1)}
+
+    /* AMOLED card glow */
+    .amoled-card{transition:all .4s cubic-bezier(.16,1,.3,1)}
+    .amoled-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(99,102,241,.15)}
+
+    /* Final CTA background pulse */
+    .final-cta::after{content:'';position:absolute;bottom:-50%;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,.06) 0%,transparent 70%);animation:ctaPulse 3s ease-in-out infinite;pointer-events:none}
+    @keyframes ctaPulse{0%,100%{opacity:.5;transform:translateX(-50%) scale(.9)}50%{opacity:1;transform:translateX(-50%) scale(1.1)}}
+
+    /* Smooth image reveal on features */
+    .feat-img{overflow:hidden}
+    .feat-img img{transition:transform .6s cubic-bezier(.16,1,.3,1)}
+    .feat-img:hover img{transform:scale(1.05)}
+  </style>
+</head>
+<body>
+  <div class="top-bar">#1 en ventas en Cartagena · <span>Entrega hoy mismo</span></div>
+
+  <nav class="nav">
+    <div class="nav-brand">
+      <img src="logo.jpeg" alt="Xiaomi Cartagena">
+      <div class="nav-brand-text"><span>Distribuidor autorizado</span></div>
+    </div>
+    <a href="https://wa.me/573022875280?text=Hola%2C%20quiero%20info%20del%20Redmi%20Note%2015" class="nav-cta">Comprar</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-tag">El más vendido</div>
+    <h1>Redmi<br><em>Note 15</em></h1>
+    <p class="hero-desc">Cámara de 108MP, pantalla AMOLED de 120Hz y procesador MediaTek Helio G100 Ultra.</p>
+    <div class="hero-specs">
+      <div class="spec-pill"><div class="pill-val">108MP</div><div class="pill-lbl">Cámara</div></div>
+      <div class="spec-pill"><div class="pill-val">AMOLED</div><div class="pill-lbl">120Hz Pantalla</div></div>
+      <div class="spec-pill"><div class="pill-val">6.000</div><div class="pill-lbl">mAh Batería</div></div>
+      <div class="spec-pill"><div class="pill-val">Helio</div><div class="pill-lbl">G100 Ultra</div></div>
+    </div>
+    <div class="hero-price">
+      <div class="from">Desde</div>
+      <div class="amount">$730.000</div>
+      <div class="currency">COP · 128GB | 256GB · Audífonos de obsequio</div>
+    </div>
+    <div class="hero-ctas">
+      <a href="https://wa.me/573022875280?text=Hola%2C%20quiero%20comprar%20el%20Redmi%20Note%2015" class="btn-wa" id="hero-cta">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.68-1.318A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.24 0-4.308-.724-5.997-1.95l-.418-.31-2.786.784.715-2.612-.342-.544A9.936 9.936 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+        Cómpralo hoy por WhatsApp
+      </a>
+      <div class="hero-gift-line">🎧 + Audífonos Buds 6 Play totalmente gratis</div>
+      <a href="#versiones" class="btn-ghost">Ver versiones y precios</a>
+    </div>
+    <div class="hero-image">
+      <img src="https://compras.tigo.com.co/arquivos/ids/167808-1000-1000/TIGO-1-2000x2000.png?v=639053003461170000" alt="Xiaomi Redmi Note 15 Negro" loading="eager">
+    </div>
+  </section>
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric"><div class="metric-val">108<span>MP</span></div><div class="metric-lbl">Cámara</div></div>
+    <div class="metric"><div class="metric-val"><span>AMOLED</span></div><div class="metric-lbl">Pantalla</div></div>
+    <div class="metric"><div class="metric-val">6.000<span>mAh</span></div><div class="metric-lbl">Batería</div></div>
+    <div class="metric"><div class="metric-val">Helio<span>G100</span></div><div class="metric-lbl">Procesador</div></div>
+  </div>
+
+  <!-- 108MP CAMERA -->
+  <section class="feat bg-light">
+    <div class="feat-inner">
+      <div class="feat-img light reveal-left">
+        <img src="https://xiaomistoreph.com/cdn/shop/files/Redmi-Note-15-WBG_3.png" alt="Redmi Note 15 cámara 108MP" loading="lazy">
+      </div>
+      <div class="feat-content reveal-right">
+        <div class="feat-stat"><div class="feat-stat-num">108</div><div class="feat-stat-unit">MP</div></div>
+        <h3>Fotos de otro nivel</h3>
+        <p>Sensor de 1/1.67" con apertura f/1.7. Captura detalles que otros celulares no pueden. Amplia cualquier foto sin perder calidad. Cámara frontal de <span class="feat-accent">20MP para selfies profesionales</span> y video Full HD a 60fps.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- AMOLED -->
+  <section class="section">
+    <div class="container reveal">
+      <div class="stag">Pantalla</div>
+      <h2 class="sh">AMOLED de 6.77 pulgadas</h2>
+      <p class="sp">Negros infinitos, colores vibrantes y un brillo de 3.200 nits que se ve perfecto bajo el sol de Cartagena.</p>
+      <div class="amoled-card reveal-scale">
+        <h3>Pantalla AMOLED 120Hz</h3>
+        <div class="sub">Contraste 8.000.000:1 · Color de 12 bits · Cristal de alta durabilidad</div>
+        <div class="amoled-stats">
+          <div class="amoled-stat"><div class="num">120Hz</div><div class="lbl">Refresco</div></div>
+          <div class="amoled-stat"><div class="num">240Hz</div><div class="lbl">Táctil</div></div>
+          <div class="amoled-stat"><div class="num">3.200</div><div class="lbl">Nits máx</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PERFORMANCE -->
+  <section class="feat bg-light">
+    <div class="feat-inner feat-reverse">
+      <div class="feat-img dark reveal-right">
+        <img src="https://xiaomistoreph.com/cdn/shop/files/Redmi-Note-15-WBG_1.png" alt="Redmi Note 15 rendimiento" loading="lazy">
+      </div>
+      <div class="feat-content reveal-left">
+        <div class="stag">Rendimiento</div>
+        <h3>MediaTek Helio G100 Ultra</h3>
+        <p>Procesador de 6nm, 8 núcleos a 2.2GHz con GPU Mali-G57. Abre apps al instante, juega sin lag, usa varias apps al mismo tiempo. Con <span class="feat-accent">hasta 8GB de RAM y 256GB de almacenamiento</span> para guardar todo lo que quieras.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BATTERY -->
+  <section class="feat">
+    <div class="feat-inner">
+      <div class="feat-img light reveal-left">
+        <img src="https://xiaomistoreph.com/cdn/shop/files/Redmi-Note-15-WBG_2.png" alt="Redmi Note 15 batería" loading="lazy">
+      </div>
+      <div class="feat-content reveal-right">
+        <div class="feat-stat"><div class="feat-stat-num">6.000</div><div class="feat-stat-unit">mAh</div></div>
+        <h3>Batería para 2 días</h3>
+        <p>Batería masiva de 6.000mAh combinada con la eficiencia de la pantalla AMOLED. Usa tu celular sin preocuparte por el cargador. Y cuando lo necesites, <span class="feat-accent">carga turbo de 33W</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FULL SPECS -->
+  <section class="section bg-light">
+    <div class="container reveal">
+      <div class="stag">Ficha técnica</div>
+      <h2 class="sh">Especificaciones completas</h2>
+      <div class="specs-table reveal-scale">
+        <div class="specs-table-row"><span class="label">Pantalla</span><span class="value">6.77" AMOLED 120Hz</span></div>
+        <div class="specs-table-row"><span class="label">Brillo máximo</span><span class="value">3.200 nits</span></div>
+        <div class="specs-table-row"><span class="label">Procesador</span><span class="value">MediaTek Helio G100 Ultra (6nm)</span></div>
+        <div class="specs-table-row"><span class="label">RAM</span><span class="value">6GB / 8GB</span></div>
+        <div class="specs-table-row"><span class="label">Almacenamiento</span><span class="value">128GB / 256GB</span></div>
+        <div class="specs-table-row"><span class="label">Cámara trasera</span><span class="value">108MP f/1.7 + 2MP</span></div>
+        <div class="specs-table-row"><span class="label">Cámara frontal</span><span class="value">20MP f/2.2</span></div>
+        <div class="specs-table-row"><span class="label">Batería</span><span class="value">6.000 mAh</span></div>
+        <div class="specs-table-row"><span class="label">Carga rápida</span><span class="value">33W Turbo</span></div>
+        <div class="specs-table-row"><span class="label">Resistencia</span><span class="value">IP64</span></div>
+        <div class="specs-table-row"><span class="label">Sistema</span><span class="value">HyperOS · Android 15</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GIFT EARBUDS -->
+  <section class="gift-section reveal">
+    <div class="gift-badge">🎁 Obsequio incluido</div>
+    <h2>Llévate también<br>unos <em>Redmi Buds 6 Play</em></h2>
+    <p class="gift-sub">Con tu compra recibes audífonos inalámbricos Xiaomi completamente gratis. Sin sorteos, sin letra pequeña.</p>
+    <div class="gift-card reveal-scale">
+      <div class="gift-img">
+        <img src="https://xiaomictg-production.up.railway.app/api/media/img-1782075194365" alt="Redmi Buds 6 Play - Audífonos inalámbricos de obsequio" loading="lazy">
+      </div>
+      <div class="gift-name">Redmi Buds 6 Play</div>
+      <div class="gift-specs">Audífonos inalámbricos Bluetooth 5.4 · Reducción de ruido IA</div>
+      <div class="gift-features">
+        <div class="gift-feat"><div class="gf-val">36h</div><div class="gf-lbl">Batería</div></div>
+        <div class="gift-feat"><div class="gf-val">AI</div><div class="gf-lbl">Noise Reduction</div></div>
+        <div class="gift-feat"><div class="gf-val">3.6g</div><div class="gf-lbl">Por audífono</div></div>
+      </div>
+      <div class="gift-value">
+        <span class="gv-free">Obsequio con tu compra</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- VERSIONS -->
+  <section class="section" id="versiones">
+    <div class="container reveal">
+      <div class="stag">Versiones disponibles</div>
+      <h2 class="sh">¿128GB o 256GB?</h2>
+      <p class="sp">Ambas incluyen audífonos de obsequio, doble SIM y 1 año de garantía. Nuevo, sellado. La de 256GB trae más RAM para multitarea.</p>
+      <div class="variant-list stagger-children">
+        <a href="https://wa.me/573022875280?text=Hola%2C%20quiero%20el%20Redmi%20Note%2015%20128GB%206RAM" class="variant">
+          <div><h4>128 GB</h4><div class="v-sub">6GB RAM · Helio G100 Ultra</div></div>
+          <div style="text-align:right"><div class="v-price">$730.000</div><div class="v-cur">COP</div></div>
+        </a>
+        <a href="https://wa.me/573022875280?text=Hola%2C%20quiero%20el%20Redmi%20Note%2015%20256GB%208RAM" class="variant variant-pop">
+          <div class="variant-pop-tag">Recomendado</div>
+          <div><h4>256 GB</h4><div class="v-sub">8GB RAM · Helio G100 Ultra</div></div>
+          <div style="text-align:right"><div class="v-price">$830.000</div><div class="v-cur">COP</div></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST -->
+  <section class="section bg-dark">
+    <div class="container reveal">
+      <div class="stag">Compra segura</div>
+      <h2 class="sh">¿Por qué comprarnos a nosotros?</h2>
+      <div class="trust-grid stagger-children">
+        <div class="trust-card"><div class="tc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><h4>Tienda física</h4><p>Cl. 31 #61-64, Los Ángeles, Cartagena. Ven a verlo en persona.</p></div>
+        <div class="trust-card"><div class="tc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><h4>Garantía Xiaomi</h4><p>Equipos 100% nuevos, sellados, garantía oficial colombiana.</p></div>
+        <div class="trust-card"><div class="tc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><h4>Entrega hoy</h4><p>Domicilio en Cartagena y Turbaco en menos de 1 hora.</p></div>
+        <div class="trust-card"><div class="tc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><h4>Financiamiento</h4><p>Cuotas quincenales cómodas. Solo cédula. Mismo día.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="section">
+    <div class="container">
+      <div class="stag">Clientes reales</div>
+      <h2 class="sh">Opiniones verificadas</h2>
+    </div>
+    <div class="carousel-wrap" id="reviewCarousel">
+      <div class="carousel-track" id="reviewTrack">
+        <div class="review"><div class="review-stars">★★★★★</div><div class="review-text">La cámara de 108MP es una locura. Las fotos salen nítidas y con colores increíbles. La pantalla AMOLED es otro mundo.</div><div class="review-author">Luis F.</div><div class="review-loc">Cartagena de Indias</div></div>
+        <div class="review"><div class="review-stars">★★★★★</div><div class="review-text">Lo pedí por WhatsApp y en 40 minutos lo tenía en mi puerta. Servicio impecable. El teléfono vuela de lo rápido.</div><div class="review-author">Sandra R.</div><div class="review-loc">Cartagena de Indias</div></div>
+        <div class="review"><div class="review-stars">★★★★★</div><div class="review-text">Lo financié con cuotas quincenales muy cómodas. La pantalla bajo el sol se ve perfecto. Mejor que celulares del doble de precio.</div><div class="review-author">Jorge A.</div><div class="review-loc">Turbaco, Bolívar</div></div>
+        <div class="review"><div class="review-stars">★★★★★</div><div class="review-text">Vengo de un Samsung y la diferencia es brutal. La pantalla AMOLED es idéntica en calidad pero por la mitad del precio. 100% recomendado.</div><div class="review-author">Patricia V.</div><div class="review-loc">Cartagena de Indias</div></div>
+        <div class="review"><div class="review-stars">★★★★★</div><div class="review-text">Las fotos con los 108MP son impresionantes. Hago zoom y el detalle está ahí. Mi esposa también quiere uno ahora.</div><div class="review-author">Fernando C.</div><div class="review-loc">Turbaco, Bolívar</div></div>
+        <div class="review"><div class="review-stars">★★★★★</div><div class="review-text">Compré dos: uno para mí y otro para mi hijo. Excelente precio, los dos sellados, me los trajeron a la puerta. Tienda seria.</div><div class="review-author">Carmen L.</div><div class="review-loc">Cartagena de Indias</div></div>
+      </div>
+      <div class="carousel-dots" id="carouselDots"></div>
+    </div>
+    <div class="container">
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section bg-light">
+    <div class="container reveal">
+      <div class="stag">Preguntas frecuentes</div>
+      <h2 class="sh">Resolvemos tus dudas</h2>
+      <div class="faq stagger-children">
+        <div class="faq-item"><button class="faq-q">¿La pantalla AMOLED se ve bien bajo el sol? <span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Sí, con 3.200 nits de brillo máximo es una de las más brillantes de su categoría. Se ve perfecto incluso bajo el sol directo.</div></div></div>
+        <div class="faq-item"><button class="faq-q">¿Los 108MP son reales? <span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Sí, 108 megapíxeles reales con sensor de 1/1.67". Captura detalles que puedes ampliar sin perder calidad.</div></div></div>
+        <div class="faq-item"><button class="faq-q">¿Hacen domicilio en Cartagena? <span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Sí, entregamos en toda Cartagena y Turbaco en menos de 1 hora. Domicilio $10.000 COP. También retiro gratis en tienda.</div></div></div>
+        <div class="faq-item"><button class="faq-q">¿Puedo financiarlo? <span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Sí, cuotas quincenales con solo tu cédula. Te lo llevas el mismo día.</div></div></div>
+        <div class="faq-item"><button class="faq-q">¿Qué diferencia hay entre 128GB y 256GB? <span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Además del almacenamiento, la versión 256GB trae 8GB de RAM (vs 6GB). Si usas muchas apps o guardas mucho contenido, ve por la de 256.</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta">
+    <div class="container reveal-scale">
+      <h2>Tu Note 15<br>te espera <em>hoy</em></h2>
+      <p class="fp">108MP · AMOLED · Helio G100 · Desde $730.000 · Audífonos gratis</p>
+      <a href="https://wa.me/573022875280?text=Hola%2C%20quiero%20comprar%20el%20Redmi%20Note%2015.%20Vi%20la%20oferta%20y%20quiero%20aprovecharla" class="btn-wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.68-1.318A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg> Lo quiero — Escribir ahora</a>
+      <div class="store-info">Cl. 31 #61-64, Los Ángeles, Cartagena<br>Lun-Vie 9AM-7PM · Dom 10:30AM-3PM</div>
+    </div>
+  </section>
+
+  <footer><p>© 2025 Xiaomi Cartagena · Distribuidor autorizado · <a href="https://wa.me/573022875280">302 287 5280</a></p></footer>
+
+  <div class="float-bar" id="float-bar">
+    <div class="fb-info"><div class="fb-name">Redmi Note 15</div><div class="fb-price">Desde $730.000</div></div>
+    <a href="https://wa.me/573022875280?text=Hola%2C%20quiero%20el%20Redmi%20Note%2015" class="btn-wa" style="font-size:13px;padding:12px 24px;width:auto;max-width:none"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.68-1.318A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg> Comprar</a>
+  </div>
+
+  <script>
+    const fb=document.getElementById('float-bar'),hc=document.getElementById('hero-cta');
+    new IntersectionObserver(([e])=>fb.classList.toggle('show',!e.isIntersecting),{threshold:0}).observe(hc);
+    document.querySelectorAll('.faq-q').forEach(b=>b.addEventListener('click',()=>{const i=b.parentElement;document.querySelectorAll('.faq-item').forEach(x=>{if(x!==i)x.classList.remove('open')});i.classList.toggle('open')}));
+
+    // Scroll reveal observer
+    const revealEls=document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.reveal-scale,.stagger-children');
+    const revealObs=new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');revealObs.unobserve(e.target);}});
+    },{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
+    revealEls.forEach(el=>revealObs.observe(el));
+
+    // Metrics counter animation
+    const metrics=document.querySelectorAll('.metric');
+    const metricsObs=new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{if(e.isIntersecting){metrics.forEach(m=>m.classList.add('counted'));metricsObs.disconnect();}});
+    },{threshold:0.5});
+    metrics.forEach(m=>metricsObs.observe(m));
+
+    // Reviews carousel
+    (function(){
+      const wrap=document.getElementById('reviewCarousel');
+      const track=document.getElementById('reviewTrack');
+      if(!wrap||!track)return;
+      const items=track.querySelectorAll('.review');
+      items.forEach(el=>track.appendChild(el.cloneNode(true)));
+      const dotsC=document.getElementById('carouselDots');
+      const total=items.length;
+      for(let i=0;i<total;i++){const d=document.createElement('div');d.className='carousel-dot'+(i===0?' active':'');dotsC.appendChild(d);}
+      const dots=dotsC.querySelectorAll('.carousel-dot');
+      function updateDots(){const s=wrap.scrollLeft||0;const idx=Math.round(s/314)%total;dots.forEach((d,i)=>d.classList.toggle('active',i===idx));}
+      let isDrag=false,startX=0,scrollS=0,manual=false;
+      wrap.style.overflowX='auto';wrap.style.scrollbarWidth='none';wrap.style.msOverflowStyle='none';wrap.style.WebkitOverflowScrolling='touch';
+      const st=document.createElement('style');st.textContent='.carousel-wrap::-webkit-scrollbar{display:none}';document.head.appendChild(st);
+      function enterManual(){if(manual)return;manual=true;track.style.animation='none';track.style.transform='none';}
+      wrap.addEventListener('mousedown',e=>{isDrag=true;startX=e.pageX;scrollS=wrap.scrollLeft;wrap.classList.add('dragging');enterManual();});
+      wrap.addEventListener('mousemove',e=>{if(!isDrag)return;e.preventDefault();wrap.scrollLeft=scrollS-(e.pageX-startX);updateDots();});
+      document.addEventListener('mouseup',()=>{isDrag=false;wrap.classList.remove('dragging');});
+      wrap.addEventListener('touchstart',e=>{startX=e.touches[0].pageX;scrollS=wrap.scrollLeft;enterManual();},{passive:true});
+      wrap.addEventListener('touchmove',e=>{wrap.scrollLeft=scrollS-(e.touches[0].pageX-startX);updateDots();},{passive:true});
+      wrap.addEventListener('scroll',()=>{if(!manual)return;updateDots();const h=track.scrollWidth/2;if(wrap.scrollLeft>=h)wrap.scrollLeft-=h;else if(wrap.scrollLeft<=0)wrap.scrollLeft+=h;});
+    })();
+  </script>
+</body>
+</html>

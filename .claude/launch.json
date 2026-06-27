@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5173"],
+      "port": 5173
+    },
+    {
+      "name": "landings",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "PRO", "-p", "8099", "-c-1"],
+      "port": 8099
+    }
+  ]
+}

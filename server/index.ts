@@ -3331,18 +3331,68 @@ app.delete('/api/inventario/caja-menor/:id', async (req, res) => {
 // ██████  CAJA — Registro de efectivo y banco  ██████
 // ====================================================================
 
-// GET saldos actuales (sum of all movements per account)
+// --- Cuentas CRUD ---
+app.get('/api/caja/cuentas', async (_req, res) => {
+  try {
+    const cuentas = await db.collection('caja_cuentas').find({}).sort({ orden: 1 }).toArray();
+    if (cuentas.length === 0) {
+      // Seed default accounts on first use
+      const defaults = [
+        { id: 'efectivo', nombre: 'Efectivo', color: 'green', orden: 0 },
+        { id: 'banco', nombre: 'Banco', color: 'blue', orden: 1 },
+      ];
+      await db.collection('caja_cuentas').insertMany(defaults);
+      return res.json(defaults);
+    }
+    res.json(cuentas);
+  } catch (error) {
+    console.error('[caja] Error cuentas:', error);
+    res.status(500).json({ error: 'Error al obtener cuentas' });
+  }
+});
+
+app.post('/api/caja/cuentas', async (req, res) => {
+  try {
+    const { nombre, color } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'nombre requerido' });
+    const id = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_');
+    const count = await db.collection('caja_cuentas').countDocuments();
+    const doc = { id, nombre, color: color || 'purple', orden: count };
+    await db.collection('caja_cuentas').insertOne(doc);
+    res.status(201).json(doc);
+  } catch (error) {
+    console.error('[caja] Error crear cuenta:', error);
+    res.status(500).json({ error: 'Error al crear cuenta' });
+  }
+});
+
+app.delete('/api/caja/cuentas/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (id === 'efectivo' || id === 'banco') {
+      return res.status(400).json({ error: 'No se puede eliminar cuenta por defecto' });
+    }
+    await db.collection('caja_cuentas').deleteOne({ id });
+    // Also delete movements for this account
+    await db.collection('caja_movimientos').deleteMany({ cuenta: id });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar cuenta' });
+  }
+});
+
+// GET saldos actuales — dynamic per account
 app.get('/api/caja/saldos', async (_req, res) => {
   try {
+    const cuentas = await db.collection('caja_cuentas').find({}).toArray();
     const movs = await db.collection('caja_movimientos').find({}).toArray();
-    let efectivo = 0;
-    let banco = 0;
+    const saldos: Record<string, number> = {};
+    for (const c of cuentas) saldos[c.id] = 0;
     for (const m of movs) {
-      const amount = m.tipo === 'egreso' ? -m.monto : m.monto;
-      if (m.cuenta === 'efectivo') efectivo += amount;
-      else if (m.cuenta === 'banco') banco += amount;
+      if (!(m.cuenta in saldos)) saldos[m.cuenta] = 0;
+      saldos[m.cuenta] += m.tipo === 'egreso' ? -m.monto : m.monto;
     }
-    res.json({ efectivo, banco });
+    res.json(saldos);
   } catch (error) {
     console.error('[caja] Error saldos:', error);
     res.status(500).json({ error: 'Error al obtener saldos' });

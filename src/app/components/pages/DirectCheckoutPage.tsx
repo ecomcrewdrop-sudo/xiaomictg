@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { ThermalTicket } from '../ThermalTicket';
 import { API_ORIGIN } from '../../lib/api-base';
 
-const DELIVERY_FEE = 10000;
+const DELIVERY_FEE = 0; // Domicilio GRATIS en Cartagena
 type DeliveryMethod = 'delivery' | 'pickup';
 type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold';
 
@@ -435,7 +435,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
               </h3>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 {([
-                  { value: 'delivery', label: 'A Domicilio', sub: '+$10.000 COP', Icon: Truck },
+                  { value: 'delivery', label: 'A Domicilio', sub: 'GRATIS', Icon: Truck },
                   { value: 'pickup', label: 'Retiro Tienda', sub: '¡Gratis!', Icon: Store },
                 ] as const).map(opt => (
                   <button key={opt.value} type="button" onClick={() => setDeliveryMethod(opt.value)}

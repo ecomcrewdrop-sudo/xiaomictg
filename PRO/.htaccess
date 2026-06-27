@@ -1,0 +1,6 @@
+RewriteEngine On
+
+# URLs limpias para landing pages
+RewriteRule ^redmi15c/?$ redmi-15c.html [L]
+RewriteRule ^redminote15/?$ note-15.html [L]
+RewriteRule ^redminote15pro/?$ note-15-pro-5g.html [L]
