@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -211,11 +211,6 @@ export function PointOfSale() {
     return products.filter(p => p.name.toLowerCase().includes(q));
   }, [products, search]);
 
-  // ─── Datáfono surcharge calculation ──────────────────────────────
-  const datafonoBase = Number(pagos['datafono'] || 0);
-  const datafonoSurcharge = Math.round(datafonoBase * DATAFONO_SURCHARGE);
-  const datafonoTotal = datafonoBase + datafonoSurcharge;
-
   // ─── Open sale dialog for a product ──────────────────────────────
   const openSale = (p: CatalogProduct | null) => {
     setSelectedProduct(p);
@@ -251,9 +246,6 @@ export function PointOfSale() {
       toast.error(`Los pagos (${fmt(totalPagos)}) no coinciden con el precio (${fmt(precioVenta)})`);
       return;
     }
-
-    // Determine if any part is pending (datáfono or addi)
-    const hasPending = pagoEntries.some(e => e.cuenta === 'datafono' || e.cuenta === 'addi');
 
     setSaving(true);
     try {
