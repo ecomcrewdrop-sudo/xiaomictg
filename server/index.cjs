@@ -301525,9 +301525,10 @@ app.get("/api/inventario/ventas", async (req, res) => {
 });
 app.post("/api/inventario/ventas", async (req, res) => {
   try {
-    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId } = req.body;
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto } = req.body;
     if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: "Faltan campos requeridos" });
-    const compra = Number(precioCompra || 0);
+    const costoObsequio = Number(obsequioCosto || 0);
+    const compra = Number(precioCompra || 0) + costoObsequio;
     const venta = Number(precioVenta);
     const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     let expectedDate = fechaEsperada;
@@ -301563,7 +301564,39 @@ app.post("/api/inventario/ventas", async (req, res) => {
       creadoPor: orderId ? "web" : "manual",
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
+    if (obsequioNombre) {
+      venta_record.obsequioNombre = obsequioNombre;
+      venta_record.obsequioCosto = costoObsequio;
+    }
     await db.collection("daily_sales").insertOne(venta_record);
+    if (obsequioNombre) {
+      const escapedGift = obsequioNombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      let giftItem = await db.collection("inventory").findOne({
+        estado: "disponible",
+        cantidad: { $gte: 1 },
+        producto: { $regex: escapedGift, $options: "i" }
+      });
+      if (!giftItem) {
+        const giftKw = obsequioNombre.split(/[\s+()]/g).filter((w) => w.length > 2).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        if (giftKw.length > 0) {
+          const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
+          giftItem = await db.collection("inventory").findOne({
+            estado: "disponible",
+            cantidad: { $gte: 1 },
+            producto: { $regex: giftRegex, $options: "i" }
+          });
+        }
+      }
+      if (giftItem) {
+        const newQty = (giftItem.cantidad || 1) - 1;
+        if (newQty <= 0) {
+          await db.collection("inventory").updateOne({ id: giftItem.id }, { $set: { cantidad: 0, estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+        } else {
+          await db.collection("inventory").updateOne({ id: giftItem.id }, { $set: { cantidad: newQty, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+        }
+        console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
+      }
+    }
     if (Boolean(esPropio) && tipo !== "servicio") {
       if (inventarioId) {
         const invItem = await db.collection("inventory").findOne({ id: inventarioId });
@@ -301606,9 +301639,10 @@ app.post("/api/inventario/ventas", async (req, res) => {
         if (invItem) {
           const newCant = (invItem.cantidad || 1) - 1;
           const ventaUpdate = { inventarioId: invItem.id };
-          if (compra === 0 && invItem.precioCompra > 0) {
-            ventaUpdate.precioCompra = invItem.precioCompra;
-            ventaUpdate.ganancia = venta - invItem.precioCompra;
+          const compraBase = Number(precioCompra || 0);
+          if (compraBase === 0 && invItem.precioCompra > 0) {
+            ventaUpdate.precioCompra = invItem.precioCompra + costoObsequio;
+            ventaUpdate.ganancia = venta - (invItem.precioCompra + costoObsequio);
           }
           if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
           if (Object.keys(ventaUpdate).length > 0) {

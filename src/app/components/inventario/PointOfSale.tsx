@@ -8,7 +8,7 @@ import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Search, Wallet, Landmark, CreditCard, ShoppingBag,
   ArrowDownCircle, ArrowUpCircle, Settings2, X, Package,
-  Printer, Smartphone, Clock,
+  Printer, Smartphone, Clock, Gift,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -40,6 +40,7 @@ interface LastSale {
   notas: string;
   fecha: string;
   pagos: { cuenta: string; monto: number }[];
+  obsequio?: { nombre: string; costo: number };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -151,6 +152,14 @@ function printInvoice(sale: LastSale) {
         <span>1 x $${sale.precioVenta.toLocaleString('es-CO')}</span>
         <strong>$${sale.precioVenta.toLocaleString('es-CO')}</strong>
       </div>
+      ${sale.obsequio ? `
+      <div style="margin-top:6px;padding-top:4px;border-top:1px dashed #ccc;">
+        <div style="font-weight:bold;text-transform:uppercase;color:#d63384;">OBSEQUIO: ${sale.obsequio.nombre}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:2px;">
+          <span>1 x Gratis</span>
+          <strong>$0</strong>
+        </div>
+      </div>` : ''}
     </div>
   </div>
 
@@ -221,6 +230,7 @@ export function PointOfSale() {
   });
   const [pagos, setPagos] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [obsequio, setObsequio] = useState({ activo: false, nombre: '', costo: '' });
 
   // Manual movement dialog
   const [movOpen, setMovOpen] = useState(false);
@@ -278,6 +288,7 @@ export function PointOfSale() {
       notas: '',
     });
     setPagos({});
+    setObsequio({ activo: false, nombre: '', costo: '' });
     setSaleOpen(true);
   };
 
@@ -318,6 +329,12 @@ export function PointOfSale() {
         ? `${saleForm.notas ? saleForm.notas + ' | ' : ''}Descuento: -${fmt(descuento)} (precio original: ${fmt(precioOriginal)})`
         : saleForm.notas;
 
+      // Obsequio data
+      const costoObsequio = obsequio.activo ? (Number(obsequio.costo) || 0) : 0;
+      const obsequioPayload = obsequio.activo && obsequio.nombre
+        ? { obsequioNombre: obsequio.nombre, obsequioCosto: costoObsequio }
+        : {};
+
       const saleRes = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -332,6 +349,7 @@ export function PointOfSale() {
           metodoPago,
           estadoPago: 'recibido',
           notas: notasConDescuento,
+          ...obsequioPayload,
         }),
       });
 
@@ -354,6 +372,7 @@ export function PointOfSale() {
           cuenta: cuentas.find(c => c.id === e.cuenta)?.nombre || e.cuenta,
           monto: e.monto,
         })),
+        ...(obsequio.activo && obsequio.nombre ? { obsequio: { nombre: obsequio.nombre, costo: costoObsequio } } : {}),
       };
 
       toast.success('Venta registrada');
@@ -587,6 +606,47 @@ export function PointOfSale() {
                   <span className="text-orange-700 font-semibold">
                     Rebaja {fmt(Number(saleForm.descuento))} → Cobra: <strong>{fmt((Number(saleForm.precioVenta) || 0) - Number(saleForm.descuento))}</strong>
                   </span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Obsequio / Combo ──────────────────────────────── */}
+            <div className="border border-dashed border-pink-300 rounded-lg p-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => setObsequio(o => ({ ...o, activo: !o.activo }))}
+                className="flex items-center gap-2 w-full text-left"
+              >
+                <Gift className={`w-4 h-4 ${obsequio.activo ? 'text-pink-600' : 'text-gray-400'}`} />
+                <span className={`text-xs font-bold uppercase ${obsequio.activo ? 'text-pink-600' : 'text-gray-400'}`}>
+                  {obsequio.activo ? 'Obsequio incluido' : 'Agregar obsequio / combo'}
+                </span>
+                <span className="ml-auto text-[10px] text-gray-400">{obsequio.activo ? '(clic para quitar)' : '(opcional)'}</span>
+              </button>
+              {obsequio.activo && (
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="col-span-2">
+                    <Input
+                      value={obsequio.nombre}
+                      onChange={e => setObsequio(o => ({ ...o, nombre: e.target.value }))}
+                      placeholder="Ej: Redmi Buds 6 Play"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      value={obsequio.costo}
+                      onChange={e => setObsequio(o => ({ ...o, costo: e.target.value }))}
+                      placeholder="Costo"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  {Number(obsequio.costo) > 0 && (
+                    <p className="col-span-3 text-[10px] text-pink-600 font-semibold">
+                      Costo obsequio: {fmt(Number(obsequio.costo))} — se resta de la utilidad real
+                    </p>
+                  )}
                 </div>
               )}
             </div>

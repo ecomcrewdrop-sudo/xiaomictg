@@ -3149,10 +3149,11 @@ app.get('/api/inventario/ventas', async (req, res) => {
 
 app.post('/api/inventario/ventas', async (req, res) => {
   try {
-    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId } = req.body;
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto } = req.body;
     if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: 'Faltan campos requeridos' });
 
-    const compra = Number(precioCompra || 0);
+    const costoObsequio = Number(obsequioCosto || 0);
+    const compra = Number(precioCompra || 0) + costoObsequio;
     const venta = Number(precioVenta);
     const hoy = new Date().toISOString().slice(0, 10);
 
@@ -3172,7 +3173,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
 
     const tipo = req.body.tipo || 'venta';
 
-    const venta_record = {
+    const venta_record: Record<string, unknown> = {
       id: crypto.randomUUID(),
       fecha: hoy,
       orderId: orderId || null,
@@ -3194,7 +3195,45 @@ app.post('/api/inventario/ventas', async (req, res) => {
       createdAt: new Date().toISOString(),
     };
 
+    // Guardar info del obsequio si aplica
+    if (obsequioNombre) {
+      venta_record.obsequioNombre = obsequioNombre;
+      venta_record.obsequioCosto = costoObsequio;
+    }
+
     await db.collection('daily_sales').insertOne(venta_record);
+
+    // Descontar obsequio del inventario si existe
+    if (obsequioNombre) {
+      const escapedGift = obsequioNombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let giftItem = await db.collection('inventory').findOne({
+        estado: 'disponible',
+        cantidad: { $gte: 1 },
+        producto: { $regex: escapedGift, $options: 'i' },
+      });
+      if (!giftItem) {
+        const giftKw = obsequioNombre.split(/[\s+()]/g)
+          .filter((w: string) => w.length > 2)
+          .map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        if (giftKw.length > 0) {
+          const giftRegex = giftKw.map((w: string) => `(?=.*${w})`).join('');
+          giftItem = await db.collection('inventory').findOne({
+            estado: 'disponible',
+            cantidad: { $gte: 1 },
+            producto: { $regex: giftRegex, $options: 'i' },
+          });
+        }
+      }
+      if (giftItem) {
+        const newQty = (giftItem.cantidad || 1) - 1;
+        if (newQty <= 0) {
+          await db.collection('inventory').updateOne({ id: giftItem.id }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
+        } else {
+          await db.collection('inventory').updateOne({ id: giftItem.id }, { $set: { cantidad: newQty, updatedAt: new Date().toISOString() } });
+        }
+        console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
+      }
+    }
 
     // Solo descontar del inventario si es producto PROPIO
     if (Boolean(esPropio) && tipo !== 'servicio') {
@@ -3243,10 +3282,11 @@ app.post('/api/inventario/ventas', async (req, res) => {
         if (invItem) {
           const newCant = (invItem.cantidad || 1) - 1;
           const ventaUpdate: Record<string, unknown> = { inventarioId: invItem.id };
-          // Auto-llenar precioCompra desde inventario si no se envió
-          if (compra === 0 && invItem.precioCompra > 0) {
-            ventaUpdate.precioCompra = invItem.precioCompra;
-            ventaUpdate.ganancia = venta - invItem.precioCompra;
+          // Auto-llenar precioCompra desde inventario si no se envió (compra base = compra sin obsequio)
+          const compraBase = Number(precioCompra || 0);
+          if (compraBase === 0 && invItem.precioCompra > 0) {
+            ventaUpdate.precioCompra = invItem.precioCompra + costoObsequio;
+            ventaUpdate.ganancia = venta - (invItem.precioCompra + costoObsequio);
           }
           if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
           if (Object.keys(ventaUpdate).length > 0) {
