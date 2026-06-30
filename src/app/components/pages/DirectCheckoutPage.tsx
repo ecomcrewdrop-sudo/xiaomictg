@@ -196,7 +196,7 @@ export function DirectCheckoutPage() {
         description: `${product!.name}${selectedStorage ? ` ${selectedStorage}` : ''}`.slice(0, 200),
         redirectionUrl: `${window.location.origin}/?bold_order=${newOrder.orderNumber}&bold_status=success`,
       });
-      window.location.href = `/api/bold-checkout?${params.toString()}`;
+      window.location.href = `${API_ORIGIN}/api/bold-checkout?${params.toString()}`;
     } catch (err: any) {
       setBoldError(err.message || 'Error al iniciar BOLD.');
       setBoldLoading(false);

@@ -373,7 +373,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
         redirectionUrl: `${window.location.origin}/?bold_order=${newOrder.orderNumber}&bold_status=success`,
       });
 
-      window.location.href = `/api/bold-checkout?${params.toString()}`;
+      window.location.href = `${API_ORIGIN}/api/bold-checkout?${params.toString()}`;
     } catch (err: any) {
       console.error('BOLD error:', err);
       setBoldError(err.message || 'Error al iniciar el pago. Intenta de nuevo.');
