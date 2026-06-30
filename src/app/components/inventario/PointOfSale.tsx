@@ -137,7 +137,6 @@ function printInvoice(sale: LastSale) {
     <div>Nombre: <span style="text-transform:uppercase;">${sale.cliente}</span></div>
     ${sale.cedula ? `<div>C&eacute;dula/NIT: ${sale.cedula}</div>` : ''}
     ${sale.telefono ? `<div>Tel: ${sale.telefono}</div>` : ''}
-    ${sale.imei ? `<div style="margin-top:2px;">IMEI: ${sale.imei}</div>` : ''}
   </div>
 
   <div style="border-top:2px solid #000;margin:10px 0;"></div>
@@ -147,6 +146,7 @@ function printInvoice(sale: LastSale) {
     <div style="font-size:12px;font-weight:bold;margin-bottom:8px;">PRODUCTOS</div>
     <div style="font-size:11px;">
       <div style="font-weight:bold;text-transform:uppercase;">${sale.producto}</div>
+      ${sale.imei ? `<div style="margin-top:2px;font-size:10px;color:#555;">IMEI: ${sale.imei}</div>` : ''}
       <div style="display:flex;justify-content:space-between;margin-top:4px;">
         <span>1 x $${sale.precioVenta.toLocaleString('es-CO')}</span>
         <strong>$${sale.precioVenta.toLocaleString('es-CO')}</strong>
@@ -543,22 +543,23 @@ export function PointOfSale() {
           <div className="space-y-4 mt-2">
 
             {/* ── PASO 1: Producto ─────────────────────────────── */}
-            {selectedProduct && (
-              <div className="flex items-center gap-3 bg-violet-50 rounded-lg p-3">
-                <img src={selectedProduct.image} className="w-14 h-14 object-contain rounded-lg bg-white p-1" />
-                <div className="flex-1">
-                  <p className="font-bold text-sm text-violet-900">{selectedProduct.name}</p>
-                  <p className="text-lg font-black text-violet-600">{fmt(Math.round(selectedProduct.price))}</p>
+            {/* ── PASO 1: Producto ─────────────────────────────── */}
+            <div className="bg-violet-50 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-bold text-violet-600 uppercase">Producto</p>
+              {selectedProduct && (
+                <div className="flex items-center gap-3">
+                  <img src={selectedProduct.image} className="w-14 h-14 object-contain rounded-lg bg-white p-1" />
+                  <div className="flex-1">
+                    <p className="font-bold text-sm text-violet-900">{selectedProduct.name}</p>
+                    <p className="text-lg font-black text-violet-600">{fmt(Math.round(selectedProduct.price))}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {!selectedProduct && (
-              <div>
-                <Label className="text-xs font-bold text-gray-500 uppercase">Producto *</Label>
-                <Input value={saleForm.producto} onChange={e => setSaleForm(f => ({ ...f, producto: e.target.value }))} placeholder="Nombre del producto" className="mt-1" />
-              </div>
-            )}
+              )}
+              {!selectedProduct && (
+                <Input value={saleForm.producto} onChange={e => setSaleForm(f => ({ ...f, producto: e.target.value }))} placeholder="Nombre del producto *" />
+              )}
+              <Input value={saleForm.imei} onChange={e => setSaleForm(f => ({ ...f, imei: e.target.value }))} placeholder="IMEI (opcional)" />
+            </div>
 
             {/* ── PASO 2: Datos del cliente ────────────────────── */}
             <div className="bg-gray-50 rounded-lg p-3 space-y-2">
@@ -567,10 +568,7 @@ export function PointOfSale() {
                 <Input value={saleForm.cliente} onChange={e => setSaleForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Nombre *" />
                 <Input value={saleForm.cedula} onChange={e => setSaleForm(f => ({ ...f, cedula: e.target.value }))} placeholder="Cédula / NIT" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="Teléfono" />
-                <Input value={saleForm.imei} onChange={e => setSaleForm(f => ({ ...f, imei: e.target.value }))} placeholder="IMEI (opcional)" />
-              </div>
+              <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="Teléfono" className="w-full" />
             </div>
 
             {/* ── PASO 3: Precio y rebaja ──────────────────────── */}
