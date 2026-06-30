@@ -167,20 +167,7 @@ export function PointOfSale() {
 
       if (!saleRes.ok) throw new Error('Error creando venta');
 
-      // 2. Create caja movements for each payment
-      for (const entry of pagoEntries) {
-        await fetchWithTimeout(`${API_BASE_URL}/caja/movimiento`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tipo: 'ingreso',
-            cuenta: entry.cuenta,
-            monto: entry.monto,
-            concepto: `Venta: ${saleForm.producto} — ${saleForm.cliente || 'Cliente'}`,
-          }),
-        });
-      }
-
+      // Caja se actualiza automáticamente en el servidor
       toast.success('Venta registrada');
       setSaleOpen(false);
       await loadData();

@@ -74,6 +74,45 @@ if (!MONGO_URI) {
 
 let db: any;
 let dbClient: MongoClient | null = null;
+
+// ── Helper: crear movimientos de caja automáticamente desde una venta ──
+// metodoPago puede ser:
+//   "efectivo"                       → un solo movimiento
+//   "efectivo:300000+banco:200000"   → split payment
+async function crearMovimientosCajaDesdeVenta(
+  metodoPago: string,
+  montoTotal: number,
+  concepto: string,
+) {
+  if (!db) return;
+  const entries: { cuenta: string; monto: number }[] = [];
+
+  if (metodoPago.includes(':') && metodoPago.includes('+')) {
+    // Split payment format: "efectivo:300000+banco:200000"
+    for (const part of metodoPago.split('+')) {
+      const [cuenta, val] = part.split(':');
+      if (cuenta && val) entries.push({ cuenta: cuenta.trim(), monto: Number(val) });
+    }
+  } else {
+    // Simple: toda la venta a una sola cuenta
+    entries.push({ cuenta: metodoPago || 'efectivo', monto: montoTotal });
+  }
+
+  for (const e of entries) {
+    if (e.monto <= 0) continue;
+    // Verificar que la cuenta exista (si no, skip — puede ser "addi", "bold_pasarela", etc.)
+    const cuentaDoc = await db.collection('caja_cuentas').findOne({ id: e.cuenta });
+    if (!cuentaDoc) continue;
+    await db.collection('caja_movimientos').insertOne({
+      id: crypto.randomUUID(),
+      tipo: 'ingreso',
+      cuenta: e.cuenta,
+      monto: e.monto,
+      concepto,
+      createdAt: new Date().toISOString(),
+    });
+  }
+}
 let dbReconnectTimer: NodeJS.Timeout | null = null;
 let dbConnecting = false;
 
@@ -1720,11 +1759,24 @@ app.post('/api/addi/callback', async (req, res) => {
           { $set: { status: 'paid' } }
         );
 
+        // Marcar ventas asociadas como recibidas y registrar en caja
+        const ventasOrden = await db.collection('daily_sales').find({ orderId: order.id }).toArray();
+        for (const v of ventasOrden) {
+          if (v.estadoPago !== 'recibido') {
+            await db.collection('daily_sales').updateOne({ id: v.id }, { $set: { estadoPago: 'recibido' } });
+            await crearMovimientosCajaDesdeVenta(
+              v.metodoPago || 'efectivo',
+              v.precioVenta,
+              `Venta Addi: ${v.producto} — ${v.cliente}`,
+            );
+          }
+        }
+
         // Notificamos por WhatsApp y Correo ahora sí!
         const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: 'paid' } as OrderDoc]);
         sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
         sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[WA] Error notificaciones:', err));
-        
+
         io.emit('orderUpdated', { id: order.id, status: 'paid' });
       }
     }
@@ -1886,6 +1938,15 @@ app.post('/api/orders', async (req, res) => {
         createdAt: new Date().toISOString(),
       };
       await db.collection('daily_sales').insertOne(venta_auto);
+
+      // Auto-registrar en caja si el pago ya fue recibido
+      if (venta_auto.estadoPago === 'recibido') {
+        await crearMovimientosCajaDesdeVenta(
+          venta_auto.metodoPago as string,
+          precioVenta * qty,
+          `Venta web: ${nombreProducto} — ${customerInfo?.name || 'Cliente web'}`,
+        );
+      }
 
       // Descontar cantidad del inventario
       if (invItem) {
@@ -3080,6 +3141,15 @@ app.post('/api/inventario/ventas', async (req, res) => {
       }
     }
 
+    // ── Auto-registrar en caja si el pago ya fue recibido ──
+    if (venta_record.estadoPago === 'recibido') {
+      await crearMovimientosCajaDesdeVenta(
+        venta_record.metodoPago,
+        venta,
+        `Venta: ${producto} — ${cliente}`,
+      );
+    }
+
     res.status(201).json(venta_record);
   } catch (error) {
     console.error('[inventario] Error creating venta:', error);
@@ -3272,13 +3342,24 @@ app.get('/api/inventario/dinero-pendiente', async (_req, res) => {
   }
 });
 
-// Marcar dinero pendiente como recibido
+// Marcar dinero pendiente como recibido → auto-registrar en caja
 app.post('/api/inventario/ventas/:id/recibido', async (req, res) => {
   try {
+    const sale = await db.collection('daily_sales').findOne({ id: req.params.id });
+    if (!sale) return res.status(404).json({ error: 'Venta no encontrada' });
+
     await db.collection('daily_sales').updateOne(
       { id: req.params.id },
       { $set: { estadoPago: 'recibido' } }
     );
+
+    // Auto-registrar en caja al recibir el pago
+    await crearMovimientosCajaDesdeVenta(
+      sale.metodoPago || 'efectivo',
+      sale.precioVenta,
+      `Venta: ${sale.producto} — ${sale.cliente}`,
+    );
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Error al marcar como recibido' });
