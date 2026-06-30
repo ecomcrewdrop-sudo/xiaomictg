@@ -29,6 +29,8 @@ interface CatalogProduct {
 
 interface LastSale {
   cliente: string;
+  cedula: string;
+  telefono: string;
   producto: string;
   precioOriginal: number;
   descuento: number;
@@ -133,6 +135,8 @@ function printInvoice(sale: LastSale) {
   <div style="font-size:11px;margin-bottom:6px;">
     <div style="font-weight:bold;margin-bottom:4px;">CLIENTE</div>
     <div>Nombre: <span style="text-transform:uppercase;">${sale.cliente}</span></div>
+    ${sale.cedula ? `<div>C&eacute;dula/NIT: ${sale.cedula}</div>` : ''}
+    ${sale.telefono ? `<div>Tel: ${sale.telefono}</div>` : ''}
     ${sale.imei ? `<div style="margin-top:2px;">IMEI: ${sale.imei}</div>` : ''}
   </div>
 
@@ -206,6 +210,8 @@ export function PointOfSale() {
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [saleForm, setSaleForm] = useState({
     cliente: '',
+    cedula: '',
+    telefono: '',
     producto: '',
     precioVenta: '',
     precioCompra: '',
@@ -262,6 +268,8 @@ export function PointOfSale() {
     setSelectedProduct(p);
     setSaleForm({
       cliente: '',
+      cedula: '',
+      telefono: '',
       producto: p?.name || '',
       precioVenta: p ? Math.round(p.price).toString() : '',
       precioCompra: '',
@@ -332,6 +340,8 @@ export function PointOfSale() {
       // Build sale data for print
       const saleData: LastSale = {
         cliente: saleForm.cliente || 'Cliente',
+        cedula: saleForm.cedula,
+        telefono: saleForm.telefono,
         producto: saleForm.producto,
         precioOriginal,
         descuento,
@@ -545,6 +555,16 @@ export function PointOfSale() {
               <div>
                 <Label>Cliente</Label>
                 <Input value={saleForm.cliente} onChange={e => setSaleForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Nombre" />
+              </div>
+              <div>
+                <Label>Cédula / NIT</Label>
+                <Input value={saleForm.cedula} onChange={e => setSaleForm(f => ({ ...f, cedula: e.target.value }))} placeholder="Cédula" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Teléfono</Label>
+                <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="300 000 0000" />
               </div>
               <div>
                 <Label>IMEI (opcional)</Label>
