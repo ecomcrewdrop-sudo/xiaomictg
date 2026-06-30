@@ -75,9 +75,30 @@ if (!MONGO_URI) {
 let db: any;
 let dbClient: MongoClient | null = null;
 
+// ── Helper: calcular fecha esperada de pago según método ──
+function calcFechaEsperada(cuenta: string): string | null {
+  const now = new Date();
+  if (cuenta === 'datafono') {
+    // Cae al siguiente día hábil (si es viernes→lunes, sábado→lunes, domingo→lunes)
+    const d = new Date(now);
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  }
+  if (cuenta === 'addi') {
+    // Addi demora 7 días
+    const d = new Date(now);
+    d.setDate(d.getDate() + 7);
+    return d.toISOString();
+  }
+  return null; // efectivo y banco son inmediatos
+}
+
 // ── Helper: crear movimientos de caja automáticamente desde una venta ──
 // metodoPago puede ser:
-//   "efectivo"                       → un solo movimiento
+//   "efectivo"                       → un solo movimiento (inmediato)
+//   "datafono"                       → pendiente, cae al otro día hábil
+//   "addi"                           → pendiente, cae en 7 días
 //   "efectivo:300000+banco:200000"   → split payment
 async function crearMovimientosCajaDesdeVenta(
   metodoPago: string,
@@ -100,15 +121,21 @@ async function crearMovimientosCajaDesdeVenta(
 
   for (const e of entries) {
     if (e.monto <= 0) continue;
-    // Verificar que la cuenta exista (si no, skip — puede ser "addi", "bold_pasarela", etc.)
+    // Verificar que la cuenta exista
     const cuentaDoc = await db.collection('caja_cuentas').findOne({ id: e.cuenta });
     if (!cuentaDoc) continue;
+
+    const fechaEsperada = calcFechaEsperada(e.cuenta);
+    const isPendiente = !!fechaEsperada; // datáfono y addi son pendientes
+
     await db.collection('caja_movimientos').insertOne({
       id: crypto.randomUUID(),
       tipo: 'ingreso',
       cuenta: e.cuenta,
       monto: e.monto,
       concepto,
+      pendiente: isPendiente,
+      fechaEsperada,
       createdAt: new Date().toISOString(),
     });
   }
@@ -3415,15 +3442,21 @@ app.delete('/api/inventario/caja-menor/:id', async (req, res) => {
 // --- Cuentas CRUD ---
 app.get('/api/caja/cuentas', async (_req, res) => {
   try {
-    const cuentas = await db.collection('caja_cuentas').find({}).sort({ orden: 1 }).toArray();
-    if (cuentas.length === 0) {
-      // Seed default accounts on first use
-      const defaults = [
-        { id: 'efectivo', nombre: 'Efectivo', color: 'green', orden: 0 },
-        { id: 'banco', nombre: 'Banco', color: 'blue', orden: 1 },
-      ];
-      await db.collection('caja_cuentas').insertMany(defaults);
-      return res.json(defaults);
+    let cuentas = await db.collection('caja_cuentas').find({}).sort({ orden: 1 }).toArray();
+    // Seed default accounts if missing
+    const DEFAULTS = [
+      { id: 'efectivo', nombre: 'Efectivo', color: 'green', orden: 0 },
+      { id: 'banco', nombre: 'Banco', color: 'blue', orden: 1 },
+      { id: 'datafono', nombre: 'Datáfono', color: 'orange', orden: 2 },
+      { id: 'addi', nombre: 'Addi', color: 'purple', orden: 3 },
+    ];
+    for (const def of DEFAULTS) {
+      if (!cuentas.find((c: any) => c.id === def.id)) {
+        await db.collection('caja_cuentas').insertOne(def);
+      }
+    }
+    if (cuentas.length < DEFAULTS.length) {
+      cuentas = await db.collection('caja_cuentas').find({}).sort({ orden: 1 }).toArray();
     }
     res.json(cuentas);
   } catch (error) {
@@ -3450,7 +3483,8 @@ app.post('/api/caja/cuentas', async (req, res) => {
 app.delete('/api/caja/cuentas/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    if (id === 'efectivo' || id === 'banco') {
+    const protectedAccounts = ['efectivo', 'banco', 'datafono', 'addi'];
+    if (protectedAccounts.includes(id)) {
       return res.status(400).json({ error: 'No se puede eliminar cuenta por defecto' });
     }
     await db.collection('caja_cuentas').deleteOne({ id });

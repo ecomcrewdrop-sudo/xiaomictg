@@ -298905,6 +298905,21 @@ if (!MONGO_URI) {
 }
 var db;
 var dbClient = null;
+function calcFechaEsperada(cuenta) {
+  const now = /* @__PURE__ */ new Date();
+  if (cuenta === "datafono") {
+    const d = new Date(now);
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  }
+  if (cuenta === "addi") {
+    const d = new Date(now);
+    d.setDate(d.getDate() + 7);
+    return d.toISOString();
+  }
+  return null;
+}
 async function crearMovimientosCajaDesdeVenta(metodoPago, montoTotal, concepto) {
   if (!db) return;
   const entries = [];
@@ -298920,12 +298935,16 @@ async function crearMovimientosCajaDesdeVenta(metodoPago, montoTotal, concepto) 
     if (e.monto <= 0) continue;
     const cuentaDoc = await db.collection("caja_cuentas").findOne({ id: e.cuenta });
     if (!cuentaDoc) continue;
+    const fechaEsperada = calcFechaEsperada(e.cuenta);
+    const isPendiente = !!fechaEsperada;
     await db.collection("caja_movimientos").insertOne({
       id: crypto.randomUUID(),
       tipo: "ingreso",
       cuenta: e.cuenta,
       monto: e.monto,
       concepto,
+      pendiente: isPendiente,
+      fechaEsperada,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
@@ -301750,14 +301769,20 @@ app.delete("/api/inventario/caja-menor/:id", async (req, res) => {
 });
 app.get("/api/caja/cuentas", async (_req, res) => {
   try {
-    const cuentas = await db.collection("caja_cuentas").find({}).sort({ orden: 1 }).toArray();
-    if (cuentas.length === 0) {
-      const defaults = [
-        { id: "efectivo", nombre: "Efectivo", color: "green", orden: 0 },
-        { id: "banco", nombre: "Banco", color: "blue", orden: 1 }
-      ];
-      await db.collection("caja_cuentas").insertMany(defaults);
-      return res.json(defaults);
+    let cuentas = await db.collection("caja_cuentas").find({}).sort({ orden: 1 }).toArray();
+    const DEFAULTS = [
+      { id: "efectivo", nombre: "Efectivo", color: "green", orden: 0 },
+      { id: "banco", nombre: "Banco", color: "blue", orden: 1 },
+      { id: "datafono", nombre: "Dat\xE1fono", color: "orange", orden: 2 },
+      { id: "addi", nombre: "Addi", color: "purple", orden: 3 }
+    ];
+    for (const def of DEFAULTS) {
+      if (!cuentas.find((c) => c.id === def.id)) {
+        await db.collection("caja_cuentas").insertOne(def);
+      }
+    }
+    if (cuentas.length < DEFAULTS.length) {
+      cuentas = await db.collection("caja_cuentas").find({}).sort({ orden: 1 }).toArray();
     }
     res.json(cuentas);
   } catch (error) {
@@ -301782,7 +301807,8 @@ app.post("/api/caja/cuentas", async (req, res) => {
 app.delete("/api/caja/cuentas/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    if (id === "efectivo" || id === "banco") {
+    const protectedAccounts = ["efectivo", "banco", "datafono", "addi"];
+    if (protectedAccounts.includes(id)) {
       return res.status(400).json({ error: "No se puede eliminar cuenta por defecto" });
     }
     await db.collection("caja_cuentas").deleteOne({ id });

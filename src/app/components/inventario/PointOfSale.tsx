@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -8,6 +8,7 @@ import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Search, Wallet, Landmark, CreditCard, ShoppingBag,
   ArrowDownCircle, ArrowUpCircle, Settings2, X, Package,
+  Printer, Smartphone, Clock,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -26,6 +27,17 @@ interface CatalogProduct {
   storageVariants?: { storage: string; price: number; stock: number }[];
 }
 
+interface LastSale {
+  cliente: string;
+  producto: string;
+  precioVenta: number;
+  imei: string;
+  metodoPago: string;
+  notas: string;
+  fecha: string;
+  pagos: { cuenta: string; monto: number }[];
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 const fmt = (n: number) => `$${n.toLocaleString('es-CO')}`;
 
@@ -40,7 +52,101 @@ const GRADIENTS: Record<string, string> = {
   yellow: 'from-yellow-500 to-amber-500',
 };
 
-const ICONS: Record<string, any> = { efectivo: Wallet, banco: Landmark };
+const ICONS: Record<string, any> = {
+  efectivo: Wallet,
+  banco: Landmark,
+  datafono: CreditCard,
+  addi: Smartphone,
+};
+
+const PROTECTED_ACCOUNTS = ['efectivo', 'banco', 'datafono', 'addi'];
+
+// Datáfono cobra 5% extra al cliente
+const DATAFONO_SURCHARGE = 0.05;
+
+// ─── Print invoice helper ────────────────────────────────────────────
+function printInvoice(sale: LastSale) {
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+  const hora = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+  const pagosHtml = sale.pagos.map(p => `
+    <tr>
+      <td style="padding:2px 8px;text-transform:capitalize;">${p.cuenta}</td>
+      <td style="padding:2px 8px;text-align:right;font-weight:bold;">$${p.monto.toLocaleString('es-CO')}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Factura - Xiaomi Cartagena</title>
+  <style>
+    @media print { @page { margin: 10mm; size: 80mm auto; } }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #333; max-width: 300px; margin: 0 auto; padding: 10px; }
+    .header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
+    .header h1 { font-size: 18px; font-weight: 900; color: #7c3aed; }
+    .header p { font-size: 10px; color: #888; }
+    .row { display: flex; justify-content: space-between; padding: 3px 0; }
+    .row .label { color: #666; }
+    .row .value { font-weight: 700; }
+    .product { background: #f5f3ff; border-radius: 8px; padding: 10px; margin: 10px 0; }
+    .product .name { font-weight: 800; font-size: 14px; color: #5b21b6; }
+    .product .price { font-size: 18px; font-weight: 900; color: #7c3aed; }
+    .divider { border-top: 1px dashed #ddd; margin: 8px 0; }
+    table { width: 100%; }
+    .footer { text-align: center; margin-top: 15px; font-size: 10px; color: #aaa; border-top: 2px dashed #ccc; padding-top: 10px; }
+    .print-btn { display: block; margin: 15px auto; padding: 10px 30px; background: #7c3aed; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; }
+    .print-btn:hover { background: #6d28d9; }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>XIAOMI CARTAGENA</h1>
+    <p>NIT: 901.XXX.XXX-X</p>
+    <p>Cartagena de Indias, Colombia</p>
+  </div>
+
+  <div class="row"><span class="label">Fecha:</span><span class="value">${fecha}</span></div>
+  <div class="row"><span class="label">Hora:</span><span class="value">${hora}</span></div>
+  <div class="row"><span class="label">Cliente:</span><span class="value">${sale.cliente}</span></div>
+  ${sale.imei ? `<div class="row"><span class="label">IMEI:</span><span class="value">${sale.imei}</span></div>` : ''}
+
+  <div class="product">
+    <div class="name">${sale.producto}</div>
+    <div class="price">${fmt(sale.precioVenta)}</div>
+  </div>
+
+  <div class="divider"></div>
+  <p style="font-weight:700;font-size:11px;margin-bottom:4px;">FORMA DE PAGO:</p>
+  <table>${pagosHtml}</table>
+
+  <div class="divider"></div>
+  <div class="row" style="font-size:14px;">
+    <span class="label" style="font-weight:800;">TOTAL:</span>
+    <span class="value" style="color:#7c3aed;font-size:16px;">${fmt(sale.precioVenta)}</span>
+  </div>
+
+  ${sale.notas ? `<div class="divider"></div><p style="font-size:10px;color:#888;">Notas: ${sale.notas}</p>` : ''}
+
+  <div class="footer">
+    <p>Gracias por su compra</p>
+    <p>www.xiaomicartagena.com</p>
+  </div>
+
+  <button class="print-btn no-print" onclick="window.print()">Imprimir</button>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=350,height=600');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
 
 // ─── Component ───────────────────────────────────────────────────────
 export function PointOfSale() {
@@ -105,6 +211,11 @@ export function PointOfSale() {
     return products.filter(p => p.name.toLowerCase().includes(q));
   }, [products, search]);
 
+  // ─── Datáfono surcharge calculation ──────────────────────────────
+  const datafonoBase = Number(pagos['datafono'] || 0);
+  const datafonoSurcharge = Math.round(datafonoBase * DATAFONO_SURCHARGE);
+  const datafonoTotal = datafonoBase + datafonoSurcharge;
+
   // ─── Open sale dialog for a product ──────────────────────────────
   const openSale = (p: CatalogProduct | null) => {
     setSelectedProduct(p);
@@ -116,10 +227,7 @@ export function PointOfSale() {
       imei: '',
       notas: '',
     });
-    // Initialize pagos with first account
-    const initial: Record<string, string> = {};
-    if (cuentas.length > 0) initial[cuentas[0].id] = '';
-    setPagos(initial);
+    setPagos({});
     setSaleOpen(true);
   };
 
@@ -136,14 +244,19 @@ export function PointOfSale() {
       .filter(e => e.monto > 0);
 
     const totalPagos = pagoEntries.reduce((s, e) => s + e.monto, 0);
-    if (pagoEntries.length > 0 && totalPagos !== precioVenta) {
-      toast.error(`Los pagos ($${totalPagos.toLocaleString('es-CO')}) no coinciden con el precio ($${precioVenta.toLocaleString('es-CO')})`);
+    if (pagoEntries.length === 0) {
+      toast.error('Selecciona al menos una forma de pago'); return;
+    }
+    if (totalPagos !== precioVenta) {
+      toast.error(`Los pagos (${fmt(totalPagos)}) no coinciden con el precio (${fmt(precioVenta)})`);
       return;
     }
 
+    // Determine if any part is pending (datáfono or addi)
+    const hasPending = pagoEntries.some(e => e.cuenta === 'datafono' || e.cuenta === 'addi');
+
     setSaving(true);
     try {
-      // 1. Create daily sale
       const metodoPago = pagoEntries.length === 1
         ? pagoEntries[0].cuenta
         : pagoEntries.map(e => `${e.cuenta}:${e.monto}`).join('+');
@@ -167,10 +280,28 @@ export function PointOfSale() {
 
       if (!saleRes.ok) throw new Error('Error creando venta');
 
-      // Caja se actualiza automáticamente en el servidor
+      // Build sale data for print
+      const saleData: LastSale = {
+        cliente: saleForm.cliente || 'Cliente',
+        producto: saleForm.producto,
+        precioVenta,
+        imei: saleForm.imei,
+        metodoPago,
+        notas: saleForm.notas,
+        fecha: new Date().toISOString(),
+        pagos: pagoEntries.map(e => ({
+          cuenta: cuentas.find(c => c.id === e.cuenta)?.nombre || e.cuenta,
+          monto: e.monto,
+        })),
+      };
+
       toast.success('Venta registrada');
       setSaleOpen(false);
       await loadData();
+
+      // Open print invoice
+      printInvoice(saleData);
+
     } catch { toast.error('Error al registrar venta'); }
     setSaving(false);
   };
@@ -233,7 +364,7 @@ export function PointOfSale() {
   };
 
   const handleDeleteCuenta = async (id: string) => {
-    if (id === 'efectivo' || id === 'banco') return;
+    if (PROTECTED_ACCOUNTS.includes(id)) return;
     if (!confirm('Eliminar esta cuenta y todos sus movimientos?')) return;
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/caja/cuentas/${id}`, { method: 'DELETE' });
@@ -249,13 +380,13 @@ export function PointOfSale() {
   return (
     <div className="space-y-4">
       {/* ── Balance cards ─────────────────────────────────────────── */}
-      <div className={`grid gap-2 ${cuentas.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         {cuentas.map(c => {
           const Icon = ICONS[c.id] || CreditCard;
           const grad = GRADIENTS[c.color] || GRADIENTS.purple;
           return (
             <div key={c.id} className={`bg-gradient-to-br ${grad} rounded-xl p-3 text-white shadow-md relative group`}>
-              {c.id !== 'efectivo' && c.id !== 'banco' && (
+              {!PROTECTED_ACCOUNTS.includes(c.id) && (
                 <button onClick={() => handleDeleteCuenta(c.id)} className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-black/20 hover:bg-black/40 rounded-full p-0.5 transition-opacity">
                   <X className="w-3 h-3" />
                 </button>
@@ -336,16 +467,16 @@ export function PointOfSale() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          SALE DIALOG — with split payment
+          SALE DIALOG — with split payment + datáfono +5%
          ══════════════════════════════════════════════════════════════ */}
       <Dialog open={saleOpen} onOpenChange={setSaleOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-violet-600" />
-              Registrar venta
+              Facturar venta
             </DialogTitle>
-            <DialogDescription>Registra la venta y el pago se agrega automáticamente a caja</DialogDescription>
+            <DialogDescription>Registra la venta, actualiza caja y genera factura para imprimir</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 mt-2">
@@ -395,22 +526,53 @@ export function PointOfSale() {
 
               {cuentas.map(c => {
                 const Icon = ICONS[c.id] || CreditCard;
+                const isDatafono = c.id === 'datafono';
+                const isAddi = c.id === 'addi';
+                const isPending = isDatafono || isAddi;
+                const val = Number(pagos[c.id] || 0);
                 return (
-                  <div key={c.id} className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 w-28 flex-shrink-0">
-                      <Icon className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm font-semibold text-gray-700">{c.nombre}</span>
+                  <div key={c.id}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 w-28 flex-shrink-0">
+                        <Icon className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm font-semibold text-gray-700">{c.nombre}</span>
+                        {isDatafono && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1 rounded">+5%</span>}
+                        {isPending && <Clock className="w-3 h-3 text-amber-500" />}
+                      </div>
+                      <div className="relative flex-1">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                        <Input
+                          type="number"
+                          value={pagos[c.id] || ''}
+                          onChange={e => setPagos(prev => ({ ...prev, [c.id]: e.target.value }))}
+                          placeholder="0"
+                          className="pl-7 h-9"
+                        />
+                      </div>
                     </div>
-                    <div className="relative flex-1">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                      <Input
-                        type="number"
-                        value={pagos[c.id] || ''}
-                        onChange={e => setPagos(prev => ({ ...prev, [c.id]: e.target.value }))}
-                        placeholder="0"
-                        className="pl-7 h-9"
-                      />
-                    </div>
+                    {/* Datáfono surcharge info */}
+                    {isDatafono && val > 0 && (
+                      <div className="ml-28 pl-2 mt-0.5">
+                        <p className="text-[10px] text-orange-600 font-semibold">
+                          Cliente paga: {fmt(val + Math.round(val * DATAFONO_SURCHARGE))} (incluye 5% datáfono)
+                        </p>
+                      </div>
+                    )}
+                    {/* Addi/datáfono pending info */}
+                    {isAddi && val > 0 && (
+                      <div className="ml-28 pl-2 mt-0.5">
+                        <p className="text-[10px] text-purple-600 font-semibold">
+                          Pendiente — Addi paga en ~7 días
+                        </p>
+                      </div>
+                    )}
+                    {isDatafono && val > 0 && (
+                      <div className="ml-28 pl-2">
+                        <p className="text-[10px] text-amber-600">
+                          Pendiente — cae al siguiente día hábil
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -434,8 +596,8 @@ export function PointOfSale() {
               <Input value={saleForm.notas} onChange={e => setSaleForm(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..." />
             </div>
 
-            <Button onClick={handleSale} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-1">
-              <ShoppingBag className="w-4 h-4" /> {saving ? 'Registrando...' : 'Registrar venta'}
+            <Button onClick={handleSale} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2">
+              <Printer className="w-4 h-4" /> {saving ? 'Registrando...' : 'Facturar e imprimir'}
             </Button>
           </div>
         </DialogContent>
