@@ -3243,6 +3243,11 @@ app.post('/api/inventario/ventas', async (req, res) => {
         if (invItem) {
           const newCant = (invItem.cantidad || 1) - 1;
           const ventaUpdate: Record<string, unknown> = { inventarioId: invItem.id };
+          // Auto-llenar precioCompra desde inventario si no se envió
+          if (compra === 0 && invItem.precioCompra > 0) {
+            ventaUpdate.precioCompra = invItem.precioCompra;
+            ventaUpdate.ganancia = venta - invItem.precioCompra;
+          }
           if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
           if (Object.keys(ventaUpdate).length > 0) {
             await db.collection('daily_sales').updateOne({ id: venta_record.id }, { $set: ventaUpdate });

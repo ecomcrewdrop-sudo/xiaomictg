@@ -537,82 +537,70 @@ export function PointOfSale() {
               <ShoppingBag className="w-5 h-5 text-violet-600" />
               Facturar venta
             </DialogTitle>
-            <DialogDescription>Registra la venta, actualiza caja y genera factura para imprimir</DialogDescription>
+            <DialogDescription>Llena los datos, elige el pago y listo</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 mt-2">
+          <div className="space-y-4 mt-2">
+
+            {/* ── PASO 1: Producto ─────────────────────────────── */}
             {selectedProduct && (
               <div className="flex items-center gap-3 bg-violet-50 rounded-lg p-3">
-                <img src={selectedProduct.image} className="w-12 h-12 object-contain rounded-lg bg-white" />
-                <div>
+                <img src={selectedProduct.image} className="w-14 h-14 object-contain rounded-lg bg-white p-1" />
+                <div className="flex-1">
                   <p className="font-bold text-sm text-violet-900">{selectedProduct.name}</p>
-                  <p className="text-xs text-violet-600">{fmt(Math.round(selectedProduct.price))}</p>
+                  <p className="text-lg font-black text-violet-600">{fmt(Math.round(selectedProduct.price))}</p>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Cliente</Label>
-                <Input value={saleForm.cliente} onChange={e => setSaleForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Nombre" />
-              </div>
-              <div>
-                <Label>Cédula / NIT</Label>
-                <Input value={saleForm.cedula} onChange={e => setSaleForm(f => ({ ...f, cedula: e.target.value }))} placeholder="Cédula" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Teléfono</Label>
-                <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="300 000 0000" />
-              </div>
-              <div>
-                <Label>IMEI (opcional)</Label>
-                <Input value={saleForm.imei} onChange={e => setSaleForm(f => ({ ...f, imei: e.target.value }))} placeholder="IMEI" />
-              </div>
-            </div>
-
             {!selectedProduct && (
               <div>
-                <Label>Producto *</Label>
-                <Input value={saleForm.producto} onChange={e => setSaleForm(f => ({ ...f, producto: e.target.value }))} placeholder="Nombre del producto" />
+                <Label className="text-xs font-bold text-gray-500 uppercase">Producto *</Label>
+                <Input value={saleForm.producto} onChange={e => setSaleForm(f => ({ ...f, producto: e.target.value }))} placeholder="Nombre del producto" className="mt-1" />
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Precio venta *</Label>
-                <Input type="number" value={saleForm.precioVenta} onChange={e => setSaleForm(f => ({ ...f, precioVenta: e.target.value }))} placeholder="0" />
+            {/* ── PASO 2: Datos del cliente ────────────────────── */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-bold text-gray-500 uppercase">Datos del cliente</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={saleForm.cliente} onChange={e => setSaleForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Nombre *" />
+                <Input value={saleForm.cedula} onChange={e => setSaleForm(f => ({ ...f, cedula: e.target.value }))} placeholder="Cédula / NIT" />
               </div>
-              <div>
-                <Label>Rebaja</Label>
-                <Input type="number" value={saleForm.descuento} onChange={e => setSaleForm(f => ({ ...f, descuento: e.target.value }))} placeholder="0" className="border-orange-200 focus:border-orange-400" />
-              </div>
-              <div>
-                <Label>Costo compra</Label>
-                <Input type="number" value={saleForm.precioCompra} onChange={e => setSaleForm(f => ({ ...f, precioCompra: e.target.value }))} placeholder="0" />
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="Teléfono" />
+                <Input value={saleForm.imei} onChange={e => setSaleForm(f => ({ ...f, imei: e.target.value }))} placeholder="IMEI (opcional)" />
               </div>
             </div>
 
-            {/* Descuento indicator */}
-            {Number(saleForm.descuento) > 0 && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs">
-                <span className="text-orange-700 font-semibold">
-                  Rebaja de {fmt(Number(saleForm.descuento))} — Total a cobrar: <strong>{fmt(Number(saleForm.precioVenta) - Number(saleForm.descuento))}</strong>
-                </span>
-              </div>
-            )}
-
-            {/* ── Split Payment ─────────────────────────────────── */}
+            {/* ── PASO 3: Precio y rebaja ──────────────────────── */}
             <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Forma de pago</p>
-              <p className="text-[10px] text-gray-400">Divide el pago entre las cuentas que necesites</p>
+              <p className="text-xs font-bold text-gray-500 uppercase">Precio</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Input type="number" value={saleForm.precioVenta} onChange={e => setSaleForm(f => ({ ...f, precioVenta: e.target.value }))} placeholder="Precio venta *" className="text-lg font-bold h-11" />
+                </div>
+                <div className="w-28">
+                  <Input type="number" value={saleForm.descuento} onChange={e => setSaleForm(f => ({ ...f, descuento: e.target.value }))} placeholder="Rebaja" className="border-orange-200 focus:border-orange-400 h-11" />
+                </div>
+              </div>
+              {Number(saleForm.descuento) > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-xs">
+                  <span className="text-orange-700 font-semibold">
+                    Rebaja {fmt(Number(saleForm.descuento))} → Cobra: <strong>{fmt((Number(saleForm.precioVenta) || 0) - Number(saleForm.descuento))}</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ── PASO 4: Forma de pago ────────────────────────── */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-bold text-gray-500 uppercase">Forma de pago</p>
 
               {cuentas.map(c => {
                 const Icon = ICONS[c.id] || CreditCard;
                 const isDatafono = c.id === 'datafono';
                 const isAddi = c.id === 'addi';
-                const isPending = isDatafono || isAddi;
                 const val = Number(pagos[c.id] || 0);
                 return (
                   <div key={c.id}>
@@ -621,7 +609,7 @@ export function PointOfSale() {
                         <Icon className="w-4 h-4 text-gray-500" />
                         <span className="text-sm font-semibold text-gray-700">{c.nombre}</span>
                         {isDatafono && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1 rounded">+5%</span>}
-                        {isPending && <Clock className="w-3 h-3 text-amber-500" />}
+                        {(isDatafono || isAddi) && <Clock className="w-3 h-3 text-amber-500" />}
                       </div>
                       <div className="relative flex-1">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
@@ -634,28 +622,15 @@ export function PointOfSale() {
                         />
                       </div>
                     </div>
-                    {/* Datáfono surcharge info */}
                     {isDatafono && val > 0 && (
-                      <div className="ml-28 pl-2 mt-0.5">
-                        <p className="text-[10px] text-orange-600 font-semibold">
-                          Cliente paga: {fmt(val + Math.round(val * DATAFONO_SURCHARGE))} (incluye 5% datáfono)
-                        </p>
-                      </div>
+                      <p className="ml-28 pl-2 mt-0.5 text-[10px] text-orange-600 font-semibold">
+                        Cliente paga: {fmt(val + Math.round(val * DATAFONO_SURCHARGE))} · Cae al siguiente día hábil
+                      </p>
                     )}
-                    {/* Addi/datáfono pending info */}
                     {isAddi && val > 0 && (
-                      <div className="ml-28 pl-2 mt-0.5">
-                        <p className="text-[10px] text-purple-600 font-semibold">
-                          Pendiente — Addi paga en ~7 días
-                        </p>
-                      </div>
-                    )}
-                    {isDatafono && val > 0 && (
-                      <div className="ml-28 pl-2">
-                        <p className="text-[10px] text-amber-600">
-                          Pendiente — cae al siguiente día hábil
-                        </p>
-                      </div>
+                      <p className="ml-28 pl-2 mt-0.5 text-[10px] text-purple-600 font-semibold">
+                        Pendiente · Addi paga en ~7 días
+                      </p>
                     )}
                   </div>
                 );
@@ -668,20 +643,18 @@ export function PointOfSale() {
                 const diff = precio - total;
                 const ok = total > 0 && diff === 0;
                 return total > 0 ? (
-                  <div className={`text-xs font-bold text-right pt-1 ${ok ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`text-sm font-bold text-right pt-1 ${ok ? 'text-green-600' : 'text-red-600'}`}>
                     {ok ? '✅ Pago completo' : diff > 0 ? `Faltan ${fmt(diff)}` : `Excede ${fmt(Math.abs(diff))}`}
                   </div>
                 ) : null;
               })()}
             </div>
 
-            <div>
-              <Label>Notas</Label>
-              <Input value={saleForm.notas} onChange={e => setSaleForm(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..." />
-            </div>
+            {/* Notas */}
+            <Input value={saleForm.notas} onChange={e => setSaleForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas (opcional)" />
 
-            <Button onClick={handleSale} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2">
-              <Printer className="w-4 h-4" /> {saving ? 'Registrando...' : 'Facturar e imprimir'}
+            <Button onClick={handleSale} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2 h-12 text-base font-bold">
+              <Printer className="w-5 h-5" /> {saving ? 'Registrando...' : 'Facturar e imprimir'}
             </Button>
           </div>
         </DialogContent>
