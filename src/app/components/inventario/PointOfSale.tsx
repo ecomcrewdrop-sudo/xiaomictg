@@ -30,6 +30,8 @@ interface CatalogProduct {
 interface LastSale {
   cliente: string;
   producto: string;
+  precioOriginal: number;
+  descuento: number;
   precioVenta: number;
   imei: string;
   metodoPago: string;
@@ -64,84 +66,127 @@ const PROTECTED_ACCOUNTS = ['efectivo', 'banco', 'datafono', 'addi'];
 // Datáfono cobra 5% extra al cliente
 const DATAFONO_SURCHARGE = 0.05;
 
-// ─── Print invoice helper ────────────────────────────────────────────
+// ─── Print invoice helper — formato igual al ticket de email ────────
 function printInvoice(sale: LastSale) {
   const now = new Date();
   const fecha = now.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
   const hora = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
   const pagosHtml = sale.pagos.map(p => `
-    <tr>
-      <td style="padding:2px 8px;text-transform:capitalize;">${p.cuenta}</td>
-      <td style="padding:2px 8px;text-align:right;font-weight:bold;">$${p.monto.toLocaleString('es-CO')}</td>
-    </tr>
+    <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+      <span style="text-transform:uppercase;">${p.cuenta}</span>
+      <span>$${p.monto.toLocaleString('es-CO')}</span>
+    </div>
   `).join('');
+
+  const descuentoHtml = sale.descuento > 0 ? `
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+      <span>Precio original:</span>
+      <span style="text-decoration:line-through;">$${sale.precioOriginal.toLocaleString('es-CO')}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#dc2626;">
+      <span>Descuento:</span>
+      <span>-$${sale.descuento.toLocaleString('es-CO')}</span>
+    </div>
+  ` : '';
 
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Factura - Xiaomi Cartagena</title>
+  <title>Factura - Xiaomi Store</title>
   <style>
-    @media print { @page { margin: 10mm; size: 80mm auto; } }
+    @media print { @page { margin: 5mm; size: 80mm auto; } }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #333; max-width: 300px; margin: 0 auto; padding: 10px; }
-    .header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
-    .header h1 { font-size: 18px; font-weight: 900; color: #7c3aed; }
-    .header p { font-size: 10px; color: #888; }
-    .row { display: flex; justify-content: space-between; padding: 3px 0; }
-    .row .label { color: #666; }
-    .row .value { font-weight: 700; }
-    .product { background: #f5f3ff; border-radius: 8px; padding: 10px; margin: 10px 0; }
-    .product .name { font-weight: 800; font-size: 14px; color: #5b21b6; }
-    .product .price { font-size: 18px; font-weight: 900; color: #7c3aed; }
-    .divider { border-top: 1px dashed #ddd; margin: 8px 0; }
-    table { width: 100%; }
-    .footer { text-align: center; margin-top: 15px; font-size: 10px; color: #aaa; border-top: 2px dashed #ccc; padding-top: 10px; }
-    .print-btn { display: block; margin: 15px auto; padding: 10px 30px; background: #7c3aed; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; }
-    .print-btn:hover { background: #6d28d9; }
+    body { font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #000; max-width: 320px; margin: 0 auto; padding: 10px; background: #fff; }
+    .dashed { border-top: 2px dashed #000; margin: 10px 0; }
+    .dashed-thin { border-top: 1px dashed #000; margin: 8px 0; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .print-btn { display: block; margin: 20px auto; padding: 12px 30px; background: #333; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: Arial, sans-serif; }
+    .print-btn:hover { background: #111; }
     @media print { .no-print { display: none !important; } }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>XIAOMI CARTAGENA</h1>
-    <p>NIT: 901.XXX.XXX-X</p>
-    <p>Cartagena de Indias, Colombia</p>
+  <!-- HEADER -->
+  <div style="text-align:center;padding-bottom:12px;">
+    <h2 style="font-size:22px;text-transform:uppercase;margin-bottom:4px;">XIAOMI STORE</h2>
+    <p style="font-size:11px;">Tecnolog&iacute;a Premium</p>
+    <p style="font-weight:bold;font-size:12px;margin-top:6px;">NIT: 1043345642-7</p>
+    <p style="font-size:10px;margin-top:8px;">Cl. 31 #61-64, Los &Aacute;ngeles</p>
+    <p style="font-size:10px;">Cartagena de Indias</p>
+    <p style="font-size:10px;font-weight:bold;margin-top:4px;">Tel: 302 287 5280</p>
+    <p style="font-size:10px;">www.xiaomicartagena.com</p>
   </div>
 
-  <div class="row"><span class="label">Fecha:</span><span class="value">${fecha}</span></div>
-  <div class="row"><span class="label">Hora:</span><span class="value">${hora}</span></div>
-  <div class="row"><span class="label">Cliente:</span><span class="value">${sale.cliente}</span></div>
-  ${sale.imei ? `<div class="row"><span class="label">IMEI:</span><span class="value">${sale.imei}</span></div>` : ''}
+  <div class="dashed"></div>
 
-  <div class="product">
-    <div class="name">${sale.producto}</div>
-    <div class="price">${fmt(sale.precioVenta)}</div>
+  <!-- DATOS VENTA -->
+  <div style="font-size:11px;margin-bottom:6px;">
+    <div class="row"><strong>FECHA:</strong><span>${fecha}</span></div>
+    <div class="row"><strong>HORA:</strong><span>${hora}</span></div>
   </div>
 
-  <div class="divider"></div>
-  <p style="font-weight:700;font-size:11px;margin-bottom:4px;">FORMA DE PAGO:</p>
-  <table>${pagosHtml}</table>
+  <div class="dashed-thin"></div>
 
-  <div class="divider"></div>
-  <div class="row" style="font-size:14px;">
-    <span class="label" style="font-weight:800;">TOTAL:</span>
-    <span class="value" style="color:#7c3aed;font-size:16px;">${fmt(sale.precioVenta)}</span>
+  <!-- CLIENTE -->
+  <div style="font-size:11px;margin-bottom:6px;">
+    <div style="font-weight:bold;margin-bottom:4px;">CLIENTE</div>
+    <div>Nombre: <span style="text-transform:uppercase;">${sale.cliente}</span></div>
+    ${sale.imei ? `<div style="margin-top:2px;">IMEI: ${sale.imei}</div>` : ''}
   </div>
 
-  ${sale.notas ? `<div class="divider"></div><p style="font-size:10px;color:#888;">Notas: ${sale.notas}</p>` : ''}
+  <div style="border-top:2px solid #000;margin:10px 0;"></div>
 
-  <div class="footer">
-    <p>Gracias por su compra</p>
-    <p>www.xiaomicartagena.com</p>
+  <!-- PRODUCTO -->
+  <div style="margin-bottom:8px;">
+    <div style="font-size:12px;font-weight:bold;margin-bottom:8px;">PRODUCTOS</div>
+    <div style="font-size:11px;">
+      <div style="font-weight:bold;text-transform:uppercase;">${sale.producto}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <span>1 x $${sale.precioVenta.toLocaleString('es-CO')}</span>
+        <strong>$${sale.precioVenta.toLocaleString('es-CO')}</strong>
+      </div>
+    </div>
   </div>
 
-  <button class="print-btn no-print" onclick="window.print()">Imprimir</button>
+  <div class="dashed-thin"></div>
+
+  <!-- TOTALES -->
+  <div style="font-size:11px;">
+    ${descuentoHtml}
+    <div style="border-top:2px solid #000;margin:8px 0;"></div>
+    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;margin-bottom:8px;">
+      <span>TOTAL:</span>
+      <span>$${sale.precioVenta.toLocaleString('es-CO')} COP</span>
+    </div>
+  </div>
+
+  <!-- FORMA DE PAGO -->
+  <div style="font-size:11px;border-top:1px dashed #000;padding-top:8px;margin-bottom:8px;">
+    <strong>M&Eacute;TODO DE PAGO:</strong>
+    <div style="margin-top:4px;">${pagosHtml}</div>
+  </div>
+
+  ${sale.notas ? `<div class="dashed-thin"></div><div style="font-size:10px;">Notas: ${sale.notas}</div>` : ''}
+
+  <div class="dashed"></div>
+
+  <!-- GARANTÍA Y FOOTER -->
+  <div style="text-align:center;font-size:10px;margin-top:8px;">
+    <div style="font-weight:bold;font-size:14px;text-transform:uppercase;margin-bottom:10px;">Gracias por tu compra!</div>
+    <div style="line-height:1.5;text-align:justify;margin-bottom:12px;">
+      Conserva este ticket para tu garant&iacute;a. La garant&iacute;a cubre defectos de f&aacute;brica por 6 meses a partir de la fecha de compra. No cubre da&ntilde;os por mal uso, golpes, humedad o manipulaci&oacute;n por terceros. Para hacer efectiva la garant&iacute;a, presenta este ticket junto con el equipo en nuestra tienda.
+    </div>
+    <div style="font-weight:bold;margin-bottom:2px;">Horario de atenci&oacute;n:</div>
+    <div>Lun - Vie: 9:00 AM - 7:00 PM | Dom: 10:30 AM - 3:00 PM</div>
+  </div>
+
+  <button class="print-btn no-print" onclick="window.print()">Imprimir Factura</button>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=350,height=600');
+  const win = window.open('', '_blank', 'width=380,height=700');
   if (win) {
     win.document.write(html);
     win.document.close();
@@ -164,6 +209,7 @@ export function PointOfSale() {
     producto: '',
     precioVenta: '',
     precioCompra: '',
+    descuento: '',
     imei: '',
     notas: '',
   });
@@ -219,6 +265,7 @@ export function PointOfSale() {
       producto: p?.name || '',
       precioVenta: p ? Math.round(p.price).toString() : '',
       precioCompra: '',
+      descuento: '',
       imei: '',
       notas: '',
     });
@@ -231,7 +278,13 @@ export function PointOfSale() {
     if (!saleForm.producto || !saleForm.precioVenta) {
       toast.error('Producto y precio requeridos'); return;
     }
-    const precioVenta = Number(saleForm.precioVenta);
+    const precioOriginal = Number(saleForm.precioVenta);
+    const descuento = Number(saleForm.descuento) || 0;
+    const precioFinal = precioOriginal - descuento;
+
+    if (precioFinal <= 0) {
+      toast.error('El descuento no puede ser mayor al precio'); return;
+    }
 
     // Calculate total pagos
     const pagoEntries = Object.entries(pagos)
@@ -242,8 +295,8 @@ export function PointOfSale() {
     if (pagoEntries.length === 0) {
       toast.error('Selecciona al menos una forma de pago'); return;
     }
-    if (totalPagos !== precioVenta) {
-      toast.error(`Los pagos (${fmt(totalPagos)}) no coinciden con el precio (${fmt(precioVenta)})`);
+    if (totalPagos !== precioFinal) {
+      toast.error(`Los pagos (${fmt(totalPagos)}) no coinciden con el total (${fmt(precioFinal)})`);
       return;
     }
 
@@ -252,6 +305,10 @@ export function PointOfSale() {
       const metodoPago = pagoEntries.length === 1
         ? pagoEntries[0].cuenta
         : pagoEntries.map(e => `${e.cuenta}:${e.monto}`).join('+');
+
+      const notasConDescuento = descuento > 0
+        ? `${saleForm.notas ? saleForm.notas + ' | ' : ''}Descuento: -${fmt(descuento)} (precio original: ${fmt(precioOriginal)})`
+        : saleForm.notas;
 
       const saleRes = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas`, {
         method: 'POST',
@@ -263,10 +320,10 @@ export function PointOfSale() {
           esPropio: true,
           proveedor: '',
           precioCompra: Number(saleForm.precioCompra) || 0,
-          precioVenta,
+          precioVenta: precioFinal,
           metodoPago,
           estadoPago: 'recibido',
-          notas: saleForm.notas,
+          notas: notasConDescuento,
         }),
       });
 
@@ -276,7 +333,9 @@ export function PointOfSale() {
       const saleData: LastSale = {
         cliente: saleForm.cliente || 'Cliente',
         producto: saleForm.producto,
-        precioVenta,
+        precioOriginal,
+        descuento,
+        precioVenta: precioFinal,
         imei: saleForm.imei,
         metodoPago,
         notas: saleForm.notas,
@@ -500,16 +559,29 @@ export function PointOfSale() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Precio venta *</Label>
                 <Input type="number" value={saleForm.precioVenta} onChange={e => setSaleForm(f => ({ ...f, precioVenta: e.target.value }))} placeholder="0" />
+              </div>
+              <div>
+                <Label>Rebaja</Label>
+                <Input type="number" value={saleForm.descuento} onChange={e => setSaleForm(f => ({ ...f, descuento: e.target.value }))} placeholder="0" className="border-orange-200 focus:border-orange-400" />
               </div>
               <div>
                 <Label>Costo compra</Label>
                 <Input type="number" value={saleForm.precioCompra} onChange={e => setSaleForm(f => ({ ...f, precioCompra: e.target.value }))} placeholder="0" />
               </div>
             </div>
+
+            {/* Descuento indicator */}
+            {Number(saleForm.descuento) > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs">
+                <span className="text-orange-700 font-semibold">
+                  Rebaja de {fmt(Number(saleForm.descuento))} — Total a cobrar: <strong>{fmt(Number(saleForm.precioVenta) - Number(saleForm.descuento))}</strong>
+                </span>
+              </div>
+            )}
 
             {/* ── Split Payment ─────────────────────────────────── */}
             <div className="bg-gray-50 rounded-lg p-3 space-y-2">
@@ -572,7 +644,7 @@ export function PointOfSale() {
               {/* Pago total indicator */}
               {(() => {
                 const total = Object.values(pagos).reduce((s, v) => s + (Number(v) || 0), 0);
-                const precio = Number(saleForm.precioVenta) || 0;
+                const precio = (Number(saleForm.precioVenta) || 0) - (Number(saleForm.descuento) || 0);
                 const diff = precio - total;
                 const ok = total > 0 && diff === 0;
                 return total > 0 ? (
