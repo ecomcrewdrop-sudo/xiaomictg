@@ -8,7 +8,7 @@ import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
   Plus, Search, Wallet, Landmark, CreditCard, ShoppingBag,
   ArrowDownCircle, ArrowUpCircle, Settings2, X, Package,
-  Printer, Smartphone, Clock, Gift,
+  Printer, Smartphone, Clock, Gift, TrendingUp, DollarSign,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -213,6 +213,9 @@ export function PointOfSale() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [resumenMes, setResumenMes] = useState<{
+    totalVentas: number; totalGanancia: number; cantidadVentas: number; totalGastos: number; gananciaReal: number;
+  } | null>(null);
 
   // Sale dialog
   const [saleOpen, setSaleOpen] = useState(false);
@@ -252,14 +255,16 @@ export function PointOfSale() {
   // ─── Load ────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
-      const [cRes, sRes, pRes] = await Promise.all([
+      const [cRes, sRes, pRes, mRes] = await Promise.all([
         fetchWithTimeout(`${API_BASE_URL}/caja/cuentas`),
         fetchWithTimeout(`${API_BASE_URL}/caja/saldos`),
         fetchWithTimeout(`${API_BASE_URL}/products`),
+        fetchWithTimeout(`${API_BASE_URL}/inventario/resumen-mes`),
       ]);
       if (cRes.ok) setCuentas(await cRes.json());
       if (sRes.ok) setSaldos(await sRes.json());
       if (pRes.ok) setProducts(await pRes.json());
+      if (mRes.ok) setResumenMes(await mRes.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, []);
@@ -459,33 +464,80 @@ export function PointOfSale() {
 
   return (
     <div className="space-y-4">
-      {/* ── Balance cards ─────────────────────────────────────────── */}
-      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-        {cuentas.map(c => {
-          const Icon = ICONS[c.id] || CreditCard;
-          const grad = GRADIENTS[c.color] || GRADIENTS.purple;
-          return (
-            <div key={c.id} className={`bg-gradient-to-br ${grad} rounded-xl p-3 text-white shadow-md relative group`}>
-              {!PROTECTED_ACCOUNTS.includes(c.id) && (
-                <button onClick={() => handleDeleteCuenta(c.id)} className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-black/20 hover:bg-black/40 rounded-full p-0.5 transition-opacity">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <Icon className="w-4 h-4 opacity-80" />
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{c.nombre}</span>
-              </div>
-              <p className="text-lg font-black leading-tight">{fmt(saldos[c.id] || 0)}</p>
+      {/* ── Resumen del mes ──────────────────────────────────────── */}
+      {resumenMes && (
+        <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+          <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-3 text-white shadow-md">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <TrendingUp className="w-4 h-4 opacity-80" />
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Ganancia del mes</span>
             </div>
-          );
-        })}
-        <button
-          onClick={() => setNewCuentaOpen(true)}
-          className="border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 rounded-xl p-3 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        >
-          <Plus className="w-4 h-4 text-gray-400" />
-          <span className="text-[10px] font-semibold text-gray-400">Nueva</span>
-        </button>
+            <p className="text-lg font-black leading-tight">{fmt(resumenMes.totalGanancia)}</p>
+            <p className="text-[10px] opacity-70">{resumenMes.cantidadVentas} ventas</p>
+          </div>
+          <div className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl p-3 text-white shadow-md">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <DollarSign className="w-4 h-4 opacity-80" />
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Ventas del mes</span>
+            </div>
+            <p className="text-lg font-black leading-tight">{fmt(resumenMes.totalVentas)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white shadow-md">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <ArrowUpCircle className="w-4 h-4 opacity-80" />
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Gastos del mes</span>
+            </div>
+            <p className="text-lg font-black leading-tight">{fmt(resumenMes.totalGastos)}</p>
+          </div>
+          <div className={`bg-gradient-to-br ${resumenMes.gananciaReal >= 0 ? 'from-teal-500 to-emerald-600' : 'from-red-500 to-rose-600'} rounded-xl p-3 text-white shadow-md`}>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Wallet className="w-4 h-4 opacity-80" />
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Utilidad real</span>
+            </div>
+            <p className="text-lg font-black leading-tight">{fmt(resumenMes.gananciaReal)}</p>
+            <p className="text-[10px] opacity-70">ganancia - gastos</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Caja: saldos por cuenta ──────────────────────────────── */}
+      <div>
+        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Caja — Saldos actuales</p>
+        <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Total general */}
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-3 text-white shadow-md">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <DollarSign className="w-4 h-4 opacity-80" />
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Total caja</span>
+            </div>
+            <p className="text-lg font-black leading-tight">{fmt(Object.values(saldos).reduce((s, v) => s + v, 0))}</p>
+          </div>
+          {cuentas.map(c => {
+            const Icon = ICONS[c.id] || CreditCard;
+            const grad = GRADIENTS[c.color] || GRADIENTS.purple;
+            return (
+              <div key={c.id} className={`bg-gradient-to-br ${grad} rounded-xl p-3 text-white shadow-md relative group`}>
+                {!PROTECTED_ACCOUNTS.includes(c.id) && (
+                  <button onClick={() => handleDeleteCuenta(c.id)} className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-black/20 hover:bg-black/40 rounded-full p-0.5 transition-opacity">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Icon className="w-4 h-4 opacity-80" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{c.nombre}</span>
+                </div>
+                <p className="text-lg font-black leading-tight">{fmt(saldos[c.id] || 0)}</p>
+              </div>
+            );
+          })}
+          <button
+            onClick={() => setNewCuentaOpen(true)}
+            className="border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 rounded-xl p-3 flex flex-col items-center justify-center gap-0.5 transition-colors"
+          >
+            <Plus className="w-4 h-4 text-gray-400" />
+            <span className="text-[10px] font-semibold text-gray-400">Nueva</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Quick actions ─────────────────────────────────────────── */}

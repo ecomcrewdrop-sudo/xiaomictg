@@ -301204,7 +301204,7 @@ app.post("/api/financing/:id/remind", async (req, res) => {
       return res.status(400).json({ error: "No hay cuotas pendientes" });
     }
     const dueDate = new Date(nextPending.dueDate);
-    const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Bogota" });
     const isOverdue = nextPending.status === "overdue";
     const valorStr = record.valorCuota.toLocaleString("es-CO");
     const previas = record.cuotasPrevias || 0;
@@ -301236,9 +301236,10 @@ Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
 _CREDILOCK \u2014 Sistema de financiamiento_`;
     const success = await whatsappService.sendMessage(record.telefono, msg);
     if (success) {
+      const colombia = getColombiaDate();
       await db.collection("financing").updateOne(
         { id: req.params.id },
-        { $set: { lastReminderSent: (/* @__PURE__ */ new Date()).toISOString() } }
+        { $set: { lastReminderSent: colombia.dateStr } }
       );
     }
     res.json({ success, message: success ? "Recordatorio enviado" : "No se pudo enviar" });
@@ -301248,26 +301249,35 @@ _CREDILOCK \u2014 Sistema de financiamiento_`;
   }
 });
 var financingReminderInterval = null;
+function getColombiaDate() {
+  const now = /* @__PURE__ */ new Date();
+  const colombiaStr = now.toLocaleString("en-CA", { timeZone: "America/Bogota", hour12: false });
+  const dateStr = colombiaStr.slice(0, 10);
+  const timePart = colombiaStr.split(/[, ]+/).pop() || "00:00:00";
+  const hour = parseInt(timePart.split(":")[0], 10);
+  return { dateStr, hour };
+}
 async function checkFinancingReminders() {
   if (!db || whatsappService.getStatus() !== "connected") return;
+  const colombia = getColombiaDate();
+  if (colombia.hour < 11 || colombia.hour > 13) return;
   try {
     const records = await db.collection("financing").find({ status: "active" }).toArray();
-    const now = /* @__PURE__ */ new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = colombia.dateStr;
     for (const record of records) {
       const cuotas = record.cuotas || [];
       const nextPending = cuotas.find((c) => c.status === "pending" || c.status === "overdue");
       if (!nextPending) continue;
       const dueDate = new Date(nextPending.dueDate);
-      const dueDateStr = dueDate.toISOString().slice(0, 10);
+      const dueDateStr = dueDate.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
       const dayBefore = new Date(dueDate);
       dayBefore.setDate(dayBefore.getDate() - 1);
-      const dayBeforeStr = dayBefore.toISOString().slice(0, 10);
+      const dayBeforeStr = dayBefore.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
       const shouldRemind = todayStr === dayBeforeStr || todayStr === dueDateStr;
       if (!shouldRemind) continue;
       const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : "";
       if (lastSent === todayStr) continue;
-      const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+      const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Bogota" });
       const isToday = todayStr === dueDateStr;
       const hora = record.horaBloqueo || "08:00";
       const previas = record.cuotasPrevias || 0;
@@ -301300,7 +301310,7 @@ _CREDILOCK \u2014 Sistema de financiamiento_`;
       if (success) {
         await db.collection("financing").updateOne(
           { id: record.id },
-          { $set: { lastReminderSent: (/* @__PURE__ */ new Date()).toISOString() } }
+          { $set: { lastReminderSent: todayStr } }
         );
         console.log(`[financing] Recordatorio enviado a ${record.nombre} (${record.telefono})`);
       }
@@ -301745,6 +301755,48 @@ app.get("/api/inventario/resumen-dia", async (req, res) => {
   } catch (error) {
     console.error("[inventario] Error resumen:", error);
     res.status(500).json({ error: "Error al generar resumen" });
+  }
+});
+app.get("/api/inventario/resumen-mes", async (req, res) => {
+  try {
+    const mesParam = req.query.mes;
+    const now = /* @__PURE__ */ new Date();
+    const mes = mesParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const ventas = await db.collection("daily_sales").find({
+      fecha: { $regex: `^${mes}` }
+    }).toArray();
+    const totalVentas = ventas.reduce((s, v) => s + (v.precioVenta || 0), 0);
+    const totalGanancia = ventas.reduce((s, v) => s + (v.ganancia || 0), 0);
+    const cantidadVentas = ventas.length;
+    const porMetodo = {};
+    for (const v of ventas) {
+      const met = v.metodoPago || "efectivo";
+      if (met.includes("+")) {
+        const partes = met.split("+");
+        for (const p of partes) {
+          const [cuenta, monto] = p.split(":");
+          porMetodo[cuenta] = (porMetodo[cuenta] || 0) + Number(monto || 0);
+        }
+      } else {
+        porMetodo[met] = (porMetodo[met] || 0) + (v.precioVenta || 0);
+      }
+    }
+    const gastos = await db.collection("petty_cash").find({
+      fecha: { $regex: `^${mes}` }
+    }).toArray();
+    const totalGastos = gastos.reduce((s, g) => s + (g.monto || 0), 0);
+    res.json({
+      mes,
+      totalVentas,
+      totalGanancia,
+      totalGastos,
+      gananciaReal: totalGanancia - totalGastos,
+      cantidadVentas,
+      porMetodo
+    });
+  } catch (error) {
+    console.error("[inventario] Error resumen mes:", error);
+    res.status(500).json({ error: "Error al generar resumen del mes" });
   }
 });
 app.get("/api/inventario/proveedores", async (_req, res) => {
