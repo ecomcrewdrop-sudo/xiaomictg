@@ -279,14 +279,29 @@ export function PointOfSale() {
   }, [products, search]);
 
   // ─── Open sale dialog for a product ──────────────────────────────
-  const openSale = (p: CatalogProduct | null) => {
-    setSelectedProduct(p);
+  const openSale = async (p: CatalogProduct | null) => {
+    // Traer precio actualizado desde la API (por si se modificó)
+    let freshPrice = p ? Math.round(p.price) : 0;
+    let freshProduct = p;
+    if (p) {
+      try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/products/${encodeURIComponent(p.id)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.price != null) {
+            freshPrice = Math.round(data.price);
+            freshProduct = { ...p, price: data.price, name: data.name || p.name, stock: data.stock ?? p.stock };
+          }
+        }
+      } catch { /* usar precio del cache si falla */ }
+    }
+    setSelectedProduct(freshProduct);
     setSaleForm({
       cliente: '',
       cedula: '',
       telefono: '',
-      producto: p?.name || '',
-      precioVenta: p ? Math.round(p.price).toString() : '',
+      producto: freshProduct?.name || '',
+      precioVenta: freshProduct ? freshPrice.toString() : '',
       precioCompra: '',
       descuento: '',
       imei: '',
