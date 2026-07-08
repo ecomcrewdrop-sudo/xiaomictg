@@ -423,7 +423,7 @@ export function ProductDetailPage() {
             <div className="border-t border-gray-200 pt-5 space-y-3">
               <div className="flex items-center gap-3 text-sm font-bold text-gray-900">
                 <Truck className="w-5 h-5 text-gray-900 flex-shrink-0" />
-                <span>Envío a domicilio $10.000 · Todo Cartagena · ~1 hora</span>
+                <span>Envío a domicilio GRATIS · Todo Cartagena · ~1 hora</span>
               </div>
               <div className="flex items-center gap-3 text-sm font-bold text-gray-900">
                 <CheckCircle className="w-5 h-5 text-gray-900 flex-shrink-0" />

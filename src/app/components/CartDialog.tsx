@@ -567,7 +567,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                 {deliveryMethod === 'delivery' && (
                   <div className="flex justify-between items-center text-sm text-gray-300">
                     <span>Domicilio</span>
-                    <span>+${DELIVERY_FEE.toLocaleString('es-CO')}</span>
+                    <span className="text-green-400 font-semibold">GRATIS</span>
                   </div>
                 )}
                 
