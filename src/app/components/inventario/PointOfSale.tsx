@@ -235,6 +235,11 @@ export function PointOfSale() {
   const [saving, setSaving] = useState(false);
   const [obsequio, setObsequio] = useState({ activo: false, nombre: '', costo: '' });
 
+  // Quick sale dialog (accesorios)
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickForm, setQuickForm] = useState({ producto: '', precio: '', costo: '' });
+  const [quickPago, setQuickPago] = useState('efectivo');
+
   // Manual movement dialog
   const [movOpen, setMovOpen] = useState(false);
   const [movTipo, setMovTipo] = useState<'ingreso' | 'egreso'>('ingreso');
@@ -406,6 +411,47 @@ export function PointOfSale() {
     setSaving(false);
   };
 
+  // ─── Quick sale (accesorios) ─────────────────────────────────────
+  const openQuickSale = (producto?: string) => {
+    setQuickForm({ producto: producto || '', precio: '', costo: '' });
+    setQuickPago('efectivo');
+    setQuickOpen(true);
+  };
+
+  const handleQuickSale = async () => {
+    if (!quickForm.producto || !quickForm.precio) {
+      toast.error('Producto y precio requeridos'); return;
+    }
+    const precio = Number(quickForm.precio);
+    if (precio <= 0) { toast.error('Precio inválido'); return; }
+
+    setSaving(true);
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente: 'Cliente',
+          producto: quickForm.producto,
+          imei: '',
+          esPropio: true,
+          proveedor: '',
+          precioCompra: Number(quickForm.costo) || 0,
+          precioVenta: precio,
+          metodoPago: quickPago,
+          estadoPago: 'recibido',
+          notas: 'Venta rápida accesorio',
+        }),
+      });
+      if (!res.ok) throw new Error('Error');
+
+      toast.success(`${quickForm.producto} — ${fmt(precio)}`);
+      setQuickOpen(false);
+      await loadData();
+    } catch { toast.error('Error al registrar venta'); }
+    setSaving(false);
+  };
+
   // ─── Submit manual movement ──────────────────────────────────────
   const handleMov = async () => {
     if (!movMonto || Number(movMonto) <= 0) { toast.error('Monto requerido'); return; }
@@ -555,6 +601,25 @@ export function PointOfSale() {
         </div>
       </div>
 
+      {/* ── Venta rápida accesorios ────────────────────────────────── */}
+      <div>
+        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Venta rápida</p>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => openQuickSale('Forro')} className="bg-amber-500 hover:bg-amber-600 text-white gap-1.5 h-10 text-sm font-bold px-4">
+            <ShoppingBag className="w-4 h-4" /> Forro
+          </Button>
+          <Button onClick={() => openQuickSale('Vidrio templado')} className="bg-cyan-500 hover:bg-cyan-600 text-white gap-1.5 h-10 text-sm font-bold px-4">
+            <Smartphone className="w-4 h-4" /> Vidrio templado
+          </Button>
+          <Button onClick={() => openQuickSale('Audífonos')} className="bg-pink-500 hover:bg-pink-600 text-white gap-1.5 h-10 text-sm font-bold px-4">
+            <Gift className="w-4 h-4" /> Audífonos
+          </Button>
+          <Button onClick={() => openQuickSale()} className="bg-gray-500 hover:bg-gray-600 text-white gap-1.5 h-10 text-sm font-bold px-4">
+            <Plus className="w-4 h-4" /> Otro
+          </Button>
+        </div>
+      </div>
+
       {/* ── Quick actions ─────────────────────────────────────────── */}
       <div className="flex gap-2">
         <Button onClick={() => setMovOpen(true)} variant="outline" className="flex-1 gap-1 text-xs h-9">
@@ -578,7 +643,7 @@ export function PointOfSale() {
             />
           </div>
           <Button onClick={() => openSale(null)} className="bg-violet-600 hover:bg-violet-700 text-white gap-1 h-9 text-xs">
-            <Plus className="w-3.5 h-3.5" /> Venta manual
+            <Plus className="w-3.5 h-3.5" /> Venta celular
           </Button>
         </div>
 
@@ -677,43 +742,54 @@ export function PointOfSale() {
               )}
             </div>
 
-            {/* ── Obsequio / Combo ──────────────────────────────── */}
-            <div className="border border-dashed border-pink-300 rounded-lg p-3 space-y-2">
+            {/* ── Combo / Obsequio ──────────────────────────────── */}
+            <div className={`rounded-lg p-3 space-y-2 ${obsequio.activo ? 'bg-pink-50 border-2 border-pink-400' : 'bg-amber-50 border border-amber-300'}`}>
               <button
                 type="button"
                 onClick={() => setObsequio(o => ({ ...o, activo: !o.activo }))}
                 className="flex items-center gap-2 w-full text-left"
               >
-                <Gift className={`w-4 h-4 ${obsequio.activo ? 'text-pink-600' : 'text-gray-400'}`} />
-                <span className={`text-xs font-bold uppercase ${obsequio.activo ? 'text-pink-600' : 'text-gray-400'}`}>
-                  {obsequio.activo ? 'Obsequio incluido' : 'Agregar obsequio / combo'}
+                <Gift className={`w-5 h-5 ${obsequio.activo ? 'text-pink-600' : 'text-amber-600'}`} />
+                <span className={`text-sm font-bold ${obsequio.activo ? 'text-pink-600' : 'text-amber-700'}`}>
+                  {obsequio.activo ? '✓ Combo / Obsequio incluido' : '+ Agregar combo / obsequio'}
                 </span>
-                <span className="ml-auto text-[10px] text-gray-400">{obsequio.activo ? '(clic para quitar)' : '(opcional)'}</span>
+                {!obsequio.activo && <span className="ml-auto text-[10px] text-amber-500 font-semibold">Ej: audífonos, forro, vidrio</span>}
               </button>
               {obsequio.activo && (
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  <div className="col-span-2">
-                    <Input
-                      value={obsequio.nombre}
-                      onChange={e => setObsequio(o => ({ ...o, nombre: e.target.value }))}
-                      placeholder="Ej: Redmi Buds 6 Play"
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      type="number"
-                      value={obsequio.costo}
-                      onChange={e => setObsequio(o => ({ ...o, costo: e.target.value }))}
-                      placeholder="Costo"
-                      className="h-9 text-sm"
-                    />
+                <div className="space-y-2 pt-1">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <Label className="text-[10px] text-pink-600 font-bold">Producto incluido</Label>
+                      <Input
+                        value={obsequio.nombre}
+                        onChange={e => setObsequio(o => ({ ...o, nombre: e.target.value }))}
+                        placeholder="Ej: Redmi Buds 6 Play"
+                        className="h-10 text-sm border-pink-200 focus:border-pink-400"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-pink-600 font-bold">Costo compra</Label>
+                      <Input
+                        type="number"
+                        value={obsequio.costo}
+                        onChange={e => setObsequio(o => ({ ...o, costo: e.target.value }))}
+                        placeholder="45000"
+                        className="h-10 text-sm border-pink-200 focus:border-pink-400"
+                      />
+                    </div>
                   </div>
                   {Number(obsequio.costo) > 0 && (
-                    <p className="col-span-3 text-[10px] text-pink-600 font-semibold">
-                      Costo obsequio: {fmt(Number(obsequio.costo))} — se resta de la utilidad real
-                    </p>
+                    <div className="bg-pink-100 rounded-md px-3 py-1.5 text-xs text-pink-700 font-semibold">
+                      Costo combo: {fmt(Number(obsequio.costo))} — se resta de la utilidad para calcular ganancia real
+                    </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setObsequio({ activo: false, nombre: '', costo: '' })}
+                    className="text-[10px] text-pink-400 hover:text-pink-600 font-semibold"
+                  >
+                    ✕ Quitar combo
+                  </button>
                 </div>
               )}
             </div>
@@ -844,6 +920,89 @@ export function PointOfSale() {
             <div><Label>Saldo real *</Label><Input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)} placeholder="Ej: 500000" /></div>
             <Button onClick={handleAjuste} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               {saving ? 'Ajustando...' : 'Ajustar saldo'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════
+          QUICK SALE DIALOG — accesorios rápido
+         ══════════════════════════════════════════════════════════════ */}
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-amber-500" />
+              Venta rápida
+            </DialogTitle>
+            <DialogDescription>Facturar accesorio sin detalle</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label className="text-xs font-bold text-gray-500">Producto</Label>
+              <Input
+                value={quickForm.producto}
+                onChange={e => setQuickForm(f => ({ ...f, producto: e.target.value }))}
+                placeholder="Ej: Forro silicona Note 15"
+                className="mt-1 h-11 text-base font-semibold"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-bold text-gray-500">Precio venta *</Label>
+                <Input
+                  type="number"
+                  value={quickForm.precio}
+                  onChange={e => setQuickForm(f => ({ ...f, precio: e.target.value }))}
+                  placeholder="25000"
+                  className="mt-1 h-11 text-lg font-bold"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-gray-500">Costo (opcional)</Label>
+                <Input
+                  type="number"
+                  value={quickForm.costo}
+                  onChange={e => setQuickForm(f => ({ ...f, costo: e.target.value }))}
+                  placeholder="5000"
+                  className="mt-1 h-11"
+                />
+              </div>
+            </div>
+            {Number(quickForm.precio) > 0 && Number(quickForm.costo) > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-xs text-green-700 font-semibold">
+                Ganancia: {fmt(Number(quickForm.precio) - Number(quickForm.costo))}
+              </div>
+            )}
+            <div>
+              <Label className="text-xs font-bold text-gray-500">Pago</Label>
+              <div className="flex gap-2 mt-1 flex-wrap">
+                {cuentas.map(c => {
+                  const Icon = ICONS[c.id] || CreditCard;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setQuickPago(c.id)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                        quickPago === c.id
+                          ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-400'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {c.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <Button
+              onClick={handleQuickSale}
+              disabled={saving}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white gap-2 h-12 text-base font-bold"
+            >
+              {saving ? 'Registrando...' : `Facturar ${quickForm.producto || 'accesorio'}`}
             </Button>
           </div>
         </DialogContent>
