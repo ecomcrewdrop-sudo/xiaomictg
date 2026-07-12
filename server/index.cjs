@@ -115531,7 +115531,7 @@ var require_timing_safe_equal = __commonJS({
         throw new Error(msg);
       }
     }
-    function timingSafeEqual(a, b) {
+    function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
@@ -115551,7 +115551,7 @@ var require_timing_safe_equal = __commonJS({
       }
       return out === 0;
     }
-    exports2.timingSafeEqual = timingSafeEqual;
+    exports2.timingSafeEqual = timingSafeEqual2;
   }
 });
 
@@ -299882,7 +299882,12 @@ async function sendInvoiceEmail(order) {
 }
 app.use((0, import_cors.default)());
 app.use((0, import_compression.default)());
-app.use(import_express.default.json({ limit: "50mb" }));
+app.use(import_express.default.json({
+  limit: "50mb",
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -300511,6 +300516,104 @@ app.get("/api/bold-checkout", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.status(200).send(html);
 });
+async function transitionOrderAndNotify(order, newStatus, metodoPago) {
+  if (!db) return;
+  console.log(`[transition-order] Iniciando transici\xF3n de orden ${order.orderNumber} (${order.status} -> ${newStatus})`);
+  await db.collection("orders").updateOne(
+    { id: order.id },
+    { $set: { status: newStatus } }
+  );
+  console.log(`[transition-order] Estado de orden ${order.orderNumber} actualizado a ${newStatus}`);
+  const ventasOrden = await db.collection("daily_sales").find({ orderId: order.id }).toArray();
+  for (const v of ventasOrden) {
+    if (v.estadoPago !== "recibido") {
+      await db.collection("daily_sales").updateOne({ id: v.id }, { $set: { estadoPago: "recibido" } });
+      await crearMovimientosCajaDesdeVenta(
+        v.metodoPago || metodoPago || "efectivo",
+        v.precioVenta,
+        `Venta ${metodoPago}: ${v.producto} \u2014 ${v.cliente}`
+      );
+      console.log(`[transition-order] Venta diaria ${v.id} marcada como recibida y registrada en caja.`);
+    }
+  }
+  try {
+    const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: newStatus }]);
+    sendOrderEmail(hydratedOrder).catch((err) => console.error("[transition-order] Error enviando correo:", err));
+    sendWhatsAppNotifications(hydratedOrder).catch((err) => console.error("[transition-order] [WA] Error notificaciones:", err));
+  } catch (error) {
+    console.error("[transition-order] Error al hidratar/notificar pedido:", error);
+  }
+  io2.emit("orderUpdated", { id: order.id, status: newStatus });
+}
+app.post("/api/bold/webhook", async (req, res) => {
+  try {
+    const payload = req.body;
+    console.log("[bold-webhook] Payload recibido:", JSON.stringify(payload));
+    res.status(200).send("OK");
+    const signature = req.headers["x-bold-signature"];
+    const secret = process.env.BOLD_SECRET_KEY;
+    if (signature && secret && req.rawBody) {
+      const computedSignature = (0, import_crypto23.createHmac)("sha256", secret).update(req.rawBody).digest("hex");
+      let isSignatureValid = false;
+      try {
+        const bufferSignature = Buffer.from(signature, "utf8");
+        const bufferComputed = Buffer.from(computedSignature, "utf8");
+        if (bufferSignature.length === bufferComputed.length) {
+          isSignatureValid = (0, import_crypto23.timingSafeEqual)(bufferSignature, bufferComputed);
+        }
+      } catch (err) {
+        console.error("[bold-webhook] Error verificando firma:", err);
+      }
+      if (!isSignatureValid) {
+        console.error(`[bold-webhook] Firma de seguridad inv\xE1lida. Recibida: ${signature}, Calculada: ${computedSignature}`);
+        return;
+      }
+      console.log("[bold-webhook] Firma de seguridad validada con \xE9xito.");
+    }
+    const { type, data } = payload;
+    if (type !== "SALE_APPROVED") {
+      console.log(`[bold-webhook] Tipo de evento no manejado o no es SALE_APPROVED: ${type}`);
+      if (type === "SALE_REJECTED") {
+        const orderNumber2 = data?.metadata?.reference || data?.reference || payload.subject;
+        if (orderNumber2) {
+          const order2 = await db.collection("orders").findOne({ orderNumber: orderNumber2 });
+          if (order2 && order2.status === "pending_bold") {
+            await db.collection("orders").updateOne({ orderNumber: orderNumber2 }, { $set: { status: "cancelled" } });
+            io2.emit("orderUpdated", { id: order2.id, status: "cancelled" });
+            console.log(`[bold-webhook] Orden ${orderNumber2} marcada como cancelada por pago rechazado.`);
+          }
+        }
+      }
+      return;
+    }
+    const orderNumber = data?.metadata?.reference || data?.reference || payload.subject || payload.reference || payload.orderId || payload.order_id;
+    if (!orderNumber) {
+      console.error("[bold-webhook] No se encontr\xF3 ninguna referencia de pedido en el payload.");
+      return;
+    }
+    console.log(`[bold-webhook] Procesando pago aprobado para orden: ${orderNumber}`);
+    const order = await db.collection("orders").findOne({ orderNumber });
+    if (!order) {
+      console.error(`[bold-webhook] Pedido no encontrado en base de datos: ${orderNumber}`);
+      return;
+    }
+    if (order.status === "pending_bold") {
+      await transitionOrderAndNotify(order, "paid", "BOLD (Tarjeta)");
+      io2.emit("newOrder", {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        message: `Pago en l\xEDnea Bold Aprobado: ${order.orderNumber}`,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        read: false
+      });
+    } else {
+      console.log(`[bold-webhook] El pedido ${orderNumber} ya se encuentra en estado: ${order.status}`);
+    }
+  } catch (error) {
+    console.error("[bold-webhook] Error cr\xEDtico procesando webhook:", error);
+  }
+});
 app.post("/api/orders", async (req, res) => {
   try {
     const { action, order: invoiceOrder } = req.body;
@@ -300680,8 +300783,23 @@ app.put("/api/orders/:id", async (req, res) => {
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "No hay campos para actualizar" });
     }
-    await db.collection("orders").updateOne({ id: req.params.id }, { $set });
-    res.json({ id: req.params.id, ...$set });
+    const orderId = req.params.id;
+    const oldOrder = await db.collection("orders").findOne({ id: orderId });
+    if (oldOrder && status && oldOrder.status !== status) {
+      const isTransitioningFromPending = oldOrder.status?.startsWith("pending_");
+      const isNewStatusActive = status === "paid" || status === "processing" || status === "completed";
+      if (isTransitioningFromPending && isNewStatusActive) {
+        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || "tarjeta";
+        await transitionOrderAndNotify(oldOrder, status, metodoPago);
+        const { status: _st, ...restUpdates } = $set;
+        if (Object.keys(restUpdates).length > 0) {
+          await db.collection("orders").updateOne({ id: orderId }, { $set: restUpdates });
+        }
+        return res.json({ id: orderId, ...$set });
+      }
+    }
+    await db.collection("orders").updateOne({ id: orderId }, { $set });
+    res.json({ id: orderId, ...$set });
   } catch (error) {
     res.status(500).json({ error: "Error updating order" });
   }
@@ -300699,8 +300817,23 @@ app.put("/api/orders", async (req, res) => {
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "No hay campos para actualizar" });
     }
-    await db.collection("orders").updateOne({ id: String(id) }, { $set });
-    res.json({ id: String(id), ...$set });
+    const orderId = String(id);
+    const oldOrder = await db.collection("orders").findOne({ id: orderId });
+    if (oldOrder && updates.status && oldOrder.status !== updates.status) {
+      const isTransitioningFromPending = oldOrder.status?.startsWith("pending_");
+      const isNewStatusActive = updates.status === "paid" || updates.status === "processing" || updates.status === "completed";
+      if (isTransitioningFromPending && isNewStatusActive) {
+        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || "tarjeta";
+        await transitionOrderAndNotify(oldOrder, updates.status, metodoPago);
+        const { status: _st, ...restUpdates } = $set;
+        if (Object.keys(restUpdates).length > 0) {
+          await db.collection("orders").updateOne({ id: orderId }, { $set: restUpdates });
+        }
+        return res.json({ id: orderId, ...$set });
+      }
+    }
+    await db.collection("orders").updateOne({ id: orderId }, { $set });
+    res.json({ id: orderId, ...$set });
   } catch (error) {
     res.status(500).json({ error: "Error updating order" });
   }

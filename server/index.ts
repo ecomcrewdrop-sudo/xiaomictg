@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import { createHash } from 'crypto';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import dns from 'dns';
 
 // Resolver a IPv4 primero para evitar errores "ENETUNREACH" con SMTP/Gmail
@@ -1148,7 +1148,12 @@ async function sendInvoiceEmail(order: any) {
 
 app.use(cors());
 app.use(compression());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({
+  limit: '50mb',
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/api/health', (_req, res) => {
@@ -1910,6 +1915,145 @@ app.get('/api/bold-checkout', async (req, res) => {
   res.status(200).send(html);
 });
 
+/** Helper to transition a pending order to paid/processing/completed, and trigger notifications/accounting. */
+async function transitionOrderAndNotify(order: any, newStatus: string, metodoPago: string) {
+  if (!db) return;
+
+  console.log(`[transition-order] Iniciando transición de orden ${order.orderNumber} (${order.status} -> ${newStatus})`);
+
+  // 1. Actualizar el estado del pedido en la base de datos
+  await db.collection('orders').updateOne(
+    { id: order.id },
+    { $set: { status: newStatus } }
+  );
+  console.log(`[transition-order] Estado de orden ${order.orderNumber} actualizado a ${newStatus}`);
+
+  // 2. Marcar ventas asociadas en daily_sales como recibidas y registrar movimientos de caja
+  const ventasOrden = await db.collection('daily_sales').find({ orderId: order.id }).toArray();
+  for (const v of ventasOrden) {
+    if (v.estadoPago !== 'recibido') {
+      await db.collection('daily_sales').updateOne({ id: v.id }, { $set: { estadoPago: 'recibido' } });
+      await crearMovimientosCajaDesdeVenta(
+        v.metodoPago || metodoPago || 'efectivo',
+        v.precioVenta,
+        `Venta ${metodoPago}: ${v.producto} — ${v.cliente}`,
+      );
+      console.log(`[transition-order] Venta diaria ${v.id} marcada como recibida y registrada en caja.`);
+    }
+  }
+
+  // 3. Notificar por WhatsApp y Correo
+  try {
+    const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: newStatus } as OrderDoc]);
+    sendOrderEmail(hydratedOrder).catch(err => console.error('[transition-order] Error enviando correo:', err));
+    sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[transition-order] [WA] Error notificaciones:', err));
+  } catch (error) {
+    console.error('[transition-order] Error al hidratar/notificar pedido:', error);
+  }
+
+  // 4. Emitir eventos socket para actualizar en tiempo real el panel admin
+  io.emit('orderUpdated', { id: order.id, status: newStatus });
+}
+
+// Webhook para recibir notificaciones de Bold
+app.post('/api/bold/webhook', async (req, res) => {
+  try {
+    const payload = req.body;
+    console.log('[bold-webhook] Payload recibido:', JSON.stringify(payload));
+
+    // Aceptar la recepción de inmediato como exige Bold
+    res.status(200).send('OK');
+
+    const signature = req.headers['x-bold-signature'];
+    const secret = process.env.BOLD_SECRET_KEY;
+
+    // Validación de firma HMAC si está configurada y se recibe
+    if (signature && secret && req.rawBody) {
+      const computedSignature = createHmac('sha256', secret)
+        .update(req.rawBody)
+        .digest('hex');
+      
+      let isSignatureValid = false;
+      try {
+        const bufferSignature = Buffer.from(signature as string, 'utf8');
+        const bufferComputed = Buffer.from(computedSignature, 'utf8');
+        if (bufferSignature.length === bufferComputed.length) {
+          isSignatureValid = timingSafeEqual(bufferSignature, bufferComputed);
+        }
+      } catch (err) {
+        console.error('[bold-webhook] Error verificando firma:', err);
+      }
+
+      if (!isSignatureValid) {
+        console.error(`[bold-webhook] Firma de seguridad inválida. Recibida: ${signature}, Calculada: ${computedSignature}`);
+        // No procesamos la orden si la firma es inválida
+        return;
+      }
+      console.log('[bold-webhook] Firma de seguridad validada con éxito.');
+    }
+
+    const { type, data } = payload;
+    if (type !== 'SALE_APPROVED') {
+      console.log(`[bold-webhook] Tipo de evento no manejado o no es SALE_APPROVED: ${type}`);
+      
+      // Si la venta es rechazada, podemos actualizar a cancelada para informar al admin
+      if (type === 'SALE_REJECTED') {
+        const orderNumber = data?.metadata?.reference || data?.reference || payload.subject;
+        if (orderNumber) {
+          const order = await db.collection('orders').findOne({ orderNumber });
+          if (order && order.status === 'pending_bold') {
+            await db.collection('orders').updateOne({ orderNumber }, { $set: { status: 'cancelled' } });
+            io.emit('orderUpdated', { id: order.id, status: 'cancelled' });
+            console.log(`[bold-webhook] Orden ${orderNumber} marcada como cancelada por pago rechazado.`);
+          }
+        }
+      }
+      return;
+    }
+
+    // Extraer order number de forma robusta
+    const orderNumber = 
+      data?.metadata?.reference ||
+      data?.reference ||
+      payload.subject ||
+      payload.reference ||
+      payload.orderId ||
+      payload.order_id;
+
+    if (!orderNumber) {
+      console.error('[bold-webhook] No se encontró ninguna referencia de pedido en el payload.');
+      return;
+    }
+
+    console.log(`[bold-webhook] Procesando pago aprobado para orden: ${orderNumber}`);
+
+    const order = await db.collection('orders').findOne({ orderNumber });
+    if (!order) {
+      console.error(`[bold-webhook] Pedido no encontrado en base de datos: ${orderNumber}`);
+      return;
+    }
+
+    // Solo procesar si el estado es pendiente de pago Bold
+    if (order.status === 'pending_bold') {
+      await transitionOrderAndNotify(order, 'paid', 'BOLD (Tarjeta)');
+      
+      // Emitir notificación visual extra al dashboard
+      io.emit('newOrder', {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        message: `Pago en línea Bold Aprobado: ${order.orderNumber}`,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+    } else {
+      console.log(`[bold-webhook] El pedido ${orderNumber} ya se encuentra en estado: ${order.status}`);
+    }
+  } catch (error) {
+    console.error('[bold-webhook] Error crítico procesando webhook:', error);
+  }
+});
+
 
 app.post('/api/orders', async (req, res) => {
   try {
@@ -2121,8 +2265,28 @@ app.put('/api/orders/:id', async (req, res) => {
       return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
 
-    await db.collection('orders').updateOne({ id: req.params.id }, { $set });
-    res.json({ id: req.params.id, ...$set });
+    const orderId = req.params.id;
+    const oldOrder = await db.collection('orders').findOne({ id: orderId });
+
+    if (oldOrder && status && oldOrder.status !== status) {
+      const isTransitioningFromPending = oldOrder.status?.startsWith('pending_');
+      const isNewStatusActive = status === 'paid' || status === 'processing' || status === 'completed';
+      
+      if (isTransitioningFromPending && isNewStatusActive) {
+        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || 'tarjeta';
+        await transitionOrderAndNotify(oldOrder, status, metodoPago);
+        
+        const { status: _st, ...restUpdates } = $set;
+        if (Object.keys(restUpdates).length > 0) {
+          await db.collection('orders').updateOne({ id: orderId }, { $set: restUpdates });
+        }
+        
+        return res.json({ id: orderId, ...$set });
+      }
+    }
+
+    await db.collection('orders').updateOne({ id: orderId }, { $set });
+    res.json({ id: orderId, ...$set });
   } catch (error) {
     res.status(500).json({ error: 'Error updating order' });
   }
@@ -2143,8 +2307,28 @@ app.put('/api/orders', async (req, res) => {
       return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
 
-    await db.collection('orders').updateOne({ id: String(id) }, { $set });
-    res.json({ id: String(id), ...$set });
+    const orderId = String(id);
+    const oldOrder = await db.collection('orders').findOne({ id: orderId });
+
+    if (oldOrder && updates.status && oldOrder.status !== updates.status) {
+      const isTransitioningFromPending = oldOrder.status?.startsWith('pending_');
+      const isNewStatusActive = updates.status === 'paid' || updates.status === 'processing' || updates.status === 'completed';
+      
+      if (isTransitioningFromPending && isNewStatusActive) {
+        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || 'tarjeta';
+        await transitionOrderAndNotify(oldOrder, updates.status, metodoPago);
+        
+        const { status: _st, ...restUpdates } = $set;
+        if (Object.keys(restUpdates).length > 0) {
+          await db.collection('orders').updateOne({ id: orderId }, { $set: restUpdates });
+        }
+        
+        return res.json({ id: orderId, ...$set });
+      }
+    }
+
+    await db.collection('orders').updateOne({ id: orderId }, { $set });
+    res.json({ id: orderId, ...$set });
   } catch (error) {
     res.status(500).json({ error: 'Error updating order' });
   }
