@@ -298920,6 +298920,18 @@ function calcFechaEsperada(cuenta) {
   }
   return null;
 }
+function makeMatchFriendlyPattern(str) {
+  let pattern = str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  pattern = pattern.replace(/[aá]/gi, "[a\xE1]").replace(/[eé]/gi, "[e\xE9]").replace(/[ií]/gi, "[i\xED]").replace(/[oó]/gi, "[o\xF3]").replace(/[uúü]/gi, "[u\xFA\xFC]");
+  if (str.length > 3) {
+    if (str.toLowerCase().endsWith("s")) {
+      pattern = pattern.slice(0, -1) + "(s)?";
+    } else {
+      pattern = pattern + "(s)?";
+    }
+  }
+  return pattern;
+}
 async function crearMovimientosCajaDesdeVenta(metodoPago, montoTotal, concepto) {
   if (!db) return;
   const entries = [];
@@ -301713,14 +301725,14 @@ app.post("/api/inventario/ventas", async (req, res) => {
     }
     await db.collection("daily_sales").insertOne(venta_record);
     if (obsequioNombre) {
-      const escapedGift = obsequioNombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
       let giftItem = await db.collection("inventory").findOne({
         estado: "disponible",
         cantidad: { $gte: 1 },
         producto: { $regex: escapedGift, $options: "i" }
       });
       if (!giftItem) {
-        const giftKw = obsequioNombre.split(/[\s+()]/g).filter((w) => w.length > 2).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        const giftKw = obsequioNombre.split(/[\s+()]/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
         if (giftKw.length > 0) {
           const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
           giftItem = await db.collection("inventory").findOne({
@@ -301753,14 +301765,14 @@ app.post("/api/inventario/ventas", async (req, res) => {
         }
       } else {
         const stopWords2 = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con", "pro", "plus", "max"];
-        const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const escapedName = makeMatchFriendlyPattern(producto);
         let invItem = await db.collection("inventory").findOne({
           estado: "disponible",
           cantidad: { $gte: 1 },
           producto: { $regex: escapedName, $options: "i" }
         });
         if (!invItem) {
-          const keywords = producto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords2.includes(w.toLowerCase())).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+          const keywords = producto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords2.includes(w.toLowerCase())).map((w) => makeMatchFriendlyPattern(w));
           if (keywords.length > 0) {
             let regexPattern = keywords.map((w) => `(?=.*${w})`).join("");
             invItem = await db.collection("inventory").findOne({
@@ -301870,7 +301882,8 @@ app.get("/api/inventario/resumen-dia", async (req, res) => {
     const deudasHoy = {};
     for (const v of ventas) {
       if (!v.esPropio && v.proveedor) {
-        deudasHoy[v.proveedor] = (deudasHoy[v.proveedor] || 0) + v.precioCompra;
+        const costoRealProveedor = v.precioCompra - (v.obsequioCosto || 0);
+        deudasHoy[v.proveedor] = (deudasHoy[v.proveedor] || 0) + costoRealProveedor;
       }
     }
     const efectivoRecibido = porMetodo["efectivo"]?.recibido || 0;
@@ -301989,7 +302002,8 @@ app.get("/api/inventario/deudas-proveedores", async (_req, res) => {
     for (const v of ventas) {
       if (!v.proveedor) continue;
       if (!deudas[v.proveedor]) deudas[v.proveedor] = { total: 0, ventas: 0 };
-      deudas[v.proveedor].total += v.precioCompra;
+      const costoRealProveedor = v.precioCompra - (v.obsequioCosto || 0);
+      deudas[v.proveedor].total += costoRealProveedor;
       deudas[v.proveedor].ventas += 1;
     }
     res.json(deudas);

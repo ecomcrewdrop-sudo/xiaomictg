@@ -100,6 +100,31 @@ function calcFechaEsperada(cuenta: string): string | null {
 //   "datafono"                       → pendiente, cae al otro día hábil
 //   "addi"                           → pendiente, cae en 7 días
 //   "efectivo:300000+banco:200000"   → split payment
+/** Helper to convert a product name into an accent-insensitive and singular/plural optional regex pattern. */
+function makeMatchFriendlyPattern(str: string): string {
+  let pattern = str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Reemplazar vocales para insensibilidad a acentos
+  pattern = pattern
+    .replace(/[aá]/gi, '[aá]')
+    .replace(/[eé]/gi, '[eé]')
+    .replace(/[ií]/gi, '[ií]')
+    .replace(/[oó]/gi, '[oó]')
+    .replace(/[uúü]/gi, '[uúü]');
+
+  // Manejo de singular/plural para palabras de longitud razonable (ej. > 3 letras)
+  if (str.length > 3) {
+    if (str.toLowerCase().endsWith('s')) {
+      // Remover la última 's' y hacerla opcional
+      pattern = pattern.slice(0, -1) + '(s)?';
+    } else {
+      // Hacer que pueda tener una 's' opcional al final
+      pattern = pattern + '(s)?';
+    }
+  }
+  return pattern;
+}
+
 async function crearMovimientosCajaDesdeVenta(
   metodoPago: string,
   montoTotal: number,
@@ -3404,7 +3429,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
 
     // Descontar obsequio del inventario si existe
     if (obsequioNombre) {
-      const escapedGift = obsequioNombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
       let giftItem = await db.collection('inventory').findOne({
         estado: 'disponible',
         cantidad: { $gte: 1 },
@@ -3413,7 +3438,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
       if (!giftItem) {
         const giftKw = obsequioNombre.split(/[\s+()]/g)
           .filter((w: string) => w.length > 2)
-          .map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+          .map((w: string) => makeMatchFriendlyPattern(w));
         if (giftKw.length > 0) {
           const giftRegex = giftKw.map((w: string) => `(?=.*${w})`).join('');
           giftItem = await db.collection('inventory').findOne({
@@ -3450,7 +3475,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
       } else {
         // Buscar match automático por nombre de producto
         const stopWords2 = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con', 'pro', 'plus', 'max'];
-        const escapedName = producto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedName = makeMatchFriendlyPattern(producto);
         let invItem = await db.collection('inventory').findOne({
           estado: 'disponible',
           cantidad: { $gte: 1 },
@@ -3459,7 +3484,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
         if (!invItem) {
           const keywords = producto.split(/[\s+()]/g)
             .filter((w: string) => w.length > 2 && !stopWords2.includes(w.toLowerCase()))
-            .map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            .map((w: string) => makeMatchFriendlyPattern(w));
           if (keywords.length > 0) {
             let regexPattern = keywords.map((w: string) => `(?=.*${w})`).join('');
             invItem = await db.collection('inventory').findOne({
@@ -3579,11 +3604,12 @@ app.get('/api/inventario/resumen-dia', async (req, res) => {
       else porMetodo[key].recibido += v.precioVenta;
     }
 
-    // Supplier debts from today
+    // Supplier debts from today (subtracting gift/obsequio cost from purchase price)
     const deudasHoy: Record<string, number> = {};
     for (const v of ventas) {
       if (!v.esPropio && v.proveedor) {
-        deudasHoy[v.proveedor] = (deudasHoy[v.proveedor] || 0) + v.precioCompra;
+        const costoRealProveedor = v.precioCompra - (v.obsequioCosto || 0);
+        deudasHoy[v.proveedor] = (deudasHoy[v.proveedor] || 0) + costoRealProveedor;
       }
     }
 
@@ -3728,7 +3754,8 @@ app.get('/api/inventario/deudas-proveedores', async (_req, res) => {
     for (const v of ventas as any[]) {
       if (!v.proveedor) continue;
       if (!deudas[v.proveedor]) deudas[v.proveedor] = { total: 0, ventas: 0 };
-      deudas[v.proveedor].total += v.precioCompra;
+      const costoRealProveedor = v.precioCompra - (v.obsequioCosto || 0);
+      deudas[v.proveedor].total += costoRealProveedor;
       deudas[v.proveedor].ventas += 1;
     }
     res.json(deudas);
