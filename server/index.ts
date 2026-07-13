@@ -670,12 +670,19 @@ class WhatsAppService {
     }
   }
 
-  async sendMessage(phone: string, text: string): Promise<boolean> {
+  async sendMessage(phone: string, text: string, imageUrl?: string): Promise<boolean> {
     if (!this.sock || this.status !== 'connected') return false;
     try {
       const jid = this._formatPhone(phone);
-      await this.sock.sendMessage(jid, { text });
-      console.log('[WA] Mensaje enviado a', phone);
+      if (imageUrl) {
+        await this.sock.sendMessage(jid, {
+          image: { url: imageUrl },
+          caption: text
+        });
+      } else {
+        await this.sock.sendMessage(jid, { text });
+      }
+      console.log('[WA] Mensaje enviado a', phone, imageUrl ? 'con imagen' : '');
       return true;
     } catch (err) {
       console.error('[WA] Error al enviar mensaje:', err);
@@ -2589,6 +2596,162 @@ app.put('/api/whatsapp/templates', async (req, res) => {
   }
 });
 
+// --- WHATSAPP CAMPAIGNS API ---
+
+app.get('/api/whatsapp/customers', async (_req, res) => {
+  try {
+    const customersMap = new Map<string, {
+      name: string;
+      phone: string;
+      email: string;
+      cedula: string;
+      lastPurchaseDate: string;
+      lastPurchaseProduct: string;
+      purchaseCount: number;
+    }>();
+
+    // 1. Obtener clientes de ventas físicas (POS)
+    const ventas = await db.collection('daily_sales').find().toArray();
+    for (const v of ventas) {
+      const phone = String(v.telefono || '').replace(/[\s\-\+\(\)\.]/g, '').trim();
+      if (!phone || phone.length < 7) continue;
+
+      const existing = customersMap.get(phone);
+      if (!existing || new Date(v.fecha) > new Date(existing.lastPurchaseDate)) {
+        customersMap.set(phone, {
+          name: v.cliente || 'Cliente POS',
+          phone,
+          email: v.email || (existing?.email || ''),
+          cedula: v.cedula || (existing?.cedula || ''),
+          lastPurchaseDate: v.fecha || '',
+          lastPurchaseProduct: v.producto || '',
+          purchaseCount: (existing?.purchaseCount || 0) + 1
+        });
+      } else {
+        existing.purchaseCount += 1;
+      }
+    }
+
+    // 2. Obtener clientes de pedidos web (orders)
+    const orders = await db.collection('orders').find().toArray();
+    for (const o of orders) {
+      const customerInfo = o.customerInfo || {};
+      const phone = String(customerInfo.phone || '').replace(/[\s\-\+\(\)\.]/g, '').trim();
+      if (!phone || phone.length < 7) continue;
+
+      const purchaseDate = o.date || o.createdAt || '';
+      const dateStr = purchaseDate.slice(0, 10);
+      
+      const itemsList = (o.items || []).map((item: any) => item.product?.name || 'Producto').join(', ');
+
+      const existing = customersMap.get(phone);
+      if (!existing || new Date(dateStr) > new Date(existing.lastPurchaseDate)) {
+        customersMap.set(phone, {
+          name: customerInfo.name || 'Cliente Web',
+          phone,
+          email: customerInfo.email || (existing?.email || ''),
+          cedula: customerInfo.idNumber || (existing?.cedula || ''),
+          lastPurchaseDate: dateStr,
+          lastPurchaseProduct: itemsList || '',
+          purchaseCount: (existing?.purchaseCount || 0) + 1
+        });
+      } else {
+        existing.purchaseCount += 1;
+      }
+    }
+
+    // Convertir mapa a array y ordenar por fecha de última compra (de más reciente a más antigua)
+    const customersList = Array.from(customersMap.values()).sort((a, b) => {
+      return new Date(b.lastPurchaseDate).getTime() - new Date(a.lastPurchaseDate).getTime();
+    });
+
+    res.json(customersList);
+  } catch (err) {
+    console.error('[WA] Error al obtener listado de clientes:', err);
+    res.status(500).json({ error: 'Error al obtener clientes' });
+  }
+});
+
+app.get('/api/whatsapp/campaigns', async (_req, res) => {
+  try {
+    const list = await db.collection('campaigns').find().sort({ createdAt: -1 }).toArray();
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener campañas' });
+  }
+});
+
+app.post('/api/whatsapp/campaigns', async (req, res) => {
+  try {
+    const { name, message, imageUrl, scheduledAt, delaySeconds, recipients } = req.body;
+    if (!name || !message || !recipients || !Array.isArray(recipients)) {
+      return res.status(400).json({ error: 'Campos requeridos faltantes' });
+    }
+
+    const campaignId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const formattedRecipients = recipients.map((r: any) => ({
+      name: r.name || 'Cliente',
+      phone: String(r.phone).trim(),
+      status: 'pending',
+      processedAt: null,
+    }));
+
+    const campaign = {
+      id: campaignId,
+      name,
+      message,
+      imageUrl: imageUrl || '',
+      status: scheduledAt ? 'scheduled' : 'active',
+      scheduledAt: scheduledAt || null,
+      delaySeconds: Number(delaySeconds || 10),
+      recipients: formattedRecipients,
+      totalRecipients: formattedRecipients.length,
+      sentCount: 0,
+      failedCount: 0,
+      createdAt: now,
+    };
+
+    await db.collection('campaigns').insertOne(campaign);
+    res.status(201).json(campaign);
+  } catch (err) {
+    console.error('[Campaign-WA] Error al crear campaña:', err);
+    res.status(500).json({ error: 'Error al crear campaña' });
+  }
+});
+
+app.post('/api/whatsapp/campaigns/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['active', 'paused', 'cancelled', 'processing'].includes(status)) {
+      return res.status(400).json({ error: 'Estado inválido' });
+    }
+    
+    const result = await db.collection('campaigns').updateOne(
+      { id: req.params.id },
+      { $set: { status, updatedAt: new Date().toISOString() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Campaña no encontrada' });
+    }
+
+    res.json({ success: true, status });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al cambiar estado' });
+  }
+});
+
+app.delete('/api/whatsapp/campaigns/:id', async (req, res) => {
+  try {
+    await db.collection('campaigns').deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al eliminar campaña' });
+  }
+});
+
 // --- REVIEWS API ---
 
 app.get('/api/products/:id/reviews', async (req, res) => {
@@ -3227,6 +3390,115 @@ setTimeout(checkFinancingReminders, 30000);
 scheduledNotificationsInterval = setInterval(checkScheduledNotifications, 60 * 1000);
 // Primera verificación 15s después de arrancar
 setTimeout(checkScheduledNotifications, 15000);
+
+let campaignInterval: NodeJS.Timeout | null = null;
+let activeCampaignProcessing = false;
+
+async function processCampaignSends() {
+  if (activeCampaignProcessing) return;
+  activeCampaignProcessing = true;
+
+  try {
+    const now = new Date().toISOString();
+    let campaign = await db.collection('campaigns').findOne({
+      status: { $in: ['processing', 'active'] }
+    });
+
+    if (!campaign) {
+      // Buscar campañas programadas que ya deben iniciar
+      const scheduled = await db.collection('campaigns').findOne({
+        status: 'scheduled',
+        scheduledAt: { $lte: now }
+      });
+      if (scheduled) {
+        campaign = scheduled;
+        await db.collection('campaigns').updateOne(
+          { _id: campaign._id },
+          { $set: { status: 'processing', startedAt: now } }
+        );
+        campaign.status = 'processing';
+      }
+    }
+
+    if (!campaign) {
+      activeCampaignProcessing = false;
+      return;
+    }
+
+    // Si la campaña está en 'active' (iniciando por primera vez), pasarla a 'processing'
+    if (campaign.status === 'active') {
+      await db.collection('campaigns').updateOne(
+        { _id: campaign._id },
+        { $set: { status: 'processing', startedAt: now } }
+      );
+      campaign.status = 'processing';
+    }
+
+    // Encontrar el primer destinatario pendiente
+    const recipientIndex = (campaign.recipients || []).findIndex((r: any) => r.status === 'pending');
+
+    if (recipientIndex === -1) {
+      // Finalizada!
+      await db.collection('campaigns').updateOne(
+        { _id: campaign._id },
+        { $set: { status: 'sent', finishedAt: new Date().toISOString() } }
+      );
+      console.log(`[Campaign-WA] Campaña "${campaign.name}" finalizada.`);
+      activeCampaignProcessing = false;
+      return;
+    }
+
+    const recipient = campaign.recipients[recipientIndex];
+    const delay = Number(campaign.delaySeconds || 10) * 1000;
+
+    if (whatsappService.getStatus() !== 'connected') {
+      console.log('[Campaign-WA] WhatsApp no conectado. Reintento en el próximo ciclo.');
+      activeCampaignProcessing = false;
+      return;
+    }
+
+    console.log(`[Campaign-WA] Enviando a ${recipient.name} (${recipient.phone}) para campaña "${campaign.name}"`);
+
+    let msg = campaign.message || '';
+    msg = msg.split('{{nombre}}').join(recipient.name || 'Cliente');
+
+    const success = await whatsappService.sendMessage(recipient.phone, msg, campaign.imageUrl);
+
+    const updateQuery: Record<string, any> = {};
+    updateQuery[`recipients.${recipientIndex}.status`] = success ? 'sent' : 'failed';
+    updateQuery[`recipients.${recipientIndex}.processedAt`] = new Date().toISOString();
+    if (!success) {
+      updateQuery[`recipients.${recipientIndex}.error`] = 'Envío fallido o WhatsApp desconectado';
+    }
+
+    const incQuery: Record<string, number> = {};
+    if (success) {
+      incQuery.sentCount = 1;
+    } else {
+      incQuery.failedCount = 1;
+    }
+
+    await db.collection('campaigns').updateOne(
+      { _id: campaign._id },
+      { 
+        $set: updateQuery,
+        $inc: incQuery
+      }
+    );
+
+    setTimeout(() => {
+      activeCampaignProcessing = false;
+    }, delay);
+
+  } catch (error) {
+    console.error('[Campaign-WA] Error en procesador de campañas:', error);
+    activeCampaignProcessing = false;
+  }
+}
+
+// Iniciar cron de campañas (cada 5 segundos para revisar la cola)
+campaignInterval = setInterval(processCampaignSends, 5000);
+setTimeout(processCampaignSends, 20000);
 
 // ====================================================================
 // 💳  PAGOS A XIAOMI

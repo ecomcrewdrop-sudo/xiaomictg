@@ -17,6 +17,7 @@ import {
 import { Button } from './ui/button';
 import { io as socketIO, Socket } from 'socket.io-client';
 import { API_BASE_URL, API_ORIGIN } from '../lib/api-base';
+import WhatsAppCampaigns from './WhatsAppCampaigns';
 
 
 // --------------- VARIABLES DISPONIBLES ---------------
@@ -674,6 +675,9 @@ export function WhatsAppPanel() {
           </ol>
         </div>
       </div>
+
+      {/* ======== CAMPAÑAS DE WHATSAPP ======== */}
+      <WhatsAppCampaigns />
 
     </div>
   );
