@@ -827,6 +827,38 @@ function processWhatsAppTemplate(template: string, order: any): string {
   return result;
 }
 
+async function scheduleRetiroEnTiendaWhatsApp(order: any) {
+  const phone = order.customerInfo?.phone ? String(order.customerInfo.phone).trim() : '';
+  if (!phone) return;
+
+  try {
+    const name = order.customerInfo?.name || 'Cliente';
+    const msg = `🎉 *¡Gracias por tu compra!* — Xiaomi Cartagena
+
+Hola *${name}*, gracias por comprar en Xiaomi Cartagena. 🧡
+
+Agréganos a tus contactos para que estés al tanto de todas nuestras promociones y ofertas exclusivas. 📲
+
+_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
+
+    // Programar para dentro de 10 minutos
+    const sendAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await db.collection('scheduled_notifications').insertOne({
+      id: crypto.randomUUID(),
+      phone,
+      message: msg,
+      sendAt,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    console.log(`[Scheduled-WA] Retiro en tienda programado para ${phone} a las ${sendAt}`);
+  } catch (error) {
+    console.error('[Scheduled-WA] Error al programar retiro en tienda WhatsApp:', error);
+  }
+}
+
 async function sendWhatsAppNotifications(order: any) {
   if (whatsappService.getStatus() !== 'connected') {
     console.log('[WA] Notificaciones omitidas — no conectado');
@@ -834,7 +866,8 @@ async function sendWhatsAppNotifications(order: any) {
   }
   
   if (order.customerInfo?.deliveryMethod !== 'delivery') {
-    console.log('[WA] Notificaciones omitidas — pedido es para retiro en tienda');
+    console.log('[WA] Notificaciones omitidas para envío inmediato — pedido es para retiro en tienda. Programando agradecimiento 10m...');
+    await scheduleRetiroEnTiendaWhatsApp(order).catch(e => console.error(e));
     return;
   }
 

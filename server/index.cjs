@@ -299570,13 +299570,40 @@ function processWhatsAppTemplate(template, order) {
   }
   return result;
 }
+async function scheduleRetiroEnTiendaWhatsApp(order) {
+  const phone = order.customerInfo?.phone ? String(order.customerInfo.phone).trim() : "";
+  if (!phone) return;
+  try {
+    const name = order.customerInfo?.name || "Cliente";
+    const msg = `\u{1F389} *\xA1Gracias por tu compra!* \u2014 Xiaomi Cartagena
+
+Hola *${name}*, gracias por comprar en Xiaomi Cartagena. \u{1F9E1}
+
+Agr\xE9ganos a tus contactos para que est\xE9s al tanto de todas nuestras promociones y ofertas exclusivas. \u{1F4F2}
+
+_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
+    const sendAt = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
+    await db.collection("scheduled_notifications").insertOne({
+      id: crypto.randomUUID(),
+      phone,
+      message: msg,
+      sendAt,
+      status: "pending",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    console.log(`[Scheduled-WA] Retiro en tienda programado para ${phone} a las ${sendAt}`);
+  } catch (error) {
+    console.error("[Scheduled-WA] Error al programar retiro en tienda WhatsApp:", error);
+  }
+}
 async function sendWhatsAppNotifications(order) {
   if (whatsappService.getStatus() !== "connected") {
     console.log("[WA] Notificaciones omitidas \u2014 no conectado");
     return;
   }
   if (order.customerInfo?.deliveryMethod !== "delivery") {
-    console.log("[WA] Notificaciones omitidas \u2014 pedido es para retiro en tienda");
+    console.log("[WA] Notificaciones omitidas para env\xEDo inmediato \u2014 pedido es para retiro en tienda. Programando agradecimiento 10m...");
+    await scheduleRetiroEnTiendaWhatsApp(order).catch((e) => console.error(e));
     return;
   }
   try {
