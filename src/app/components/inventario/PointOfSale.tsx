@@ -365,6 +365,8 @@ export function PointOfSale() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cliente: saleForm.cliente || 'Cliente',
+          telefono: saleForm.telefono,
+          cedula: saleForm.cedula,
           producto: saleForm.producto,
           imei: saleForm.imei,
           esPropio: true,

@@ -733,6 +733,22 @@ Hola *{{nombre}}*, gracias por tu compra. 🧡
 
 _Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
 
+const DEFAULT_IN_STORE_CUSTOMER_TEMPLATE =
+`🎉 *¡Gracias por tu compra!* — Xiaomi Cartagena
+
+Hola *{{nombre}}*, gracias por visitarnos en nuestra tienda física. 🧡
+
+🛍️ *Tu compra:*
+• {{producto}}
+
+💰 *Total:* ${{total}} COP
+💳 *Método de pago:* {{metodoPago}}
+📄 *Facturado a:* {{cedula}}
+
+¡Esperamos de nuevo tu visita! Si tienes dudas o necesitas soporte, escríbenos por aquí 👋
+
+_Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
+
 const DEFAULT_OWNER_TEMPLATE = `Hola {{nombre}},
 
 Hemos recibido tu orden *{{ordenNumero}}*.
@@ -851,6 +867,48 @@ async function sendWhatsAppNotifications(order: any) {
     }
   } catch (err) {
     console.error('[WA] Error al enviar notificaciones:', err);
+  }
+}
+
+async function scheduleInStoreWhatsApp(venta: any) {
+  const phone = venta.telefono ? String(venta.telefono).trim() : '';
+  if (!phone) return;
+
+  try {
+    const config = await db.collection('ticketConfig').findOne({ type: 'config' }) || {};
+    const template = config.whatsappInStoreTemplate || DEFAULT_IN_STORE_CUSTOMER_TEMPLATE;
+
+    const imeiStr = venta.imei ? `(IMEI: ${venta.imei})` : '';
+    const giftStr = venta.obsequioNombre ? `\n• Obsequio: ${venta.obsequioNombre}` : '';
+
+    const vars: Record<string, string> = {
+      '{{nombre}}': venta.cliente || 'Cliente',
+      '{{producto}}': `${venta.producto} ${imeiStr}${giftStr}`,
+      '{{total}}': venta.precioVenta.toLocaleString('es-CO'),
+      '{{metodoPago}}': String(venta.metodoPago).toUpperCase(),
+      '{{cedula}}': venta.cedula || 'Consumidor Final',
+    };
+
+    let msg = template;
+    for (const [key, val] of Object.entries(vars)) {
+      msg = msg.split(key).join(val);
+    }
+
+    // Programar para dentro de 10 minutos (10 * 60 * 1000 ms)
+    const sendAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    
+    await db.collection('scheduled_notifications').insertOne({
+      id: crypto.randomUUID(),
+      phone,
+      message: msg,
+      sendAt,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    console.log(`[Scheduled-WA] Mensaje programado para ${phone} a las ${sendAt}`);
+  } catch (error) {
+    console.error('[Scheduled-WA] Error al programar mensaje de tienda física:', error);
   }
 }
 
@@ -2501,6 +2559,7 @@ app.get('/api/whatsapp/templates', async (_req, res) => {
     res.json({
       customerTemplate: config.whatsappCustomerTemplate || DEFAULT_CUSTOMER_TEMPLATE,
       ownerTemplate: config.whatsappOwnerTemplate || DEFAULT_OWNER_TEMPLATE,
+      inStoreTemplate: config.whatsappInStoreTemplate || DEFAULT_IN_STORE_CUSTOMER_TEMPLATE,
       ownerPhone: config.ownerWhatsAppPhone || '',
     });
   } catch (err) {
@@ -2511,10 +2570,11 @@ app.get('/api/whatsapp/templates', async (_req, res) => {
 
 app.put('/api/whatsapp/templates', async (req, res) => {
   try {
-    const { customerTemplate, ownerTemplate, ownerPhone } = req.body;
+    const { customerTemplate, ownerTemplate, inStoreTemplate, ownerPhone } = req.body;
     const $set: Record<string, any> = {};
     if (customerTemplate !== undefined) $set.whatsappCustomerTemplate = customerTemplate;
     if (ownerTemplate !== undefined) $set.whatsappOwnerTemplate = ownerTemplate;
+    if (inStoreTemplate !== undefined) $set.whatsappInStoreTemplate = inStoreTemplate;
     if (ownerPhone !== undefined) $set.ownerWhatsAppPhone = String(ownerPhone).trim();
     if (Object.keys($set).length === 0) return res.status(400).json({ error: 'Sin campos para actualizar' });
     await db.collection('ticketConfig').updateOne(
@@ -3110,10 +3170,63 @@ async function checkFinancingReminders() {
   }
 }
 
+let scheduledNotificationsInterval: NodeJS.Timeout | null = null;
+
+async function checkScheduledNotifications() {
+  try {
+    const now = new Date().toISOString();
+    const pending = await db.collection('scheduled_notifications')
+      .find({ status: 'pending', sendAt: { $lte: now } })
+      .toArray();
+
+    if (pending.length === 0) return;
+
+    console.log(`[Scheduled-WA] Procesando ${pending.length} mensajes de WhatsApp programados...`);
+
+    for (const notif of pending) {
+      try {
+        if (whatsappService.getStatus() === 'connected') {
+          const success = await whatsappService.sendMessage(notif.phone, notif.message);
+          if (success) {
+            await db.collection('scheduled_notifications').updateOne(
+              { _id: notif._id },
+              { $set: { status: 'sent', sentAt: new Date().toISOString() } }
+            );
+            console.log(`[Scheduled-WA] Mensaje enviado a ${notif.phone}`);
+          } else {
+            console.warn(`[Scheduled-WA] Falló el envío del mensaje a ${notif.phone}`);
+            await db.collection('scheduled_notifications').updateOne(
+              { _id: notif._id },
+              { $set: { status: 'failed', lastError: 'Envío fallido (retorno false)', updatedAt: new Date().toISOString() } }
+            );
+          }
+        } else {
+          console.log(`[Scheduled-WA] WhatsApp no conectado. Reintento en el próximo ciclo.`);
+        }
+      } catch (err) {
+        console.error(`[Scheduled-WA] Error al enviar a ${notif.phone}:`, err);
+        await db.collection('scheduled_notifications').updateOne(
+          { _id: notif._id },
+          { $set: { status: 'failed', lastError: String(err), updatedAt: new Date().toISOString() } }
+        );
+      }
+      // Pequeño delay de cortesía
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  } catch (error) {
+    console.error('[Scheduled-WA] Error en cron de mensajes programados:', error);
+  }
+}
+
 // Iniciar cron cada hora
 financingReminderInterval = setInterval(checkFinancingReminders, 60 * 60 * 1000);
 // Primera verificación 30s después de arrancar
 setTimeout(checkFinancingReminders, 30000);
+
+// Iniciar cron de mensajes programados (cada 1 minuto)
+scheduledNotificationsInterval = setInterval(checkScheduledNotifications, 60 * 1000);
+// Primera verificación 15s después de arrancar
+setTimeout(checkScheduledNotifications, 15000);
 
 // ====================================================================
 // 💳  PAGOS A XIAOMI
@@ -3373,7 +3486,7 @@ app.get('/api/inventario/ventas', async (req, res) => {
 
 app.post('/api/inventario/ventas', async (req, res) => {
   try {
-    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto } = req.body;
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto, telefono, cedula } = req.body;
     if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: 'Faltan campos requeridos' });
 
     const costoObsequio = Number(obsequioCosto || 0);
@@ -3417,6 +3530,8 @@ app.post('/api/inventario/ventas', async (req, res) => {
       notas: notas || '',
       creadoPor: orderId ? 'web' : 'manual',
       createdAt: new Date().toISOString(),
+      telefono: telefono || '',
+      cedula: cedula || '',
     };
 
     // Guardar info del obsequio si aplica
@@ -3426,6 +3541,11 @@ app.post('/api/inventario/ventas', async (req, res) => {
     }
 
     await db.collection('daily_sales').insertOne(venta_record);
+
+    // Programar mensaje de agradecimiento de WhatsApp si es venta física (manual) y tiene teléfono
+    if (!orderId && telefono) {
+      await scheduleInStoreWhatsApp(venta_record);
+    }
 
     // Descontar obsequio del inventario si existe
     if (obsequioNombre) {

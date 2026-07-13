@@ -79738,8 +79738,8 @@ var require_tr46 = __commonJS({
         return l;
       });
       if (verifyDNSLength) {
-        const total = labels.join(".").length;
-        if (total > 253 || total === 0) {
+        const total2 = labels.join(".").length;
+        if (total2 > 253 || total2 === 0) {
           result.error = true;
         }
         for (let i = 0; i < labels.length; ++i) {
@@ -96028,10 +96028,10 @@ var require_parser_v3 = __commonJS({
         buffers.push(msg);
         bufferTail = bufferTail.slice(msgLength + 1);
       }
-      var total = buffers.length;
-      for (i = 0; i < total; i++) {
+      var total2 = buffers.length;
+      for (i = 0; i < total2; i++) {
         var buffer = buffers[i];
-        callback(decodePacket(buffer, binaryType, true), i, total);
+        callback(decodePacket(buffer, binaryType, true), i, total2);
       }
     }
   }
@@ -153796,7 +153796,7 @@ var init_MP4Parser = __esm({
             this.metadata.setFormat("bitsPerSample", ssd.description.sampleSize);
             this.metadata.setFormat("numberOfChannels", ssd.description.numAudioChannels);
             if (audioTrack.media.header.timeScale === 0 && audioTrack.timeToSampleTable.length > 0) {
-              const totalSampleSize = audioTrack.timeToSampleTable.map((ttstEntry) => ttstEntry.count * ttstEntry.duration).reduce((total, sampleSize) => total + sampleSize);
+              const totalSampleSize = audioTrack.timeToSampleTable.map((ttstEntry) => ttstEntry.count * ttstEntry.duration).reduce((total2, sampleSize) => total2 + sampleSize);
               audioTrack.duration = totalSampleSize / ssd.description.sampleRate;
             }
           }
@@ -182199,9 +182199,9 @@ async function requestApi(pathname, init, commandOptions) {
           },
           onUploadProgress: (commandOptions == null ? void 0 : commandOptions.onUploadProgress) ? (loaded) => {
             var _a3;
-            const total = bodyLength !== 0 ? bodyLength : loaded;
+            const total2 = bodyLength !== 0 ? bodyLength : loaded;
             totalLoaded = loaded;
-            const percentage = bodyLength > 0 ? Number((loaded / total * 100).toFixed(2)) : 0;
+            const percentage = bodyLength > 0 ? Number((loaded / total2 * 100).toFixed(2)) : 0;
             if (percentage === 100 && bodyLength > 0) {
               return;
             }
@@ -182211,7 +182211,7 @@ async function requestApi(pathname, init, commandOptions) {
               // Instead of defining total as total?: number we decided to set the total to the currently
               // loaded number. This is not inaccurate and way more practical for DX.
               // Passing down a stream to put() is very rare
-              total,
+              total: total2,
               percentage
             });
           } : void 0
@@ -182533,9 +182533,9 @@ function uploadAllParts({
           },
           0
         );
-        const total = totalToLoad || loaded;
+        const total2 = totalToLoad || loaded;
         const percentage = totalToLoad > 0 ? Number(((loaded / totalToLoad || loaded) * 100).toFixed(2)) : 0;
-        (_a3 = options.onUploadProgress) == null ? void 0 : _a3.call(options, { loaded, total, percentage });
+        (_a3 = options.onUploadProgress) == null ? void 0 : _a3.call(options, { loaded, total: total2, percentage });
       }, 150);
     }
     read2().catch(cancel);
@@ -283279,11 +283279,11 @@ var generateMac = (operation, data, keyId, key) => {
   keyData.set(keyIdBuffer, 1);
   const last = new Uint8Array(8);
   last[7] = keyData.length;
-  const total = new Uint8Array(keyData.length + data.length + last.length);
-  total.set(keyData, 0);
-  total.set(data, keyData.length);
-  total.set(last, keyData.length + data.length);
-  const hmac = hmacSign(total, key, "sha512");
+  const total2 = new Uint8Array(keyData.length + data.length + last.length);
+  total2.set(keyData, 0);
+  total2.set(data, keyData.length);
+  total2.set(last, keyData.length + data.length);
+  const hmac = hmacSign(total2, key, "sha512");
   return hmac.subarray(0, 32);
 };
 var to64BitNetworkOrder = (e) => {
@@ -283322,12 +283322,12 @@ var makeLtHashGenerator = ({ indexValueMap, hash: hash2 }) => {
   };
 };
 var generateSnapshotMac = (lthash, version4, name, key) => {
-  const total = Buffer.concat([lthash, to64BitNetworkOrder(version4), Buffer.from(name, "utf-8")]);
-  return hmacSign(total, key, "sha256");
+  const total2 = Buffer.concat([lthash, to64BitNetworkOrder(version4), Buffer.from(name, "utf-8")]);
+  return hmacSign(total2, key, "sha256");
 };
 var generatePatchMac = (snapshotMac, valueMacs, version4, type, key) => {
-  const total = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version4), Buffer.from(type, "utf-8")]);
-  return hmacSign(total, key);
+  const total2 = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version4), Buffer.from(type, "utf-8")]);
+  return hmacSign(total2, key);
 };
 var newLTHashState = () => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} });
 var ensureLTHashStateVersion = (state) => {
@@ -299485,6 +299485,20 @@ Hola *{{nombre}}*, gracias por tu compra. \u{1F9E1}
 \xBFTienes dudas? Responde este mensaje \u{1F44B}
 
 _Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
+var DEFAULT_IN_STORE_CUSTOMER_TEMPLATE = `\u{1F389} *\xA1Gracias por tu compra!* \u2014 Xiaomi Cartagena
+
+Hola *{{nombre}}*, gracias por visitarnos en nuestra tienda f\xEDsica. \u{1F9E1}
+
+\u{1F6CD}\uFE0F *Tu compra:*
+\u2022 {{producto}}
+
+\u{1F4B0} *Total:* ${{ total }} COP
+\u{1F4B3} *M\xE9todo de pago:* {{metodoPago}}
+\u{1F4C4} *Facturado a:* {{cedula}}
+
+\xA1Esperamos de nuevo tu visita! Si tienes dudas o necesitas soporte, escr\xEDbenos por aqu\xED \u{1F44B}
+
+_Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
 var DEFAULT_OWNER_TEMPLATE = `Hola {{nombre}},
 
 Hemos recibido tu orden *{{ordenNumero}}*.
@@ -299591,6 +299605,40 @@ async function sendWhatsAppNotifications(order) {
     }
   } catch (err) {
     console.error("[WA] Error al enviar notificaciones:", err);
+  }
+}
+async function scheduleInStoreWhatsApp(venta) {
+  const phone = venta.telefono ? String(venta.telefono).trim() : "";
+  if (!phone) return;
+  try {
+    const config = await db.collection("ticketConfig").findOne({ type: "config" }) || {};
+    const template = config.whatsappInStoreTemplate || DEFAULT_IN_STORE_CUSTOMER_TEMPLATE;
+    const imeiStr = venta.imei ? `(IMEI: ${venta.imei})` : "";
+    const giftStr = venta.obsequioNombre ? `
+\u2022 Obsequio: ${venta.obsequioNombre}` : "";
+    const vars = {
+      "{{nombre}}": venta.cliente || "Cliente",
+      "{{producto}}": `${venta.producto} ${imeiStr}${giftStr}`,
+      "{{total}}": venta.precioVenta.toLocaleString("es-CO"),
+      "{{metodoPago}}": String(venta.metodoPago).toUpperCase(),
+      "{{cedula}}": venta.cedula || "Consumidor Final"
+    };
+    let msg = template;
+    for (const [key, val] of Object.entries(vars)) {
+      msg = msg.split(key).join(val);
+    }
+    const sendAt = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
+    await db.collection("scheduled_notifications").insertOne({
+      id: crypto.randomUUID(),
+      phone,
+      message: msg,
+      sendAt,
+      status: "pending",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    console.log(`[Scheduled-WA] Mensaje programado para ${phone} a las ${sendAt}`);
+  } catch (error) {
+    console.error("[Scheduled-WA] Error al programar mensaje de tienda f\xEDsica:", error);
   }
 }
 async function sendOrderEmail(order) {
@@ -300636,11 +300684,11 @@ app.post("/api/orders", async (req, res) => {
       await sendInvoiceEmail(invoiceOrder);
       return res.json({ success: true });
     }
-    const { orderNumber: clientOrderNumber, date, createdAt, items, total, status, customerInfo, paymentMethod } = req.body;
+    const { orderNumber: clientOrderNumber, date, createdAt, items, total: total2, status, customerInfo, paymentMethod } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "La orden debe tener al menos un producto" });
     }
-    if (total === void 0 || total === null || isNaN(Number(total)) || Number(total) < 0) {
+    if (total2 === void 0 || total2 === null || isNaN(Number(total2)) || Number(total2) < 0) {
       return res.status(400).json({ error: "Total inv\xE1lido" });
     }
     const id = Date.now().toString();
@@ -300652,7 +300700,7 @@ app.post("/api/orders", async (req, res) => {
       date: date || now,
       createdAt: createdAt || now,
       items,
-      total,
+      total: total2,
       status: status || "pending",
       customerInfo,
       paymentMethod
@@ -300767,7 +300815,7 @@ app.post("/api/orders", async (req, res) => {
     const notification = {
       orderId: id,
       orderNumber,
-      total,
+      total: total2,
       message: `Nuevo pedido recibido: ${orderNumber}`,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       read: false
@@ -300786,12 +300834,12 @@ app.post("/api/orders", async (req, res) => {
 });
 app.put("/api/orders/:id", async (req, res) => {
   try {
-    const { status, items, customerInfo, total } = req.body;
+    const { status, items, customerInfo, total: total2 } = req.body;
     const $set = {};
     if (status !== void 0) $set.status = status;
     if (items !== void 0) $set.items = items;
     if (customerInfo !== void 0) $set.customerInfo = customerInfo;
-    if (total !== void 0) $set.total = total;
+    if (total2 !== void 0) $set.total = total2;
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "No hay campos para actualizar" });
     }
@@ -300974,6 +301022,7 @@ app.get("/api/whatsapp/templates", async (_req, res) => {
     res.json({
       customerTemplate: config.whatsappCustomerTemplate || DEFAULT_CUSTOMER_TEMPLATE,
       ownerTemplate: config.whatsappOwnerTemplate || DEFAULT_OWNER_TEMPLATE,
+      inStoreTemplate: config.whatsappInStoreTemplate || DEFAULT_IN_STORE_CUSTOMER_TEMPLATE,
       ownerPhone: config.ownerWhatsAppPhone || ""
     });
   } catch (err) {
@@ -300983,10 +301032,11 @@ app.get("/api/whatsapp/templates", async (_req, res) => {
 });
 app.put("/api/whatsapp/templates", async (req, res) => {
   try {
-    const { customerTemplate, ownerTemplate, ownerPhone } = req.body;
+    const { customerTemplate, ownerTemplate, inStoreTemplate, ownerPhone } = req.body;
     const $set = {};
     if (customerTemplate !== void 0) $set.whatsappCustomerTemplate = customerTemplate;
     if (ownerTemplate !== void 0) $set.whatsappOwnerTemplate = ownerTemplate;
+    if (inStoreTemplate !== void 0) $set.whatsappInStoreTemplate = inStoreTemplate;
     if (ownerPhone !== void 0) $set.ownerWhatsAppPhone = String(ownerPhone).trim();
     if (Object.keys($set).length === 0) return res.status(400).json({ error: "Sin campos para actualizar" });
     await db.collection("ticketConfig").updateOne(
@@ -301465,8 +301515,50 @@ _CREDILOCK \u2014 Sistema de financiamiento_`;
     console.error("[financing] Error en cron de recordatorios:", err);
   }
 }
+var scheduledNotificationsInterval = null;
+async function checkScheduledNotifications() {
+  try {
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const pending = await db.collection("scheduled_notifications").find({ status: "pending", sendAt: { $lte: now } }).toArray();
+    if (pending.length === 0) return;
+    console.log(`[Scheduled-WA] Procesando ${pending.length} mensajes de WhatsApp programados...`);
+    for (const notif of pending) {
+      try {
+        if (whatsappService.getStatus() === "connected") {
+          const success = await whatsappService.sendMessage(notif.phone, notif.message);
+          if (success) {
+            await db.collection("scheduled_notifications").updateOne(
+              { _id: notif._id },
+              { $set: { status: "sent", sentAt: (/* @__PURE__ */ new Date()).toISOString() } }
+            );
+            console.log(`[Scheduled-WA] Mensaje enviado a ${notif.phone}`);
+          } else {
+            console.warn(`[Scheduled-WA] Fall\xF3 el env\xEDo del mensaje a ${notif.phone}`);
+            await db.collection("scheduled_notifications").updateOne(
+              { _id: notif._id },
+              { $set: { status: "failed", lastError: "Env\xEDo fallido (retorno false)", updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+            );
+          }
+        } else {
+          console.log(`[Scheduled-WA] WhatsApp no conectado. Reintento en el pr\xF3ximo ciclo.`);
+        }
+      } catch (err) {
+        console.error(`[Scheduled-WA] Error al enviar a ${notif.phone}:`, err);
+        await db.collection("scheduled_notifications").updateOne(
+          { _id: notif._id },
+          { $set: { status: "failed", lastError: String(err), updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3e3));
+    }
+  } catch (error) {
+    console.error("[Scheduled-WA] Error en cron de mensajes programados:", error);
+  }
+}
 financingReminderInterval = setInterval(checkFinancingReminders, 60 * 60 * 1e3);
 setTimeout(checkFinancingReminders, 3e4);
+scheduledNotificationsInterval = setInterval(checkScheduledNotifications, 60 * 1e3);
+setTimeout(checkScheduledNotifications, 15e3);
 app.get("/api/xiaomi-payments", async (_req, res) => {
   try {
     const payments = await db.collection("xiaomi_payments").find().sort({ date: -1 }).toArray();
@@ -301680,7 +301772,7 @@ app.get("/api/inventario/ventas", async (req, res) => {
 });
 app.post("/api/inventario/ventas", async (req, res) => {
   try {
-    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto } = req.body;
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto, telefono, cedula } = req.body;
     if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: "Faltan campos requeridos" });
     const costoObsequio = Number(obsequioCosto || 0);
     const compra = Number(precioCompra || 0) + costoObsequio;
@@ -301717,13 +301809,18 @@ app.post("/api/inventario/ventas", async (req, res) => {
       fechaEsperada: expectedDate || null,
       notas: notas || "",
       creadoPor: orderId ? "web" : "manual",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      telefono: telefono || "",
+      cedula: cedula || ""
     };
     if (obsequioNombre) {
       venta_record.obsequioNombre = obsequioNombre;
       venta_record.obsequioCosto = costoObsequio;
     }
     await db.collection("daily_sales").insertOne(venta_record);
+    if (!orderId && telefono) {
+      await scheduleInStoreWhatsApp(venta_record);
+    }
     if (obsequioNombre) {
       const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
       let giftItem = await db.collection("inventory").findOne({

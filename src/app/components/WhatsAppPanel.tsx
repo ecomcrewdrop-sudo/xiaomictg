@@ -23,7 +23,8 @@ import { API_BASE_URL, API_ORIGIN } from '../lib/api-base';
 const VARIABLES = [
   { var: '{{nombre}}', desc: 'Nombre del cliente' },
   { var: '{{ordenNumero}}', desc: 'Número de orden (#XM-...)' },
-  { var: '{{productos}}', desc: 'Lista de productos comprados' },
+  { var: '{{productos}}', desc: 'Lista de productos (Pedidos Web)' },
+  { var: '{{producto}}', desc: 'Producto, IMEI y Obsequio (Tienda Física)' },
   { var: '{{total}}', desc: 'Total en COP' },
   { var: '{{metodoPago}}', desc: 'Método de pago' },
   { var: '{{metodoEntrega}}', desc: 'Domicilio / Retiro en tienda' },
@@ -42,15 +43,17 @@ export function WhatsAppPanel() {
   const [ownerPhone, setOwnerPhone] = useState('');
   const [customerTemplate, setCustomerTemplate] = useState('');
   const [ownerTemplate, setOwnerTemplate] = useState('');
+  const [inStoreTemplate, setInStoreTemplate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [activeTemplate, setActiveTemplate] = useState<'customer' | 'owner'>('customer');
-  const [focusedArea, setFocusedArea] = useState<'customer' | 'owner'>('customer');
+  const [activeTemplate, setActiveTemplate] = useState<'customer' | 'owner' | 'inStore'>('customer');
+  const [focusedArea, setFocusedArea] = useState<'customer' | 'owner' | 'inStore'>('customer');
   const [showPreview, setShowPreview] = useState(false);
 
   const customerRef = useRef<HTMLTextAreaElement>(null);
   const ownerRef = useRef<HTMLTextAreaElement>(null);
+  const inStoreRef = useRef<HTMLTextAreaElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // --------------- FETCH INICIAL ---------------
@@ -72,6 +75,7 @@ export function WhatsAppPanel() {
       setOwnerPhone(data.ownerPhone || '');
       setCustomerTemplate(data.customerTemplate || '');
       setOwnerTemplate(data.ownerTemplate || '');
+      setInStoreTemplate(data.inStoreTemplate || '');
     } catch {
       toast.error('Error cargando configuración de WhatsApp');
     }
@@ -173,7 +177,7 @@ export function WhatsAppPanel() {
       const res = await fetch(`${API_BASE_URL}/whatsapp/templates`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerTemplate, ownerTemplate, ownerPhone }),
+        body: JSON.stringify({ customerTemplate, ownerTemplate, inStoreTemplate, ownerPhone }),
       });
       if (!res.ok) throw new Error();
       toast.success('✅ Configuración de WhatsApp guardada');
@@ -186,10 +190,23 @@ export function WhatsAppPanel() {
 
   // Insertar variable en la posición del cursor
   const insertVariable = (variable: string) => {
-    const isOwner = focusedArea === 'owner';
-    const ref = isOwner ? ownerRef.current : customerRef.current;
-    const currentVal = isOwner ? ownerTemplate : customerTemplate;
-    const setter = isOwner ? setOwnerTemplate : setCustomerTemplate;
+    let ref;
+    let currentVal;
+    let setter;
+
+    if (focusedArea === 'owner') {
+      ref = ownerRef.current;
+      currentVal = ownerTemplate;
+      setter = setOwnerTemplate;
+    } else if (focusedArea === 'inStore') {
+      ref = inStoreRef.current;
+      currentVal = inStoreTemplate;
+      setter = setInStoreTemplate;
+    } else {
+      ref = customerRef.current;
+      currentVal = customerTemplate;
+      setter = setCustomerTemplate;
+    }
 
     if (ref) {
       const start = ref.selectionStart ?? currentVal.length;
@@ -472,7 +489,17 @@ export function WhatsAppPanel() {
                   : 'bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              📩 Mensaje al Cliente (Confirmación de pedido)
+              📩 Cliente (Pedido Web)
+            </button>
+            <button
+              onClick={() => setActiveTemplate('inStore')}
+              className={`flex-1 py-3 text-sm font-bold transition-colors border-l border-gray-200 ${
+                activeTemplate === 'inStore'
+                  ? 'bg-[#25D366] text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              🛍️ Cliente (Tienda Física)
             </button>
             <button
               onClick={() => setActiveTemplate('owner')}
@@ -482,7 +509,7 @@ export function WhatsAppPanel() {
                   : 'bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              🔔 Mensaje al Dueño (Nueva venta)
+              🔔 Dueño (Notificación Alertas)
             </button>
           </div>
 
@@ -569,6 +596,39 @@ export function WhatsAppPanel() {
                   </label>
                   <div className="bg-[#fff3e0] rounded-xl p-4 font-mono text-sm text-gray-800 whitespace-pre-wrap leading-relaxed border border-orange-200 min-h-[340px] max-h-[400px] overflow-y-auto">
                     {getPreview(ownerTemplate)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Editor de plantilla de venta física / POS */}
+          {activeTemplate === 'inStore' && (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  🛍️ Plantilla — Compra en Tienda Física (POS)
+                </label>
+                <textarea
+                  ref={inStoreRef}
+                  value={inStoreTemplate}
+                  onChange={e => setInStoreTemplate(e.target.value)}
+                  onFocus={() => setFocusedArea('inStore')}
+                  rows={18}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm text-gray-800 focus:outline-none focus:bg-white focus:border-green-400 focus:ring-4 focus:ring-green-400/10 transition-all resize-none leading-relaxed"
+                  placeholder="Escribe el mensaje que recibirá el cliente al comprar en tienda física..."
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Usa <strong>*texto*</strong> para negrilla y <em>_texto_</em> para cursiva en WhatsApp.
+                </p>
+              </div>
+              {showPreview && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-500 mb-2">
+                    👁 Preview (con datos de ejemplo)
+                  </label>
+                  <div className="bg-[#e8f5e9] rounded-xl p-4 font-mono text-sm text-gray-800 whitespace-pre-wrap leading-relaxed border border-green-200 min-h-[340px] max-h-[400px] overflow-y-auto">
+                    {getPreview(inStoreTemplate)}
                   </div>
                 </div>
               )}
