@@ -3791,7 +3791,7 @@ app.get('/api/inventario/ventas', async (req, res) => {
 
 app.post('/api/inventario/ventas', async (req, res) => {
   try {
-    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto, telefono, cedula } = req.body;
+    const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto, telefono, cedula, obsequioInventarioId } = req.body;
     if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: 'Faltan campos requeridos' });
 
     const costoObsequio = Number(obsequioCosto || 0);
@@ -3843,6 +3843,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
     if (obsequioNombre) {
       venta_record.obsequioNombre = obsequioNombre;
       venta_record.obsequioCosto = costoObsequio;
+      venta_record.obsequioInventarioId = obsequioInventarioId || '';
     }
 
     await db.collection('daily_sales').insertOne(venta_record);
@@ -3854,25 +3855,33 @@ app.post('/api/inventario/ventas', async (req, res) => {
 
     // Descontar obsequio del inventario si existe
     if (obsequioNombre) {
-      const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
-      let giftItem = await db.collection('inventory').findOne({
-        estado: 'disponible',
-        cantidad: { $gte: 1 },
-        producto: { $regex: escapedGift, $options: 'i' },
-      });
+      let giftItem = null;
+      if (obsequioInventarioId) {
+        giftItem = await db.collection('inventory').findOne({ id: obsequioInventarioId });
+      }
+
       if (!giftItem) {
-        const giftKw = obsequioNombre.split(/[\s+()]/g)
-          .filter((w: string) => w.length > 2)
-          .map((w: string) => makeMatchFriendlyPattern(w));
-        if (giftKw.length > 0) {
-          const giftRegex = giftKw.map((w: string) => `(?=.*${w})`).join('');
-          giftItem = await db.collection('inventory').findOne({
-            estado: 'disponible',
-            cantidad: { $gte: 1 },
-            producto: { $regex: giftRegex, $options: 'i' },
-          });
+        const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
+        giftItem = await db.collection('inventory').findOne({
+          estado: 'disponible',
+          cantidad: { $gte: 1 },
+          producto: { $regex: escapedGift, $options: 'i' },
+        });
+        if (!giftItem) {
+          const giftKw = obsequioNombre.split(/[\s+()]/g)
+            .filter((w: string) => w.length > 2)
+            .map((w: string) => makeMatchFriendlyPattern(w));
+          if (giftKw.length > 0) {
+            const giftRegex = giftKw.map((w: string) => `(?=.*${w})`).join('');
+            giftItem = await db.collection('inventory').findOne({
+              estado: 'disponible',
+              cantidad: { $gte: 1 },
+              producto: { $regex: giftRegex, $options: 'i' },
+            });
+          }
         }
       }
+
       if (giftItem) {
         const newQty = (giftItem.cantidad || 1) - 1;
         if (newQty <= 0) {

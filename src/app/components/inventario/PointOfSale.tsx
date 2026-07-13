@@ -233,7 +233,9 @@ export function PointOfSale() {
   });
   const [pagos, setPagos] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [obsequio, setObsequio] = useState({ activo: false, nombre: '', costo: '' });
+  const [obsequio, setObsequio] = useState({ activo: false, nombre: '', costo: '', inventarioId: '' });
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [showGiftSuggestions, setShowGiftSuggestions] = useState(false);
 
   // Quick sale dialog (accesorios)
   const [quickOpen, setQuickOpen] = useState(false);
@@ -260,16 +262,18 @@ export function PointOfSale() {
   // ─── Load ────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
-      const [cRes, sRes, pRes, mRes] = await Promise.all([
+      const [cRes, sRes, pRes, mRes, iRes] = await Promise.all([
         fetchWithTimeout(`${API_BASE_URL}/caja/cuentas`),
         fetchWithTimeout(`${API_BASE_URL}/caja/saldos`),
         fetchWithTimeout(`${API_BASE_URL}/products`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/resumen-mes`),
+        fetchWithTimeout(`${API_BASE_URL}/inventario/items?estado=disponible`),
       ]);
       if (cRes.ok) setCuentas(await cRes.json());
       if (sRes.ok) setSaldos(await sRes.json());
       if (pRes.ok) setProducts(await pRes.json());
       if (mRes.ok) setResumenMes(await mRes.json());
+      if (iRes.ok) setInventoryItems(await iRes.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, []);
@@ -357,7 +361,7 @@ export function PointOfSale() {
       // Obsequio data
       const costoObsequio = obsequio.activo ? (Number(obsequio.costo) || 0) : 0;
       const obsequioPayload = obsequio.activo && obsequio.nombre
-        ? { obsequioNombre: obsequio.nombre, obsequioCosto: costoObsequio }
+        ? { obsequioNombre: obsequio.nombre, obsequioCosto: costoObsequio, obsequioInventarioId: obsequio.inventarioId || '' }
         : {};
 
       const saleRes = await fetchWithTimeout(`${API_BASE_URL}/inventario/ventas`, {
@@ -760,14 +764,47 @@ export function PointOfSale() {
               {obsequio.activo && (
                 <div className="space-y-2 pt-1">
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-2">
+                    <div className="col-span-2 relative">
                       <Label className="text-[10px] text-pink-600 font-bold">Producto incluido</Label>
                       <Input
                         value={obsequio.nombre}
-                        onChange={e => setObsequio(o => ({ ...o, nombre: e.target.value }))}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setObsequio(o => ({ ...o, nombre: val, inventarioId: '' }));
+                          setShowGiftSuggestions(true);
+                        }}
+                        onFocus={() => setShowGiftSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowGiftSuggestions(false), 200)}
                         placeholder="Ej: Redmi Buds 6 Play"
                         className="h-10 text-sm border-pink-200 focus:border-pink-400"
                       />
+                      {showGiftSuggestions && obsequio.nombre.length >= 2 && (
+                        <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {inventoryItems
+                            .filter(item => 
+                              item.producto.toLowerCase().includes(obsequio.nombre.toLowerCase())
+                            )
+                            .slice(0, 8)
+                            .map(item => (
+                              <div
+                                key={item.id}
+                                onMouseDown={() => {
+                                  setObsequio({
+                                    activo: true,
+                                    nombre: item.producto,
+                                    costo: String(item.precioCompra || 0),
+                                    inventarioId: item.id
+                                  });
+                                  setShowGiftSuggestions(false);
+                                }}
+                                className="px-3 py-2 text-xs hover:bg-pink-50 cursor-pointer border-b border-gray-50 flex justify-between items-center"
+                              >
+                                <span className="font-bold text-gray-800">{item.producto}</span>
+                                <span className="text-gray-400 font-mono text-[10px]">Costo: ${item.precioCompra?.toLocaleString('es-CO')}</span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label className="text-[10px] text-pink-600 font-bold">Costo compra</Label>
@@ -787,7 +824,7 @@ export function PointOfSale() {
                   )}
                   <button
                     type="button"
-                    onClick={() => setObsequio({ activo: false, nombre: '', costo: '' })}
+                    onClick={() => setObsequio({ activo: false, nombre: '', costo: '', inventarioId: '' })}
                     className="text-[10px] text-pink-400 hover:text-pink-600 font-semibold"
                   >
                     ✕ Quitar combo
