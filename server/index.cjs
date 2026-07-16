@@ -300852,6 +300852,58 @@ app.post("/api/orders", async (req, res) => {
           );
         }
       }
+      if (nombreProducto.includes("+")) {
+        const partes = nombreProducto.split("+");
+        if (partes.length > 1) {
+          let parteObsequio = partes[1].split("-")[0];
+          parteObsequio = parteObsequio.replace(/\((?:regalo|obsequio)\)/gi, "");
+          parteObsequio = parteObsequio.trim();
+          if (parteObsequio && parteObsequio.toLowerCase() !== "obsequio") {
+            const escapedGift = makeMatchFriendlyPattern(parteObsequio);
+            let giftItem = await db.collection("inventory").findOne({
+              estado: "disponible",
+              cantidad: { $gte: 1 },
+              producto: { $regex: escapedGift, $options: "i" }
+            });
+            if (!giftItem) {
+              const giftKw = parteObsequio.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
+              if (giftKw.length > 0) {
+                const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
+                giftItem = await db.collection("inventory").findOne({
+                  estado: "disponible",
+                  cantidad: { $gte: 1 },
+                  producto: { $regex: giftRegex, $options: "i" }
+                });
+              }
+            }
+            if (giftItem) {
+              const newQty = (giftItem.cantidad || 1) - qty;
+              if (newQty <= 0) {
+                await db.collection("inventory").updateOne(
+                  { id: giftItem.id },
+                  { $set: { cantidad: 0, estado: "vendido", ventaId: venta_auto.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+                );
+              } else {
+                await db.collection("inventory").updateOne(
+                  { id: giftItem.id },
+                  { $set: { cantidad: newQty, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+                );
+              }
+              await db.collection("daily_sales").updateOne(
+                { id: venta_auto.id },
+                {
+                  $set: {
+                    obsequioNombre: giftItem.producto,
+                    obsequioCosto: Number(giftItem.precioCompra || 0),
+                    obsequioInventarioId: giftItem.id
+                  }
+                }
+              );
+              console.log(`[auto-venta-obsequio] Descontado obsequio "${giftItem.producto}" para orden web ${orderNumber} (quedan ${newQty})`);
+            }
+          }
+        }
+      }
     }
     const notification = {
       orderId: id,
@@ -302039,8 +302091,45 @@ app.post("/api/inventario/ventas", async (req, res) => {
   try {
     const { cliente, producto, imei, esPropio, proveedor, precioCompra, precioVenta, metodoPago, estadoPago, fechaEsperada, notas, orderId, inventarioId, obsequioNombre, obsequioCosto, telefono, cedula, obsequioInventarioId } = req.body;
     if (!cliente || !producto || !precioVenta) return res.status(400).json({ error: "Faltan campos requeridos" });
-    const costoObsequio = Number(obsequioCosto || 0);
-    const compra = Number(precioCompra || 0) + costoObsequio;
+    let finalObsequioNombre = obsequioNombre || "";
+    let finalObsequioInventarioId = obsequioInventarioId || "";
+    let finalCostoObsequio = Number(obsequioCosto || 0);
+    if (!finalObsequioNombre && producto.includes("+")) {
+      const partes = producto.split("+");
+      if (partes.length > 1) {
+        let parteObsequio = partes[1].split("-")[0];
+        parteObsequio = parteObsequio.replace(/\((?:regalo|obsequio)\)/gi, "");
+        parteObsequio = parteObsequio.trim();
+        if (parteObsequio && parteObsequio.toLowerCase() !== "obsequio") {
+          const escapedGift = makeMatchFriendlyPattern(parteObsequio);
+          let preGiftItem = await db.collection("inventory").findOne({
+            estado: "disponible",
+            cantidad: { $gte: 1 },
+            producto: { $regex: escapedGift, $options: "i" }
+          });
+          if (!preGiftItem) {
+            const giftKw = parteObsequio.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
+            if (giftKw.length > 0) {
+              const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
+              preGiftItem = await db.collection("inventory").findOne({
+                estado: "disponible",
+                cantidad: { $gte: 1 },
+                producto: { $regex: giftRegex, $options: "i" }
+              });
+            }
+          }
+          if (preGiftItem) {
+            finalObsequioNombre = preGiftItem.producto;
+            finalObsequioInventarioId = preGiftItem.id;
+            finalCostoObsequio = Number(preGiftItem.precioCompra || 0);
+            console.log(`[autodetect-obsequio] Auto-vinculado obsequio "${finalObsequioNombre}" (ID: ${finalObsequioInventarioId}, Costo: ${finalCostoObsequio})`);
+          } else {
+            finalObsequioNombre = parteObsequio;
+          }
+        }
+      }
+    }
+    const compra = Number(precioCompra || 0) + finalCostoObsequio;
     const venta = Number(precioVenta);
     const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     let expectedDate = fechaEsperada;
@@ -302085,10 +302174,10 @@ app.post("/api/inventario/ventas", async (req, res) => {
       puntosRedimidos: puntosRedimidosNum,
       puntosGanados: pointsEarned
     };
-    if (obsequioNombre) {
-      venta_record.obsequioNombre = obsequioNombre;
-      venta_record.obsequioCosto = costoObsequio;
-      venta_record.obsequioInventarioId = obsequioInventarioId || "";
+    if (finalObsequioNombre) {
+      venta_record.obsequioNombre = finalObsequioNombre;
+      venta_record.obsequioCosto = finalCostoObsequio;
+      venta_record.obsequioInventarioId = finalObsequioInventarioId || "";
     }
     let newPointsBalance = 0;
     if (telefono) {
@@ -302116,27 +302205,27 @@ app.post("/api/inventario/ventas", async (req, res) => {
     if (!orderId && telefono) {
       await scheduleInStoreWhatsApp(venta_record, pointsEarned, newPointsBalance);
     }
-    if (obsequioNombre) {
+    if (finalObsequioNombre) {
       let giftItem = null;
-      if (obsequioInventarioId) {
+      if (finalObsequioInventarioId) {
         giftItem = await db.collection("inventory").findOne({
-          id: obsequioInventarioId,
+          id: finalObsequioInventarioId,
           estado: "disponible",
           cantidad: { $gte: 1 }
         });
         if (!giftItem) {
-          console.warn(`[obsequio] Item con id ${obsequioInventarioId} no encontrado o no disponible, intentando b\xFAsqueda por nombre`);
+          console.warn(`[obsequio] Item con id ${finalObsequioInventarioId} no encontrado o no disponible, intentando b\xFAsqueda por nombre`);
         }
       }
       if (!giftItem) {
-        const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
+        const escapedGift = makeMatchFriendlyPattern(finalObsequioNombre);
         giftItem = await db.collection("inventory").findOne({
           estado: "disponible",
           cantidad: { $gte: 1 },
           producto: { $regex: escapedGift, $options: "i" }
         });
         if (!giftItem) {
-          const giftKw = obsequioNombre.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
+          const giftKw = finalObsequioNombre.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
           if (giftKw.length > 0) {
             const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
             giftItem = await db.collection("inventory").findOne({
@@ -302156,7 +302245,7 @@ app.post("/api/inventario/ventas", async (req, res) => {
         }
         console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
       } else {
-        console.warn(`[obsequio] \u26A0\uFE0F No se encontr\xF3 "${obsequioNombre}" en inventario para descontar (id: ${obsequioInventarioId || "sin-id"})`);
+        console.warn(`[obsequio] \u26A0\uFE0F No se encontr\xF3 "${finalObsequioNombre}" en inventario para descontar (id: ${finalObsequioInventarioId || "sin-id"})`);
       }
     }
     if (Boolean(esPropio) && tipo !== "servicio") {
