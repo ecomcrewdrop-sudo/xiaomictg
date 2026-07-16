@@ -752,7 +752,12 @@ Hola *{{nombre}}*, gracias por visitarnos en nuestra tienda física. 🧡
 💳 *Método de pago:* {{metodoPago}}
 📄 *Facturado a:* {{cedula}}
 
-¡Esperamos de nuevo tu visita! Si tienes dudas o necesitas soporte, escríbenos por aquí 👋
+🎁 *Billetera de Puntos VIP:*
+• Acumulaste: +{{puntosGanados}} puntos ($` + '{{puntosGanados}}' + ` COP)
+• Saldo actual disponible: {{puntosBalance}} puntos ($` + '{{puntosBalance}}' + ` COP)
+(¡Úsalos como dinero real en tu próxima compra!) 🧡
+
+Agréganos a tus contactos para que estés al tanto de todas nuestras promociones y ofertas exclusivas. 📲
 
 _Xiaomi Cartagena — Cl. 31 #61-64, Los Ángeles_`;
 
@@ -910,7 +915,7 @@ async function sendWhatsAppNotifications(order: any) {
   }
 }
 
-async function scheduleInStoreWhatsApp(venta: any) {
+async function scheduleInStoreWhatsApp(venta: any, pointsEarned: number = 0, newPointsBalance: number = 0) {
   const phone = venta.telefono ? String(venta.telefono).trim() : '';
   if (!phone) return;
 
@@ -927,6 +932,8 @@ async function scheduleInStoreWhatsApp(venta: any) {
       '{{total}}': venta.precioVenta.toLocaleString('es-CO'),
       '{{metodoPago}}': String(venta.metodoPago).toUpperCase(),
       '{{cedula}}': venta.cedula || 'Consumidor Final',
+      '{{puntosGanados}}': pointsEarned.toLocaleString('es-CO'),
+      '{{puntosBalance}}': newPointsBalance.toLocaleString('es-CO'),
     };
 
     let msg = template;
@@ -2705,6 +2712,26 @@ app.get('/api/whatsapp/customers', async (_req, res) => {
   }
 });
 
+// --- LOYALTY POINTS API ---
+
+app.get('/api/loyalty/points/:phone', async (req, res) => {
+  try {
+    const phone = String(req.params.phone).replace(/[\s\-\+\(\)\.]/g, '').trim();
+    if (!phone) return res.status(400).json({ error: 'Teléfono inválido' });
+
+    const clientDoc = await db.collection('loyalty_points').findOne({ phone });
+    res.json({
+      phone,
+      name: clientDoc?.name || '',
+      cedula: clientDoc?.cedula || '',
+      points: clientDoc?.points || 0,
+    });
+  } catch (err) {
+    console.error('[loyalty] Error al obtener puntos:', err);
+    res.status(500).json({ error: 'Error al obtener puntos de fidelidad' });
+  }
+});
+
 app.get('/api/whatsapp/campaigns', async (_req, res) => {
   try {
     const list = await db.collection('campaigns').find().sort({ createdAt: -1 }).toArray();
@@ -3815,6 +3842,14 @@ app.post('/api/inventario/ventas', async (req, res) => {
 
     const tipo = req.body.tipo || 'venta';
 
+    const puntosRedimidosNum = Number(req.body.puntosRedimidos || 0);
+    const netPaid = Math.max(0, venta - puntosRedimidosNum);
+
+    // Determinar tasa de acumulación: 1% para celulares (tienen IMEI), 5% para accesorios
+    const tieneImei = !!(imei && String(imei).trim());
+    const tasaCashback = tieneImei ? 0.01 : 0.05;
+    const pointsEarned = Math.round(netPaid * tasaCashback);
+
     const venta_record: Record<string, unknown> = {
       id: crypto.randomUUID(),
       fecha: hoy,
@@ -3837,6 +3872,8 @@ app.post('/api/inventario/ventas', async (req, res) => {
       createdAt: new Date().toISOString(),
       telefono: telefono || '',
       cedula: cedula || '',
+      puntosRedimidos: puntosRedimidosNum,
+      puntosGanados: pointsEarned,
     };
 
     // Guardar info del obsequio si aplica
@@ -3846,18 +3883,49 @@ app.post('/api/inventario/ventas', async (req, res) => {
       venta_record.obsequioInventarioId = obsequioInventarioId || '';
     }
 
+    let newPointsBalance = 0;
+    if (telefono) {
+      const cleanPhone = String(telefono).replace(/[\s\-\+\(\)\.]/g, '').trim();
+      if (cleanPhone && cleanPhone.length >= 7) {
+        const clientDoc = await db.collection('loyalty_points').findOne({ phone: cleanPhone });
+        const currentPoints = clientDoc?.points || 0;
+        newPointsBalance = Math.max(0, currentPoints - puntosRedimidosNum + pointsEarned);
+
+        await db.collection('loyalty_points').updateOne(
+          { phone: cleanPhone },
+          {
+            $set: {
+              name: cliente,
+              cedula: cedula || '',
+              points: newPointsBalance,
+              updatedAt: new Date().toISOString()
+            }
+          },
+          { upsert: true }
+        );
+        console.log(`[loyalty] Cliente ${cliente} (${cleanPhone}) puntos actualizados. Balance final: ${newPointsBalance}`);
+      }
+    }
+
     await db.collection('daily_sales').insertOne(venta_record);
 
     // Programar mensaje de agradecimiento de WhatsApp si es venta física (manual) y tiene teléfono
     if (!orderId && telefono) {
-      await scheduleInStoreWhatsApp(venta_record);
+      await scheduleInStoreWhatsApp(venta_record, pointsEarned, newPointsBalance);
     }
 
     // Descontar obsequio del inventario si existe
     if (obsequioNombre) {
       let giftItem = null;
       if (obsequioInventarioId) {
-        giftItem = await db.collection('inventory').findOne({ id: obsequioInventarioId });
+        giftItem = await db.collection('inventory').findOne({
+          id: obsequioInventarioId,
+          estado: 'disponible',
+          cantidad: { $gte: 1 },
+        });
+        if (!giftItem) {
+          console.warn(`[obsequio] Item con id ${obsequioInventarioId} no encontrado o no disponible, intentando búsqueda por nombre`);
+        }
       }
 
       if (!giftItem) {
@@ -3868,7 +3936,7 @@ app.post('/api/inventario/ventas', async (req, res) => {
           producto: { $regex: escapedGift, $options: 'i' },
         });
         if (!giftItem) {
-          const giftKw = obsequioNombre.split(/[\s+()]/g)
+          const giftKw = obsequioNombre.split(/[\s+(),\-]+/g)
             .filter((w: string) => w.length > 2)
             .map((w: string) => makeMatchFriendlyPattern(w));
           if (giftKw.length > 0) {
@@ -3890,6 +3958,8 @@ app.post('/api/inventario/ventas', async (req, res) => {
           await db.collection('inventory').updateOne({ id: giftItem.id }, { $set: { cantidad: newQty, updatedAt: new Date().toISOString() } });
         }
         console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
+      } else {
+        console.warn(`[obsequio] ⚠️ No se encontró "${obsequioNombre}" en inventario para descontar (id: ${obsequioInventarioId || 'sin-id'})`);
       }
     }
 
@@ -3908,32 +3978,57 @@ app.post('/api/inventario/ventas', async (req, res) => {
         }
       } else {
         // Buscar match automático por nombre de producto
-        const stopWords2 = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con', 'pro', 'plus', 'max'];
-        const escapedName = makeMatchFriendlyPattern(producto);
-        let invItem = await db.collection('inventory').findOne({
-          estado: 'disponible',
-          cantidad: { $gte: 1 },
-          producto: { $regex: escapedName, $options: 'i' },
-        });
+        // Primero intentar por IMEI si fue proporcionado
+        let invItem: any = null;
+        if (imei && String(imei).trim()) {
+          invItem = await db.collection('inventory').findOne({
+            estado: 'disponible',
+            cantidad: { $gte: 1 },
+            imei: String(imei).trim(),
+          });
+        }
+
         if (!invItem) {
-          const keywords = producto.split(/[\s+()]/g)
-            .filter((w: string) => w.length > 2 && !stopWords2.includes(w.toLowerCase()))
-            .map((w: string) => makeMatchFriendlyPattern(w));
-          if (keywords.length > 0) {
-            let regexPattern = keywords.map((w: string) => `(?=.*${w})`).join('');
-            invItem = await db.collection('inventory').findOne({
-              estado: 'disponible',
-              cantidad: { $gte: 1 },
-              producto: { $regex: regexPattern, $options: 'i' },
-            });
-            if (!invItem && keywords.length > 2) {
-              const coreKeys = keywords.slice(0, 3);
-              regexPattern = coreKeys.map((w: string) => `(?=.*${w})`).join('');
+          // Separar storage keywords (128GB, 256GB, etc.) de las demás
+          const storageRegex = /\b\d+\s?(?:gb|tb)\b/i;
+          const stopWords2 = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con'];
+          
+          const escapedName = makeMatchFriendlyPattern(producto);
+          invItem = await db.collection('inventory').findOne({
+            estado: 'disponible',
+            cantidad: { $gte: 1 },
+            producto: { $regex: escapedName, $options: 'i' },
+          });
+          
+          if (!invItem) {
+            const allWords = producto.split(/[\s+(),\-]+/g).filter((w: string) => w.length > 0);
+            const storageWords = allWords.filter((w: string) => storageRegex.test(w));
+            const normalWords = allWords
+              .filter((w: string) => !storageRegex.test(w))
+              .filter((w: string) => w.length > 2 && !stopWords2.includes(w.toLowerCase()))
+              .map((w: string) => makeMatchFriendlyPattern(w));
+            const storagePatterns = storageWords.map((w: string) => makeMatchFriendlyPattern(w));
+            
+            // Los keywords de storage SIEMPRE deben estar en el regex
+            const buildRegex = (words: string[]) => [...words, ...storagePatterns].map((w: string) => `(?=.*${w})`).join('');
+            
+            if (normalWords.length > 0 || storagePatterns.length > 0) {
+              let regexPattern = buildRegex(normalWords);
               invItem = await db.collection('inventory').findOne({
                 estado: 'disponible',
                 cantidad: { $gte: 1 },
                 producto: { $regex: regexPattern, $options: 'i' },
               });
+              // Fallback: usar solo las primeras 3 palabras normales + storage
+              if (!invItem && normalWords.length > 2) {
+                const coreKeys = normalWords.slice(0, 3);
+                regexPattern = buildRegex(coreKeys);
+                invItem = await db.collection('inventory').findOne({
+                  estado: 'disponible',
+                  cantidad: { $gte: 1 },
+                  producto: { $regex: regexPattern, $options: 'i' },
+                });
+              }
             }
           }
         }
@@ -4074,7 +4169,12 @@ app.get('/api/inventario/resumen-mes', async (req, res) => {
     const now = new Date();
     const mes = mesParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    // Obtener todas las ventas del mes (fecha empieza con YYYY-MM)
+    // Calcular el mes anterior para comparativas
+    const [yr, mn] = mes.split('-').map(Number);
+    const prevDate = new Date(yr, mn - 2, 1);
+    const prevMes = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // 1. Obtener todas las ventas del mes seleccionado
     const ventas = await db.collection('daily_sales').find({
       fecha: { $regex: `^${mes}` },
     }).toArray();
@@ -4083,11 +4183,24 @@ app.get('/api/inventario/resumen-mes', async (req, res) => {
     const totalGanancia = ventas.reduce((s: number, v: any) => s + (v.ganancia || 0), 0);
     const cantidadVentas = ventas.length;
 
-    // Desglose por método de pago
+    // 2. Obtener ventas del mes anterior para comparativa
+    const prevVentas = await db.collection('daily_sales').find({
+      fecha: { $regex: `^${prevMes}` },
+    }).toArray();
+
+    const prevTotalVentas = prevVentas.reduce((s: number, v: any) => s + (v.precioVenta || 0), 0);
+    const prevTotalGanancia = prevVentas.reduce((s: number, v: any) => s + (v.ganancia || 0), 0);
+    const prevCantidadVentas = prevVentas.length;
+
+    // Calcular porcentajes de cambio (crecimiento)
+    const pctVentas = prevTotalVentas > 0 ? Math.round(((totalVentas - prevTotalVentas) / prevTotalVentas) * 100) : 0;
+    const pctGanancia = prevTotalGanancia > 0 ? Math.round(((totalGanancia - prevTotalGanancia) / prevTotalGanancia) * 100) : 0;
+    const pctCantidad = prevCantidadVentas > 0 ? Math.round(((cantidadVentas - prevCantidadVentas) / prevCantidadVentas) * 100) : 0;
+
+    // 3. Desglose por método de pago (Mes actual)
     const porMetodo: Record<string, number> = {};
     for (const v of ventas) {
       const met = (v.metodoPago || 'efectivo');
-      // Manejar pagos split "efectivo:300000+banco:200000"
       if (met.includes('+')) {
         const partes = met.split('+');
         for (const p of partes) {
@@ -4099,20 +4212,133 @@ app.get('/api/inventario/resumen-mes', async (req, res) => {
       }
     }
 
-    // Gastos del mes
+    // 4. Gastos del mes actual
     const gastos = await db.collection('petty_cash').find({
       fecha: { $regex: `^${mes}` },
     }).toArray();
     const totalGastos = gastos.reduce((s: number, g: any) => s + (g.monto || 0), 0);
 
+    // Gastos del mes anterior
+    const prevGastos = await db.collection('petty_cash').find({
+      fecha: { $regex: `^${prevMes}` },
+    }).toArray();
+    const prevTotalGastos = prevGastos.reduce((s: number, g: any) => s + (g.monto || 0), 0);
+    const pctGastos = prevTotalGastos > 0 ? Math.round(((totalGastos - prevTotalGastos) / prevTotalGastos) * 100) : 0;
+
+    // 5. Margen de ganancia bruto
+    const margenUtilidad = totalVentas > 0 ? Math.round((totalGanancia / totalVentas) * 100) : 0;
+
+    // 6. Desglose por Categoría: Celulares vs Accesorios
+    let ventasCelulares = 0, gananciaCelulares = 0, cantCelulares = 0;
+    let ventasAccesorios = 0, gananciaAccesorios = 0, cantAccesorios = 0;
+
+    for (const v of ventas) {
+      const tieneImei = !!(v.imei && String(v.imei).trim());
+      if (tieneImei) {
+        ventasCelulares += (v.precioVenta || 0);
+        gananciaCelulares += (v.ganancia || 0);
+        cantCelulares++;
+      } else {
+        ventasAccesorios += (v.precioVenta || 0);
+        gananciaAccesorios += (v.ganancia || 0);
+        cantAccesorios++;
+      }
+    }
+
+    // 7. Deudas y cuentas por cobrar
+    // Deudas a proveedores (activo global)
+    const allNonPropioVentas = await db.collection('daily_sales').find({ esPropio: false, proveedor: { $ne: '' } }).toArray();
+    let totalDeudasProveedores = 0;
+    for (const v of allNonPropioVentas) {
+      if (v.proveedor) {
+        totalDeudasProveedores += ((v.precioCompra || 0) - (v.obsequioCosto || 0));
+      }
+    }
+
+    // Cuentas por cobrar CrediLock (cuotas no pagadas de planes activos)
+    const activeFinancing = await db.collection('financing').find({ status: 'active' }).toArray();
+    let totalCrediLockPendiente = 0;
+    for (const f of activeFinancing) {
+      const unpaid = (f.cuotas || []).filter((c: any) => !c.pagada);
+      totalCrediLockPendiente += unpaid.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
+    }
+
+    // Cuentas por cobrar manuales (ventas con estadoPago: 'pendiente')
+    const pendingSales = await db.collection('daily_sales').find({ estadoPago: 'pendiente' }).toArray();
+    const totalVentasPendientes = pendingSales.reduce((s: number, v: any) => s + (v.precioVenta || 0), 0);
+
+    // 8. Insights y recomendaciones inteligentes
+    const insights: string[] = [];
+    if (totalVentas > 0) {
+      // Método de pago más popular
+      let maxMetodo = '';
+      let maxMonto = 0;
+      for (const [m, val] of Object.entries(porMetodo)) {
+        if (val > maxMonto) {
+          maxMonto = val;
+          maxMetodo = m;
+        }
+      }
+      if (maxMetodo) {
+        const pct = Math.round((maxMonto / totalVentas) * 100);
+        insights.push(`El método de pago más utilizado este mes fue **${maxMetodo.toUpperCase()}** con un **${pct}%** de participación ($${maxMonto.toLocaleString('es-CO')} COP).`);
+      }
+
+      // Comparativa con el mes anterior
+      if (pctVentas > 0) {
+        insights.push(`Las ventas crecieron un **${pctVentas}%** respecto al mes anterior. ¡Excelente ritmo de ventas! 📈`);
+      } else if (pctVentas < 0) {
+        insights.push(`Las ventas disminuyeron un **${Math.abs(pctVentas)}%** respecto a ${prevMes}. Se recomienda revisar promociones o lanzar una campaña de fidelización. ⚠️`);
+      }
+
+      // Rentabilidad por categoría
+      if (gananciaAccesorios > 0 && totalGanancia > 0) {
+        const pctAcc = Math.round((gananciaAccesorios / totalGanancia) * 100);
+        const margenAcc = ventasAccesorios > 0 ? Math.round((gananciaAccesorios / ventasAccesorios) * 100) : 0;
+        insights.push(`Los accesorios aportaron el **${pctAcc}%** de la ganancia total del mes con un margen bruto de **${margenAcc}%**. ¡Sigue impulsándolos! 🛍️`);
+      }
+
+      // Alerta de deudas
+      if (totalDeudasProveedores > totalVentas) {
+        insights.push(`Alerta: Tu saldo a deber a proveedores ($${totalDeudasProveedores.toLocaleString('es-CO')} COP) supera las ventas de este mes. Controla el flujo de caja.`);
+      }
+
+      if (totalCrediLockPendiente > 0) {
+        insights.push(`Tienes **$${totalCrediLockPendiente.toLocaleString('es-CO')} COP** pendientes de cobro en cuotas de CrediLock activas. Revisa los recordatorios automáticos.`);
+      }
+    } else {
+      insights.push('Sin ventas registradas todavía este mes para generar insights.');
+    }
+
     res.json({
       mes,
+      prevMes,
       totalVentas,
+      prevTotalVentas,
+      pctVentas,
       totalGanancia,
+      prevTotalGanancia,
+      pctGanancia,
       totalGastos,
+      prevTotalGastos,
+      pctGastos,
       gananciaReal: totalGanancia - totalGastos,
+      prevGananciaReal: prevTotalGanancia - prevTotalGastos,
       cantidadVentas,
+      prevCantidadVentas,
+      pctCantidad,
       porMetodo,
+      margenUtilidad,
+      desgloseCategorias: {
+        celulares: { ventas: ventasCelulares, ganancia: gananciaCelulares, cantidad: cantCelulares },
+        accesorios: { ventas: ventasAccesorios, ganancia: gananciaAccesorios, cantidad: cantAccesorios },
+      },
+      deudasSaldos: {
+        proveedores: totalDeudasProveedores,
+        credilock: totalCrediLockPendiente,
+        ventasPendientes: totalVentasPendientes,
+      },
+      insights,
     });
   } catch (error) {
     console.error('[inventario] Error resumen mes:', error);

@@ -6,9 +6,10 @@ import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
 import {
-  Plus, Search, Wallet, Landmark, CreditCard, ShoppingBag,
+  Check, Plus, Search, Wallet, Landmark, CreditCard, ShoppingBag,
   ArrowDownCircle, ArrowUpCircle, Settings2, X, Package,
   Printer, Smartphone, Clock, Gift, TrendingUp, DollarSign,
+  BarChart2, Percent, ArrowUp, ArrowDown, Lightbulb, AlertCircle
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -220,6 +221,7 @@ export function PointOfSale() {
   // Sale dialog
   const [saleOpen, setSaleOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<string>('');
   const [saleForm, setSaleForm] = useState({
     cliente: '',
     cedula: '',
@@ -236,6 +238,13 @@ export function PointOfSale() {
   const [obsequio, setObsequio] = useState({ activo: false, nombre: '', costo: '', inventarioId: '' });
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [showGiftSuggestions, setShowGiftSuggestions] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [reportOpen, setReportOpen] = useState(false);
+  const [smartReport, setSmartReport] = useState<any>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   // Quick sale dialog (accesorios)
   const [quickOpen, setQuickOpen] = useState(false);
@@ -266,7 +275,7 @@ export function PointOfSale() {
         fetchWithTimeout(`${API_BASE_URL}/caja/cuentas`),
         fetchWithTimeout(`${API_BASE_URL}/caja/saldos`),
         fetchWithTimeout(`${API_BASE_URL}/products`),
-        fetchWithTimeout(`${API_BASE_URL}/inventario/resumen-mes`),
+        fetchWithTimeout(`${API_BASE_URL}/inventario/resumen-mes?mes=${selectedMonth}`),
         fetchWithTimeout(`${API_BASE_URL}/inventario/items?estado=disponible`),
       ]);
       if (cRes.ok) setCuentas(await cRes.json());
@@ -276,9 +285,67 @@ export function PointOfSale() {
       if (iRes.ok) setInventoryItems(await iRes.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [selectedMonth]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const [usarPuntos, setUsarPuntos] = useState(false);
+  const [clientLoyalty, setClientLoyalty] = useState<{ name: string; cedula: string; points: number } | null>(null);
+
+  const fetchClientLoyalty = async (phone: string) => {
+    const clean = phone.replace(/[\s\-\+\(\)\.]/g, '').trim();
+    if (clean.length >= 7) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/loyalty/points/${clean}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.points > 0 || data.name) {
+            setClientLoyalty(data);
+            // Autocompletar nombre y cédula si están vacíos
+            setSaleForm(f => ({
+              ...f,
+              cliente: f.cliente || data.name || '',
+              cedula: f.cedula || data.cedula || '',
+            }));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setClientLoyalty(null);
+    setUsarPuntos(false);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (saleForm.telefono) {
+        fetchClientLoyalty(saleForm.telefono);
+      } else {
+        setClientLoyalty(null);
+        setUsarPuntos(false);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [saleForm.telefono]);
+
+  const handleOpenSmartReport = async () => {
+    setLoadingReport(true);
+    setReportOpen(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/inventario/resumen-mes?mes=${selectedMonth}`);
+      if (res.ok) {
+        setSmartReport(await res.json());
+      } else {
+        toast.error('Error al cargar reporte inteligente');
+      }
+    } catch {
+      toast.error('Error de red al cargar reporte');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
 
   // ─── Filtered products ───────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -299,12 +366,19 @@ export function PointOfSale() {
           const data = await res.json();
           if (data && data.price != null) {
             freshPrice = Math.round(data.price);
-            freshProduct = { ...p, price: data.price, name: data.name || p.name, stock: data.stock ?? p.stock };
+            freshProduct = {
+              ...p,
+              price: data.price,
+              name: data.name || p.name,
+              stock: data.stock ?? p.stock,
+              storageVariants: data.storageVariants || p.storageVariants || [],
+            };
           }
         }
       } catch { /* usar precio del cache si falla */ }
     }
     setSelectedProduct(freshProduct);
+    setSelectedVariant('');
     setSaleForm({
       cliente: '',
       cedula: '',
@@ -317,7 +391,9 @@ export function PointOfSale() {
       notas: '',
     });
     setPagos({});
-    setObsequio({ activo: false, nombre: '', costo: '' });
+    setObsequio({ activo: false, nombre: '', costo: '', inventarioId: '' });
+    setUsarPuntos(false);
+    setClientLoyalty(null);
     setSaleOpen(true);
   };
 
@@ -328,9 +404,10 @@ export function PointOfSale() {
     }
     const precioOriginal = Number(saleForm.precioVenta);
     const descuento = Number(saleForm.descuento) || 0;
-    const precioFinal = precioOriginal - descuento;
+    const descuentoPuntos = usarPuntos && clientLoyalty ? Math.min(precioOriginal - descuento, clientLoyalty.points) : 0;
+    const precioFinal = precioOriginal - descuento - descuentoPuntos;
 
-    if (precioFinal <= 0) {
+    if (precioFinal < 0) {
       toast.error('El descuento no puede ser mayor al precio'); return;
     }
 
@@ -340,23 +417,36 @@ export function PointOfSale() {
       .filter(e => e.monto > 0);
 
     const totalPagos = pagoEntries.reduce((s, e) => s + e.monto, 0);
-    if (pagoEntries.length === 0) {
-      toast.error('Selecciona al menos una forma de pago'); return;
-    }
-    if (totalPagos !== precioFinal) {
-      toast.error(`Los pagos (${fmt(totalPagos)}) no coinciden con el total (${fmt(precioFinal)})`);
-      return;
+    
+    // Si precioFinal es 0 (pagó todo con puntos), no exigir forma de pago en efectivo/tarjeta
+    if (precioFinal > 0) {
+      if (pagoEntries.length === 0) {
+        toast.error('Selecciona al menos una forma de pago'); return;
+      }
+      if (totalPagos !== precioFinal) {
+        toast.error(`Los pagos (${fmt(totalPagos)}) no coinciden con el total (${fmt(precioFinal)})`);
+        return;
+      }
+    } else {
+      // Todo pagado con puntos
+      if (totalPagos > 0) {
+        toast.error('El total a pagar es $0 (cubierto por puntos). Elimina las formas de pago.'); return;
+      }
     }
 
     setSaving(true);
     try {
-      const metodoPago = pagoEntries.length === 1
-        ? pagoEntries[0].cuenta
-        : pagoEntries.map(e => `${e.cuenta}:${e.monto}`).join('+');
+      const metodoPago = precioFinal === 0
+        ? 'Puntos Fidelidad'
+        : (pagoEntries.length === 1
+            ? pagoEntries[0].cuenta
+            : pagoEntries.map(e => `${e.cuenta}:${e.monto}`).join('+'));
 
-      const notasConDescuento = descuento > 0
-        ? `${saleForm.notas ? saleForm.notas + ' | ' : ''}Descuento: -${fmt(descuento)} (precio original: ${fmt(precioOriginal)})`
-        : saleForm.notas;
+      const descPart = descuento > 0 ? `Descuento: -${fmt(descuento)}` : '';
+      const ptsPart = descuentoPuntos > 0 ? `Redimido Puntos: -${fmt(descuentoPuntos)}` : '';
+      const notasConDescuento = [descPart, ptsPart, saleForm.notas]
+        .filter(Boolean)
+        .join(' | ');
 
       // Obsequio data
       const costoObsequio = obsequio.activo ? (Number(obsequio.costo) || 0) : 0;
@@ -380,6 +470,7 @@ export function PointOfSale() {
           metodoPago,
           estadoPago: 'recibido',
           notas: notasConDescuento,
+          puntosRedimidos: descuentoPuntos,
           ...obsequioPayload,
         }),
       });
@@ -408,6 +499,8 @@ export function PointOfSale() {
 
       toast.success('Venta registrada');
       setSaleOpen(false);
+      setUsarPuntos(false);
+      setClientLoyalty(null);
       await loadData();
 
       // Open print invoice
@@ -531,6 +624,31 @@ export function PointOfSale() {
 
   return (
     <div className="space-y-4">
+      {/* ── Control mensual de Rendimiento ────────────────────────── */}
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-150 shadow-sm">
+        <div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reportes Operativos</p>
+          <h3 className="text-base font-black text-gray-800 flex items-center gap-1.5 mt-0.5">
+            <TrendingUp className="w-5 h-5 text-violet-600 animate-pulse" />
+            Rendimiento Mensual
+          </h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="month"
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className="w-36 h-9 rounded-xl border-gray-200 text-xs font-semibold"
+          />
+          <Button
+            onClick={handleOpenSmartReport}
+            className="bg-violet-600 hover:bg-violet-700 text-white font-bold h-9 text-xs rounded-xl shadow-md active:scale-95 duration-200 flex items-center gap-1.5"
+          >
+            <BarChart2 className="w-4 h-4" /> Reporte Inteligente
+          </Button>
+        </div>
+      </div>
+
       {/* ── Resumen del mes ──────────────────────────────────────── */}
       {resumenMes && (
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
@@ -674,7 +792,18 @@ export function PointOfSale() {
                   )}
                 </div>
                 <h3 className="font-bold text-xs text-gray-900 truncate">{p.name}</h3>
-                <p className="font-black text-sm text-violet-600">{fmt(Math.round(p.price))}</p>
+                {p.storageVariants && p.storageVariants.length > 1 ? (
+                  <div>
+                    <p className="font-black text-sm text-violet-600">
+                      Desde {fmt(Math.round(Math.min(...p.storageVariants.map(v => v.price))))}
+                    </p>
+                    <p className="text-[9px] text-gray-400 font-semibold">
+                      {p.storageVariants.map(v => v.storage).join(' · ')}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="font-black text-sm text-violet-600">{fmt(Math.round(p.price))}</p>
+                )}
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
                   <Package className="w-3 h-3" /> Stock: {p.stock}
                 </div>
@@ -704,12 +833,45 @@ export function PointOfSale() {
             <div className="bg-violet-50 rounded-lg p-3 space-y-2">
               <p className="text-xs font-bold text-violet-600 uppercase">Producto</p>
               {selectedProduct && (
-                <div className="flex items-center gap-3">
-                  <img src={selectedProduct.image} className="w-14 h-14 object-contain rounded-lg bg-white p-1" />
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-violet-900">{selectedProduct.name}</p>
-                    <p className="text-lg font-black text-violet-600">{fmt(Math.round(selectedProduct.price))}</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <img src={selectedProduct.image} className="w-14 h-14 object-contain rounded-lg bg-white p-1" />
+                    <div className="flex-1">
+                      <p className="font-bold text-sm text-violet-900">
+                        {selectedProduct.name}{selectedVariant ? ` - ${selectedVariant}` : ''}
+                      </p>
+                      <p className="text-lg font-black text-violet-600">{fmt(Number(saleForm.precioVenta) || Math.round(selectedProduct.price))}</p>
+                    </div>
                   </div>
+                  {selectedProduct.storageVariants && selectedProduct.storageVariants.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">Seleccionar capacidad:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedProduct.storageVariants.map(sv => (
+                          <button
+                            key={sv.storage}
+                            type="button"
+                            onClick={() => {
+                              setSelectedVariant(sv.storage);
+                              setSaleForm(f => ({
+                                ...f,
+                                producto: `${selectedProduct.name} - ${sv.storage}`,
+                                precioVenta: Math.round(sv.price).toString(),
+                              }));
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              selectedVariant === sv.storage
+                                ? 'bg-violet-600 text-white border-violet-600 ring-2 ring-violet-300 shadow-md'
+                                : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50 hover:border-violet-400'
+                            }`}
+                          >
+                            {sv.storage} — {fmt(Math.round(sv.price))}
+                            {sv.stock != null && <span className="ml-1 text-[9px] opacity-70">({sv.stock} uds)</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {!selectedProduct && (
@@ -726,6 +888,26 @@ export function PointOfSale() {
                 <Input value={saleForm.cedula} onChange={e => setSaleForm(f => ({ ...f, cedula: e.target.value }))} placeholder="Cédula / NIT" />
               </div>
               <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="Teléfono" className="w-full" />
+              {clientLoyalty && clientLoyalty.points > 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between transition-all duration-300">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Puntos VIP Disponibles</p>
+                    <p className="text-sm font-extrabold text-emerald-800 flex items-center gap-1">
+                      🎁 {clientLoyalty.points.toLocaleString('es-CO')} puntos
+                      <span className="text-xs text-emerald-600 font-normal">(= {fmt(clientLoyalty.points)})</span>
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-sm select-none">
+                    <input
+                      type="checkbox"
+                      checked={usarPuntos}
+                      onChange={e => setUsarPuntos(e.target.checked)}
+                      className="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                    />
+                    <span className="text-xs font-bold text-emerald-700">Redimir</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* ── PASO 3: Precio y rebaja ──────────────────────── */}
@@ -739,11 +921,24 @@ export function PointOfSale() {
                   <Input type="number" value={saleForm.descuento} onChange={e => setSaleForm(f => ({ ...f, descuento: e.target.value }))} placeholder="Rebaja" className="border-orange-200 focus:border-orange-400 h-11" />
                 </div>
               </div>
-              {Number(saleForm.descuento) > 0 && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-xs">
-                  <span className="text-orange-700 font-semibold">
-                    Rebaja {fmt(Number(saleForm.descuento))} → Cobra: <strong>{fmt((Number(saleForm.precioVenta) || 0) - Number(saleForm.descuento))}</strong>
-                  </span>
+              {(Number(saleForm.descuento) > 0 || (usarPuntos && clientLoyalty && clientLoyalty.points > 0)) && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs space-y-1">
+                  {Number(saleForm.descuento) > 0 && (
+                    <div className="flex justify-between text-orange-800">
+                      <span>Rebaja Manual:</span>
+                      <span className="font-bold">-{fmt(Number(saleForm.descuento))}</span>
+                    </div>
+                  )}
+                  {usarPuntos && clientLoyalty && clientLoyalty.points > 0 && (
+                    <div className="flex justify-between text-emerald-850">
+                      <span>Descuento Puntos:</span>
+                      <span className="font-bold">-{fmt(Math.min((Number(saleForm.precioVenta) || 0) - (Number(saleForm.descuento) || 0), clientLoyalty.points))}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-orange-200 pt-1 flex justify-between font-bold text-gray-800 text-sm">
+                    <span>Total Real a Cobrar:</span>
+                    <span>{fmt(Math.max(0, (Number(saleForm.precioVenta) || 0) - (Number(saleForm.descuento) || 0) - (usarPuntos && clientLoyalty ? clientLoyalty.points : 0)))}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -1067,6 +1262,195 @@ export function PointOfSale() {
               </div>
             </div>
             <Button onClick={handleNewCuenta} className="w-full bg-violet-600 hover:bg-violet-700 text-white">Crear cuenta</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════
+          SMART MONTHLY REPORT DIALOG
+         ══════════════════════════════════════════════════════════════ */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white">
+          <DialogHeader>
+            <DialogTitle className="font-black text-gray-800 text-lg flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-violet-600" />
+              Reporte de Rendimiento Mensual Inteligente ({selectedMonth})
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Análisis completo de ventas, utilidades, balances de caja, deudas pendientes y recomendaciones de negocio.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingReport ? (
+            <div className="flex flex-col items-center justify-center py-24 space-y-3">
+              <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Generando Insights...</p>
+            </div>
+          ) : smartReport ? (
+            <div className="space-y-6 mt-4">
+              {/* ── SECCIÓN 1: MÉTRICAS CLAVE Y COMPARATIVAS ── */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Ventas */}
+                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ventas Totales</span>
+                    <h4 className="text-base font-extrabold text-gray-800 mt-1">{fmt(smartReport.totalVentas)}</h4>
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 text-[10px] font-bold">
+                    {smartReport.pctVentas >= 0 ? (
+                      <span className="text-emerald-600 flex items-center"><ArrowUp className="w-3 h-3 mr-0.5" /> +{smartReport.pctVentas}%</span>
+                    ) : (
+                      <span className="text-red-500 flex items-center"><ArrowDown className="w-3 h-3 mr-0.5" /> {smartReport.pctVentas}%</span>
+                    )}
+                    <span className="text-gray-400 font-normal">vs mes anterior</span>
+                  </div>
+                </div>
+
+                {/* Ganancia Bruta */}
+                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ganancia Bruta</span>
+                    <h4 className="text-base font-extrabold text-gray-800 mt-1">{fmt(smartReport.totalGanancia)}</h4>
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 text-[10px] font-bold">
+                    {smartReport.pctGanancia >= 0 ? (
+                      <span className="text-emerald-600 flex items-center"><ArrowUp className="w-3 h-3 mr-0.5" /> +{smartReport.pctGanancia}%</span>
+                    ) : (
+                      <span className="text-red-500 flex items-center"><ArrowDown className="w-3 h-3 mr-0.5" /> {smartReport.pctGanancia}%</span>
+                    )}
+                    <span className="text-gray-400 font-normal">vs mes anterior</span>
+                  </div>
+                </div>
+
+                {/* Gastos */}
+                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Gastos</span>
+                    <h4 className="text-base font-extrabold text-gray-800 mt-1">{fmt(smartReport.totalGastos)}</h4>
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 text-[10px] font-bold">
+                    {smartReport.pctGastos >= 0 ? (
+                      <span className="text-red-500 flex items-center"><ArrowUp className="w-3 h-3 mr-0.5" /> +{smartReport.pctGastos}%</span>
+                    ) : (
+                      <span className="text-emerald-600 flex items-center"><ArrowDown className="w-3 h-3 mr-0.5" /> {smartReport.pctGastos}%</span>
+                    )}
+                    <span className="text-gray-400 font-normal">vs mes anterior</span>
+                  </div>
+                </div>
+
+                {/* Utilidad Real */}
+                <div className={`rounded-2xl p-4 shadow-sm flex flex-col justify-between text-white ${smartReport.gananciaReal >= 0 ? 'bg-gradient-to-br from-teal-500 to-emerald-600' : 'bg-gradient-to-br from-red-500 to-rose-600'}`}>
+                  <div>
+                    <span className="text-[10px] opacity-85 font-bold uppercase tracking-wider">Ganancia Real Neta</span>
+                    <h4 className="text-base font-black mt-1">{fmt(smartReport.gananciaReal)}</h4>
+                  </div>
+                  <div className="text-[9px] opacity-75 font-semibold mt-2">
+                    Ventas y ganancias menos gastos operativos
+                  </div>
+                </div>
+              </div>
+
+              {/* ── SECCIÓN 2: DESGLOSE POR CATEGORÍA ── */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-4">
+                  <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-4 h-4 text-violet-600" />
+                    Desglose por Categoría
+                  </h5>
+                  
+                  {/* Celulares */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-gray-600">
+                      <span>Celulares ({smartReport.desgloseCategorias.celulares.cantidad} unds)</span>
+                      <span>{fmt(smartReport.desgloseCategorias.celulares.ventas)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-violet-600 h-full rounded-full" style={{ width: `${smartReport.totalVentas > 0 ? (smartReport.desgloseCategorias.celulares.ventas / smartReport.totalVentas) * 100 : 0}%` }} />
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-semibold block">Ganancia Bruta: {fmt(smartReport.desgloseCategorias.celulares.ganancia)}</span>
+                  </div>
+
+                  {/* Accesorios */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between text-xs font-bold text-gray-600">
+                      <span>Accesorios / Vidrios / Forros ({smartReport.desgloseCategorias.accesorios.cantidad} unds)</span>
+                      <span>{fmt(smartReport.desgloseCategorias.accesorios.ventas)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-pink-500 h-full rounded-full" style={{ width: `${smartReport.totalVentas > 0 ? (smartReport.desgloseCategorias.accesorios.ventas / smartReport.totalVentas) * 100 : 0}%` }} />
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-semibold block">Ganancia Bruta: {fmt(smartReport.desgloseCategorias.accesorios.ganancia)}</span>
+                  </div>
+                </div>
+
+                {/* Métodos de Pago */}
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-3.5">
+                  <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Wallet className="w-4 h-4 text-violet-600" />
+                    Distribución de Métodos de Pago
+                  </h5>
+                  <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                    {Object.entries(smartReport.porMetodo).map(([metodo, valor]: any) => (
+                      <div key={metodo} className="flex justify-between items-center text-xs border-b border-gray-100 pb-1.5">
+                        <span className="font-bold text-gray-600 capitalize">{metodo}</span>
+                        <span className="font-mono text-gray-700 font-semibold">{fmt(valor)}</span>
+                      </div>
+                    ))}
+                    {Object.keys(smartReport.porMetodo).length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-6">Sin transacciones este mes</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── SECCIÓN 3: DEUDAS Y SALDOS PENDIENTES ── */}
+              <div className="bg-white border border-gray-150 rounded-2xl p-5">
+                <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 mb-4">
+                  <DollarSign className="w-4 h-4 text-violet-600" />
+                  Deudas y Cuentas por Cobrar (Saldos en el Aire)
+                </h5>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="bg-red-50/50 border border-red-100 rounded-xl p-3.5">
+                    <p className="text-[9px] text-red-500 font-bold uppercase">Deudas con Proveedores</p>
+                    <p className="text-base font-extrabold text-red-800 mt-1">{fmt(smartReport.deudasSaldos.proveedores)}</p>
+                  </div>
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3.5">
+                    <p className="text-[9px] text-blue-500 font-bold uppercase">Financiación CrediLock Activa</p>
+                    <p className="text-base font-extrabold text-blue-800 mt-1">{fmt(smartReport.deudasSaldos.credilock)}</p>
+                  </div>
+                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-3.5">
+                    <p className="text-[9px] text-amber-500 font-bold uppercase">Ventas Pendientes por Cobrar</p>
+                    <p className="text-base font-extrabold text-amber-800 mt-1">{fmt(smartReport.deudasSaldos.ventasPendientes)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── SECCIÓN 4: INSIGHTS E INTELIGENCIA DE NEGOCIO ── */}
+              <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-5 space-y-3">
+                <h5 className="text-xs font-bold text-amber-850 uppercase tracking-wider flex items-center gap-1.5">
+                  <Lightbulb className="w-4 h-4 text-amber-600" />
+                  Insights y Recomendaciones de Operación
+                </h5>
+                <div className="space-y-2">
+                  {smartReport.insights.map((insight: string, idx: number) => (
+                    <div key={idx} className="flex gap-2.5 items-start text-xs text-amber-900 leading-relaxed font-semibold">
+                      <Check className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <span dangerouslySetInnerHTML={{ __html: insight }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10 text-xs text-gray-400">
+              No se pudo cargar el reporte
+            </div>
+          )}
+
+          <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+            <Button onClick={() => setReportOpen(false)} className="rounded-xl px-6 bg-gray-900 hover:bg-black text-white">
+              Cerrar Reporte
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

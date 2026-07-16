@@ -299503,7 +299503,12 @@ Hola *{{nombre}}*, gracias por visitarnos en nuestra tienda f\xEDsica. \u{1F9E1}
 \u{1F4B3} *M\xE9todo de pago:* {{metodoPago}}
 \u{1F4C4} *Facturado a:* {{cedula}}
 
-\xA1Esperamos de nuevo tu visita! Si tienes dudas o necesitas soporte, escr\xEDbenos por aqu\xED \u{1F44B}
+\u{1F381} *Billetera de Puntos VIP:*
+\u2022 Acumulaste: +{{puntosGanados}} puntos (\${{puntosGanados}} COP)
+\u2022 Saldo actual disponible: {{puntosBalance}} puntos (\${{puntosBalance}} COP)
+(\xA1\xDAsalos como dinero real en tu pr\xF3xima compra!) \u{1F9E1}
+
+Agr\xE9ganos a tus contactos para que est\xE9s al tanto de todas nuestras promociones y ofertas exclusivas. \u{1F4F2}
 
 _Xiaomi Cartagena \u2014 Cl. 31 #61-64, Los \xC1ngeles_`;
 var DEFAULT_OWNER_TEMPLATE = `Hola {{nombre}},
@@ -299641,7 +299646,7 @@ async function sendWhatsAppNotifications(order) {
     console.error("[WA] Error al enviar notificaciones:", err);
   }
 }
-async function scheduleInStoreWhatsApp(venta) {
+async function scheduleInStoreWhatsApp(venta, pointsEarned = 0, newPointsBalance = 0) {
   const phone = venta.telefono ? String(venta.telefono).trim() : "";
   if (!phone) return;
   try {
@@ -299655,7 +299660,9 @@ async function scheduleInStoreWhatsApp(venta) {
       "{{producto}}": `${venta.producto} ${imeiStr}${giftStr}`,
       "{{total}}": venta.precioVenta.toLocaleString("es-CO"),
       "{{metodoPago}}": String(venta.metodoPago).toUpperCase(),
-      "{{cedula}}": venta.cedula || "Consumidor Final"
+      "{{cedula}}": venta.cedula || "Consumidor Final",
+      "{{puntosGanados}}": pointsEarned.toLocaleString("es-CO"),
+      "{{puntosBalance}}": newPointsBalance.toLocaleString("es-CO")
     };
     let msg = template;
     for (const [key, val] of Object.entries(vars)) {
@@ -301138,6 +301145,22 @@ app.get("/api/whatsapp/customers", async (_req, res) => {
     res.status(500).json({ error: "Error al obtener clientes" });
   }
 });
+app.get("/api/loyalty/points/:phone", async (req, res) => {
+  try {
+    const phone = String(req.params.phone).replace(/[\s\-\+\(\)\.]/g, "").trim();
+    if (!phone) return res.status(400).json({ error: "Tel\xE9fono inv\xE1lido" });
+    const clientDoc = await db.collection("loyalty_points").findOne({ phone });
+    res.json({
+      phone,
+      name: clientDoc?.name || "",
+      cedula: clientDoc?.cedula || "",
+      points: clientDoc?.points || 0
+    });
+  } catch (err) {
+    console.error("[loyalty] Error al obtener puntos:", err);
+    res.status(500).json({ error: "Error al obtener puntos de fidelidad" });
+  }
+});
 app.get("/api/whatsapp/campaigns", async (_req, res) => {
   try {
     const list2 = await db.collection("campaigns").find().sort({ createdAt: -1 }).toArray();
@@ -302032,6 +302055,11 @@ app.post("/api/inventario/ventas", async (req, res) => {
       }
     }
     const tipo = req.body.tipo || "venta";
+    const puntosRedimidosNum = Number(req.body.puntosRedimidos || 0);
+    const netPaid = Math.max(0, venta - puntosRedimidosNum);
+    const tieneImei = !!(imei && String(imei).trim());
+    const tasaCashback = tieneImei ? 0.01 : 0.05;
+    const pointsEarned = Math.round(netPaid * tasaCashback);
     const venta_record = {
       id: crypto.randomUUID(),
       fecha: hoy,
@@ -302053,21 +302081,52 @@ app.post("/api/inventario/ventas", async (req, res) => {
       creadoPor: orderId ? "web" : "manual",
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       telefono: telefono || "",
-      cedula: cedula || ""
+      cedula: cedula || "",
+      puntosRedimidos: puntosRedimidosNum,
+      puntosGanados: pointsEarned
     };
     if (obsequioNombre) {
       venta_record.obsequioNombre = obsequioNombre;
       venta_record.obsequioCosto = costoObsequio;
       venta_record.obsequioInventarioId = obsequioInventarioId || "";
     }
+    let newPointsBalance = 0;
+    if (telefono) {
+      const cleanPhone = String(telefono).replace(/[\s\-\+\(\)\.]/g, "").trim();
+      if (cleanPhone && cleanPhone.length >= 7) {
+        const clientDoc = await db.collection("loyalty_points").findOne({ phone: cleanPhone });
+        const currentPoints = clientDoc?.points || 0;
+        newPointsBalance = Math.max(0, currentPoints - puntosRedimidosNum + pointsEarned);
+        await db.collection("loyalty_points").updateOne(
+          { phone: cleanPhone },
+          {
+            $set: {
+              name: cliente,
+              cedula: cedula || "",
+              points: newPointsBalance,
+              updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+            }
+          },
+          { upsert: true }
+        );
+        console.log(`[loyalty] Cliente ${cliente} (${cleanPhone}) puntos actualizados. Balance final: ${newPointsBalance}`);
+      }
+    }
     await db.collection("daily_sales").insertOne(venta_record);
     if (!orderId && telefono) {
-      await scheduleInStoreWhatsApp(venta_record);
+      await scheduleInStoreWhatsApp(venta_record, pointsEarned, newPointsBalance);
     }
     if (obsequioNombre) {
       let giftItem = null;
       if (obsequioInventarioId) {
-        giftItem = await db.collection("inventory").findOne({ id: obsequioInventarioId });
+        giftItem = await db.collection("inventory").findOne({
+          id: obsequioInventarioId,
+          estado: "disponible",
+          cantidad: { $gte: 1 }
+        });
+        if (!giftItem) {
+          console.warn(`[obsequio] Item con id ${obsequioInventarioId} no encontrado o no disponible, intentando b\xFAsqueda por nombre`);
+        }
       }
       if (!giftItem) {
         const escapedGift = makeMatchFriendlyPattern(obsequioNombre);
@@ -302077,7 +302136,7 @@ app.post("/api/inventario/ventas", async (req, res) => {
           producto: { $regex: escapedGift, $options: "i" }
         });
         if (!giftItem) {
-          const giftKw = obsequioNombre.split(/[\s+()]/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
+          const giftKw = obsequioNombre.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
           if (giftKw.length > 0) {
             const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
             giftItem = await db.collection("inventory").findOne({
@@ -302096,6 +302155,8 @@ app.post("/api/inventario/ventas", async (req, res) => {
           await db.collection("inventory").updateOne({ id: giftItem.id }, { $set: { cantidad: newQty, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
         }
         console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
+      } else {
+        console.warn(`[obsequio] \u26A0\uFE0F No se encontr\xF3 "${obsequioNombre}" en inventario para descontar (id: ${obsequioInventarioId || "sin-id"})`);
       }
     }
     if (Boolean(esPropio) && tipo !== "servicio") {
@@ -302110,30 +302171,45 @@ app.post("/api/inventario/ventas", async (req, res) => {
           }
         }
       } else {
-        const stopWords2 = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con", "pro", "plus", "max"];
-        const escapedName = makeMatchFriendlyPattern(producto);
-        let invItem = await db.collection("inventory").findOne({
-          estado: "disponible",
-          cantidad: { $gte: 1 },
-          producto: { $regex: escapedName, $options: "i" }
-        });
+        let invItem = null;
+        if (imei && String(imei).trim()) {
+          invItem = await db.collection("inventory").findOne({
+            estado: "disponible",
+            cantidad: { $gte: 1 },
+            imei: String(imei).trim()
+          });
+        }
         if (!invItem) {
-          const keywords = producto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords2.includes(w.toLowerCase())).map((w) => makeMatchFriendlyPattern(w));
-          if (keywords.length > 0) {
-            let regexPattern = keywords.map((w) => `(?=.*${w})`).join("");
-            invItem = await db.collection("inventory").findOne({
-              estado: "disponible",
-              cantidad: { $gte: 1 },
-              producto: { $regex: regexPattern, $options: "i" }
-            });
-            if (!invItem && keywords.length > 2) {
-              const coreKeys = keywords.slice(0, 3);
-              regexPattern = coreKeys.map((w) => `(?=.*${w})`).join("");
+          const storageRegex = /\b\d+\s?(?:gb|tb)\b/i;
+          const stopWords2 = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con"];
+          const escapedName = makeMatchFriendlyPattern(producto);
+          invItem = await db.collection("inventory").findOne({
+            estado: "disponible",
+            cantidad: { $gte: 1 },
+            producto: { $regex: escapedName, $options: "i" }
+          });
+          if (!invItem) {
+            const allWords = producto.split(/[\s+(),\-]+/g).filter((w) => w.length > 0);
+            const storageWords = allWords.filter((w) => storageRegex.test(w));
+            const normalWords = allWords.filter((w) => !storageRegex.test(w)).filter((w) => w.length > 2 && !stopWords2.includes(w.toLowerCase())).map((w) => makeMatchFriendlyPattern(w));
+            const storagePatterns = storageWords.map((w) => makeMatchFriendlyPattern(w));
+            const buildRegex = (words) => [...words, ...storagePatterns].map((w) => `(?=.*${w})`).join("");
+            if (normalWords.length > 0 || storagePatterns.length > 0) {
+              let regexPattern = buildRegex(normalWords);
               invItem = await db.collection("inventory").findOne({
                 estado: "disponible",
                 cantidad: { $gte: 1 },
                 producto: { $regex: regexPattern, $options: "i" }
               });
+              if (!invItem && normalWords.length > 2) {
+                const coreKeys = normalWords.slice(0, 3);
+                regexPattern = buildRegex(coreKeys);
+                invItem = await db.collection("inventory").findOne({
+                  estado: "disponible",
+                  cantidad: { $gte: 1 },
+                  producto: { $regex: regexPattern, $options: "i" }
+                });
+              }
             }
           }
         }
@@ -302254,12 +302330,24 @@ app.get("/api/inventario/resumen-mes", async (req, res) => {
     const mesParam = req.query.mes;
     const now = /* @__PURE__ */ new Date();
     const mes = mesParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const [yr, mn] = mes.split("-").map(Number);
+    const prevDate = new Date(yr, mn - 2, 1);
+    const prevMes = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
     const ventas = await db.collection("daily_sales").find({
       fecha: { $regex: `^${mes}` }
     }).toArray();
     const totalVentas = ventas.reduce((s, v) => s + (v.precioVenta || 0), 0);
     const totalGanancia = ventas.reduce((s, v) => s + (v.ganancia || 0), 0);
     const cantidadVentas = ventas.length;
+    const prevVentas = await db.collection("daily_sales").find({
+      fecha: { $regex: `^${prevMes}` }
+    }).toArray();
+    const prevTotalVentas = prevVentas.reduce((s, v) => s + (v.precioVenta || 0), 0);
+    const prevTotalGanancia = prevVentas.reduce((s, v) => s + (v.ganancia || 0), 0);
+    const prevCantidadVentas = prevVentas.length;
+    const pctVentas = prevTotalVentas > 0 ? Math.round((totalVentas - prevTotalVentas) / prevTotalVentas * 100) : 0;
+    const pctGanancia = prevTotalGanancia > 0 ? Math.round((totalGanancia - prevTotalGanancia) / prevTotalGanancia * 100) : 0;
+    const pctCantidad = prevCantidadVentas > 0 ? Math.round((cantidadVentas - prevCantidadVentas) / prevCantidadVentas * 100) : 0;
     const porMetodo = {};
     for (const v of ventas) {
       const met = v.metodoPago || "efectivo";
@@ -302277,14 +302365,103 @@ app.get("/api/inventario/resumen-mes", async (req, res) => {
       fecha: { $regex: `^${mes}` }
     }).toArray();
     const totalGastos = gastos.reduce((s, g) => s + (g.monto || 0), 0);
+    const prevGastos = await db.collection("petty_cash").find({
+      fecha: { $regex: `^${prevMes}` }
+    }).toArray();
+    const prevTotalGastos = prevGastos.reduce((s, g) => s + (g.monto || 0), 0);
+    const pctGastos = prevTotalGastos > 0 ? Math.round((totalGastos - prevTotalGastos) / prevTotalGastos * 100) : 0;
+    const margenUtilidad = totalVentas > 0 ? Math.round(totalGanancia / totalVentas * 100) : 0;
+    let ventasCelulares = 0, gananciaCelulares = 0, cantCelulares = 0;
+    let ventasAccesorios = 0, gananciaAccesorios = 0, cantAccesorios = 0;
+    for (const v of ventas) {
+      const tieneImei = !!(v.imei && String(v.imei).trim());
+      if (tieneImei) {
+        ventasCelulares += v.precioVenta || 0;
+        gananciaCelulares += v.ganancia || 0;
+        cantCelulares++;
+      } else {
+        ventasAccesorios += v.precioVenta || 0;
+        gananciaAccesorios += v.ganancia || 0;
+        cantAccesorios++;
+      }
+    }
+    const allNonPropioVentas = await db.collection("daily_sales").find({ esPropio: false, proveedor: { $ne: "" } }).toArray();
+    let totalDeudasProveedores = 0;
+    for (const v of allNonPropioVentas) {
+      if (v.proveedor) {
+        totalDeudasProveedores += (v.precioCompra || 0) - (v.obsequioCosto || 0);
+      }
+    }
+    const activeFinancing = await db.collection("financing").find({ status: "active" }).toArray();
+    let totalCrediLockPendiente = 0;
+    for (const f of activeFinancing) {
+      const unpaid = (f.cuotas || []).filter((c) => !c.pagada);
+      totalCrediLockPendiente += unpaid.reduce((sum, c) => sum + (c.valor || 0), 0);
+    }
+    const pendingSales = await db.collection("daily_sales").find({ estadoPago: "pendiente" }).toArray();
+    const totalVentasPendientes = pendingSales.reduce((s, v) => s + (v.precioVenta || 0), 0);
+    const insights = [];
+    if (totalVentas > 0) {
+      let maxMetodo = "";
+      let maxMonto = 0;
+      for (const [m, val] of Object.entries(porMetodo)) {
+        if (val > maxMonto) {
+          maxMonto = val;
+          maxMetodo = m;
+        }
+      }
+      if (maxMetodo) {
+        const pct = Math.round(maxMonto / totalVentas * 100);
+        insights.push(`El m\xE9todo de pago m\xE1s utilizado este mes fue **${maxMetodo.toUpperCase()}** con un **${pct}%** de participaci\xF3n ($${maxMonto.toLocaleString("es-CO")} COP).`);
+      }
+      if (pctVentas > 0) {
+        insights.push(`Las ventas crecieron un **${pctVentas}%** respecto al mes anterior. \xA1Excelente ritmo de ventas! \u{1F4C8}`);
+      } else if (pctVentas < 0) {
+        insights.push(`Las ventas disminuyeron un **${Math.abs(pctVentas)}%** respecto a ${prevMes}. Se recomienda revisar promociones o lanzar una campa\xF1a de fidelizaci\xF3n. \u26A0\uFE0F`);
+      }
+      if (gananciaAccesorios > 0 && totalGanancia > 0) {
+        const pctAcc = Math.round(gananciaAccesorios / totalGanancia * 100);
+        const margenAcc = ventasAccesorios > 0 ? Math.round(gananciaAccesorios / ventasAccesorios * 100) : 0;
+        insights.push(`Los accesorios aportaron el **${pctAcc}%** de la ganancia total del mes con un margen bruto de **${margenAcc}%**. \xA1Sigue impuls\xE1ndolos! \u{1F6CD}\uFE0F`);
+      }
+      if (totalDeudasProveedores > totalVentas) {
+        insights.push(`Alerta: Tu saldo a deber a proveedores ($${totalDeudasProveedores.toLocaleString("es-CO")} COP) supera las ventas de este mes. Controla el flujo de caja.`);
+      }
+      if (totalCrediLockPendiente > 0) {
+        insights.push(`Tienes **$${totalCrediLockPendiente.toLocaleString("es-CO")} COP** pendientes de cobro en cuotas de CrediLock activas. Revisa los recordatorios autom\xE1ticos.`);
+      }
+    } else {
+      insights.push("Sin ventas registradas todav\xEDa este mes para generar insights.");
+    }
     res.json({
       mes,
+      prevMes,
       totalVentas,
+      prevTotalVentas,
+      pctVentas,
       totalGanancia,
+      prevTotalGanancia,
+      pctGanancia,
       totalGastos,
+      prevTotalGastos,
+      pctGastos,
       gananciaReal: totalGanancia - totalGastos,
+      prevGananciaReal: prevTotalGanancia - prevTotalGastos,
       cantidadVentas,
-      porMetodo
+      prevCantidadVentas,
+      pctCantidad,
+      porMetodo,
+      margenUtilidad,
+      desgloseCategorias: {
+        celulares: { ventas: ventasCelulares, ganancia: gananciaCelulares, cantidad: cantCelulares },
+        accesorios: { ventas: ventasAccesorios, ganancia: gananciaAccesorios, cantidad: cantAccesorios }
+      },
+      deudasSaldos: {
+        proveedores: totalDeudasProveedores,
+        credilock: totalCrediLockPendiente,
+        ventasPendientes: totalVentasPendientes
+      },
+      insights
     });
   } catch (error) {
     console.error("[inventario] Error resumen mes:", error);
