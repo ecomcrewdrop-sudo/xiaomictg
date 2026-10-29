@@ -10,6 +10,7 @@ products-backup-base64.json
 .env.*.local
 
 # Archivos sensibles
+*.zip
 *.db
 credenciales.txt
 mongodb_credentials.txt
