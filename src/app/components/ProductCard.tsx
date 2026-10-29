@@ -1,4 +1,4 @@
-import { Product, useProducts } from './ProductContext';
+import { Product, useProducts, firstAvailableStorage, firstAvailableColor } from './ProductContext';
 import { Link } from 'react-router';
 import { ShoppingCart, Zap, Bell } from 'lucide-react';
 import { useToast } from './ToastContext';
@@ -16,10 +16,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useProducts();
   const { showToast } = useToast();
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
-    product.colorVariants?.[0]?.color
+    firstAvailableColor(product.colorVariants)
   );
   const [selectedStorage, setSelectedStorage] = useState<string | undefined>(
-    product.storageVariants?.[0]?.storage
+    firstAvailableStorage(product.storageVariants)
   );
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showStoragePicker, setShowStoragePicker] = useState(false);

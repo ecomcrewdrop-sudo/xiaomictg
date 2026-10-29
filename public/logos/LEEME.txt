@@ -1,0 +1,54 @@
+LOGOS DE ALIADOS DE FINANCIACION
+=================================
+
+Estos son los logos OFICIALES que entregó el dueño (septiembre 2026), ya procesados.
+Los usa el bloque "Financiación disponible con"
+(src/app/components/FinanciacionDisponible.tsx).
+
+ARCHIVOS EN USO
+---------------
+    sistecredito.png    970x120   (proporcion 8,1:1)
+    addi.png            318x120   (proporcion 2,7:1)
+    brilla.png          370x120   (proporcion 3,1:1)  <-- solo el logotipo
+
+ARCHIVO DE REPUESTO (no se usa hoy)
+-----------------------------------
+    brilla-completo.png  244x120  <-- logotipo + eslogan "Creciendo contigo"
+
+QUE SE LES HIZO A LOS ORIGINALES
+--------------------------------
+Los originales venian con muchisimo margen vacio alrededor (el de Brilla era de
+3300x2550 px y el logo ocupaba solo la parte central). Se les recorto el margen
+y se escalaron todos a 120 px de alto, que es 3x el tamano maximo en pantalla,
+asi se ven nitidos tambien en moviles retina. No se les cambio ningun color.
+
+Al de Brilla ademas se le quito el eslogan "Creciendo contigo": en la tienda el
+logo se muestra a unos 20-28 px de alto, y a ese tamano el eslogan quedaba en
+4 px, ilegible y sucio. Si el dueño prefiere que salga completo, basta con
+cambiar en FinanciacionDisponible.tsx:
+
+    src: '/logos/brilla.png'   ->   src: '/logos/brilla-completo.png'
+
+y bajarle un poco la altura (de 'h-5 sm:h-7' a 'h-6 sm:h-8').
+
+POR QUE CADA LOGO TIENE SU PROPIA ALTURA EN EL CODIGO
+-----------------------------------------------------
+Las tres proporciones son muy distintas. Si a los tres se les pone la misma
+altura, Sistecredito (que es un wordmark largo y fino) se ve como un tercio de
+los otros dos. Por eso en el componente cada aliado trae su propia clase de
+alto, ajustada para que los tres pesen visualmente igual:
+
+    Sistecredito   h-3.5 sm:h-5     (14 / 20 px)
+    Addi           h-5   sm:h-7     (20 / 28 px)
+    Brilla         h-5   sm:h-7     (20 / 28 px)
+
+SI HAY QUE REEMPLAZAR UN LOGO
+-----------------------------
+1. Deja el archivo nuevo aqui con el mismo nombre.
+2. Recortale el margen vacio y escalalo a 120 px de alto.
+3. Revisa su altura en FinanciacionDisponible.tsx (paso anterior), porque si
+   cambia la proporcion se descuadra la fila.
+4. npm run build  y subir /dist al cPanel.
+
+Si algun archivo faltara, el componente NO muestra una imagen rota: cae solo a
+un wordmark de texto con los colores de la marca.

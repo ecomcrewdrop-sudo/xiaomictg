@@ -1,10 +1,12 @@
 node_modules
 dist
-src
 .git
 .gitignore
 .vercel
 products-backup-base64.json
+# Servidor de prueba local; no tiene nada que hacer en la imagen de Railway.
+.preview-proxy.cjs
+*.tmp.*
 *.db
 *.log
 *.txt

@@ -100,24 +100,24 @@ export function PettyCash() {
   return (
     <div className="space-y-4">
       {/* Date selector */}
-      <div className="flex items-center justify-between bg-white rounded-xl border p-3">
-        <button onClick={() => changeDate(-1)} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronLeft className="w-5 h-5" /></button>
-        <div className="text-center">
-          <p className="text-sm font-bold text-gray-900 capitalize">
+      <div className="flex items-center justify-between gap-2 bg-white rounded-xl border p-3">
+        <button onClick={() => changeDate(-1)} aria-label="Día anterior" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-gray-100 sm:h-9 sm:w-9"><ChevronLeft className="w-5 h-5" /></button>
+        <div className="min-w-0 text-center">
+          <p className="text-sm font-bold text-gray-900 capitalize break-words">
             {new Date(fecha + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
           {isToday && <span className="text-xs text-violet-600 font-semibold">HOY</span>}
         </div>
-        <button onClick={() => changeDate(1)} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronRight className="w-5 h-5" /></button>
+        <button onClick={() => changeDate(1)} aria-label="Día siguiente" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-gray-100 sm:h-9 sm:w-9"><ChevronRight className="w-5 h-5" /></button>
       </div>
 
       {/* Total */}
-      <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg">
+      <div className="min-w-0 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg">
         <div className="flex items-center gap-2 mb-1">
-          <Wallet className="w-5 h-5 opacity-80" />
+          <Wallet className="w-5 h-5 shrink-0 opacity-80" />
           <span className="text-sm font-bold uppercase tracking-wider opacity-80">Total gastos del dia</span>
         </div>
-        <p className="text-3xl font-black">{fmt(total)}</p>
+        <p className="text-2xl font-black break-all sm:text-3xl">{fmt(total)}</p>
         <p className="text-xs opacity-70">{gastos.length} movimientos</p>
       </div>
 
@@ -125,14 +125,16 @@ export function PettyCash() {
       {isToday && (
         <div>
           <p className="text-xs text-gray-500 font-semibold mb-2">RETIRO RAPIDO</p>
-          <div className="grid grid-cols-4 gap-2">
+          {/* Cuatro columnas dejan 70px por botón y "$100.000" no entra: en móvil
+              dos columnas, que además son un blanco táctil mucho mayor. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {QUICK_AMOUNTS.map(amount => (
               <button
                 key={amount}
                 onClick={() => handleQuickAdd(amount)}
-                className="bg-white border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 rounded-xl py-3 text-center transition-colors"
+                className="min-w-0 bg-white border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 rounded-xl py-3 text-center transition-colors"
               >
-                <p className="font-bold text-gray-700">{fmt(amount)}</p>
+                <p className="font-bold text-gray-700 break-all">{fmt(amount)}</p>
                 <p className="text-[10px] text-gray-400">Retiro</p>
               </button>
             ))}
@@ -144,7 +146,7 @@ export function PettyCash() {
       {isToday && (
         <div className="bg-white rounded-xl border p-4 space-y-3">
           <p className="font-bold text-sm text-gray-700">Registrar gasto</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label>Monto *</Label>
               <Input type="number" value={monto} onChange={e => setMonto(e.target.value)} placeholder="0" />
@@ -181,22 +183,24 @@ export function PettyCash() {
               const config = TIPO_CONFIG[g.tipo] || TIPO_CONFIG.gasto;
               const Icon = config.icon;
               return (
-                <div key={g.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${config.color}`}>
+                <div key={g.id} className="flex items-center justify-between gap-2 px-3 py-3 hover:bg-gray-50/50 sm:px-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${config.color}`}>
                       <Icon className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{g.concepto}</p>
+                    {/* Conceptos escritos a mano ("Almuerzo del domicilio del sábado")
+                        empujaban el importe fuera de la tarjeta sin este min-w-0. */}
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 text-sm break-words">{g.concepto}</p>
                       <p className="text-xs text-gray-400">
                         {new Date(g.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                         <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold ${config.color}`}>{config.label}</span>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-red-600">-{fmt(g.monto)}</span>
-                    <button onClick={() => handleDelete(g.id)} className="text-gray-300 hover:text-red-500">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="font-bold text-red-600 break-all">-{fmt(g.monto)}</span>
+                    <button onClick={() => handleDelete(g.id)} aria-label={`Eliminar ${g.concepto}`} className="shrink-0 text-gray-300 hover:text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

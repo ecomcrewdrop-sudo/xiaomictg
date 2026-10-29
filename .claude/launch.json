@@ -8,6 +8,24 @@
       "port": 5173
     },
     {
+      "name": "dev-alt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5181", "--strictPort"],
+      "port": 5181
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "4174", "--strictPort"],
+      "port": 4174
+    },
+    {
+      "name": "preview-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".preview-proxy.cjs"],
+      "port": 4175
+    },
+    {
       "name": "landings",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["http-server", "PRO", "-p", "8099", "-c-1"],

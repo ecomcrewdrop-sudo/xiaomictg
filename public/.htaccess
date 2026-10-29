@@ -2,6 +2,38 @@
   RewriteEngine On
   RewriteBase /
 
+  # ── El portal del cliente vive en el backend, no aquí ────────────────────
+  #
+  # `xiaomicartagena.com/p/K7M2QX` es la dirección que se imprime en la pantalla
+  # de un equipo bloqueado: se lee de ahí y se teclea a mano en otro aparato, así
+  # que cada carácter cuenta. Pero este Apache sólo tiene el SPA; sin esta regla,
+  # `/p/...` caería en el fallback de abajo y el cliente vería la tienda en vez
+  # de su cuenta.
+  #
+  # Es una REDIRECCIÓN y no un proxy (`[P]`) a propósito. El proxy dejaría el
+  # dominio bonito en la barra de direcciones, que es más presentable, pero
+  # depende de que este hosting tenga mod_proxy_http habilitado para .htaccess
+  # —en cPanel compartido muchas veces no— y cuando no lo tiene, Apache responde
+  # 500. Eso convertiría la única página que un cliente bloqueado necesita en un
+  # error. La redirección necesita sólo mod_rewrite, que es lo que ya mueve este
+  # archivo, y lo único que se pierde es que después del salto se vea la URL de
+  # Railway. El cliente teclea la corta igual, que es de lo que se trataba.
+  #
+  # Hay un segundo motivo, y es el que cierra la discusión: con el dominio
+  # conservado, el formulario de los 4 dígitos también enviaría su POST aquí, y
+  # una redirección en un POST pierde el cuerpo. El cliente escribiría su cédula
+  # y no llegaría. Con la redirección en el GET, el formulario ya se pinta en
+  # Railway y su POST no vuelve a pasar por este archivo nunca.
+  #
+  # 302 y no 301: un 301 se queda en la caché del navegador para siempre. El día
+  # que el backend cambie de dominio, los equipos ya bloqueados seguirían
+  # saltando al viejo sin forma de arreglarlo desde el servidor.
+  #
+  # Cubre `/p/` completo, no sólo los códigos de seis: el link largo que viaja en
+  # los WhatsApp usa el mismo prefijo, y así ese también funciona desde este
+  # dominio sin tocar nada más.
+  RewriteRule ^p/(.*)$ https://xiaomictg-backend-production-66f6.up.railway.app/p/$1 [R=302,QSA,L]
+
   # No reescribir API ni assets estáticos.
   RewriteRule ^api($|/) - [L]
   RewriteRule ^assets($|/) - [L]

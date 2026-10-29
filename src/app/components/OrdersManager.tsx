@@ -296,22 +296,25 @@ export function OrdersManager() {
     <div className="space-y-6">
       {/* Mensaje de bienvenida con nuevas órdenes */}
       {showWelcome && unreadOrdersCount > 0 && (
-        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-6 shadow-lg animate-in fade-in slide-in-from-top duration-500">
-          <div className="flex items-center gap-4">
+        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4 sm:p-6 shadow-lg animate-in fade-in slide-in-from-top duration-500">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
               <Package className="w-6 h-6" />
             </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-bold mb-1">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-bold mb-1">
                 ¡Tienes {unreadOrdersCount} nueva{unreadOrdersCount > 1 ? 's' : ''} orden{unreadOrdersCount > 1 ? 'es' : ''}!
               </h3>
               <p className="text-green-100 text-sm">
                 Revisa los detalles y procesa los pedidos lo antes posible.
               </p>
             </div>
+            {/* 44px de área táctil: con `p-2` y una ✕ de texto el botón medía
+                36px, y es la única forma de quitar este aviso de en medio. */}
             <button
               onClick={() => setShowWelcome(false)}
-              className="flex-shrink-0 text-white hover:bg-white/10 rounded-lg p-2 transition-colors"
+              aria-label="Cerrar aviso"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10"
             >
               ✕
             </button>
@@ -319,45 +322,50 @@ export function OrdersManager() {
         </div>
       )}
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
+      {/*
+        Estadísticas. En móvil van de dos en dos: las tres primeras son contadores
+        cortos y apiladas en una columna obligaban a desplazar media pantalla antes
+        de ver la primera orden. La de ingresos se queda a ancho completo porque
+        "$12.450.000 COP" no cabe en media columna de 360px ni reduciendo la cifra.
+      */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
               <p className="text-sm text-gray-600">Total Órdenes</p>
-              <p className="text-2xl font-bold text-gray-800">{orders.length}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-800">{orders.length}</p>
             </div>
-            <Package className="w-8 h-8 text-orange-500" />
+            <Package className="w-8 h-8 shrink-0 text-orange-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
               <p className="text-sm text-gray-600">Pendientes</p>
-              <p className="text-2xl font-bold text-yellow-600">{pendingOrders}</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-600">{pendingOrders}</p>
             </div>
-            <Clock className="w-8 h-8 text-yellow-500" />
+            <Clock className="w-8 h-8 shrink-0 text-yellow-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
               <p className="text-sm text-gray-600">Procesando</p>
-              <p className="text-2xl font-bold text-blue-600">{processingOrders}</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600">{processingOrders}</p>
             </div>
-            <Package className="w-8 h-8 text-blue-500" />
+            <Package className="w-8 h-8 shrink-0 text-blue-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="col-span-2 bg-white rounded-lg border border-gray-200 p-4 sm:p-6 md:col-span-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
               <p className="text-sm text-gray-600">Ingresos Totales</p>
-              <p className="text-2xl font-bold text-green-600">${totalRevenueCOP.toLocaleString('es-CO')} COP</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 break-words">${totalRevenueCOP.toLocaleString('es-CO')} COP</p>
             </div>
-            <CheckCircle2 className="w-8 h-8 text-green-500" />
+            <CheckCircle2 className="w-8 h-8 shrink-0 text-green-500" />
           </div>
         </div>
       </div>
@@ -377,16 +385,21 @@ export function OrdersManager() {
             />
           </div>
 
-          {/* Filtro por estado */}
-          <div className="relative">
+          {/*
+            El select se dimensionaba por su opción más larga ("Pendiente (Addi)"),
+            así que en móvil sobresalía de la tarjeta. Forzándolo a w-full se
+            recorta solo y de md hacia arriba recupera el ancho natural.
+          */}
+          <div className="relative w-full md:w-auto">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as Order['status'] | 'all')}
-              className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+              className="w-full md:w-auto pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
             >
               <option value="all">Todos los estados</option>
               <option value="pending">Pendiente</option>
+              {/* Addi ya no es método de pago; se conserva para consultar pedidos antiguos */}
               <option value="pending_addi">Pendiente (Addi)</option>
               <option value="pending_bold">Pendiente (Bold)</option>
               <option value="processing">Procesando</option>
@@ -399,7 +412,7 @@ export function OrdersManager() {
 
       {/* Lista de órdenes */}
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-lg border border-gray-200 p-8 sm:p-12 text-center">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">No se encontraron órdenes</p>
           <p className="text-gray-400 text-sm mt-2">
@@ -413,13 +426,17 @@ export function OrdersManager() {
           {filteredOrders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow"
             >
-              {/* Header de la orden */}
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-bold text-gray-800">
+              {/*
+                Header. El número de orden, la insignia de estado y el total en
+                text-2xl sumaban más de 360px en una sola fila: el total quedaba
+                fuera de la tarjeta. En móvil se apila y la insignia salta de línea.
+              */}
+              <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                    <h3 className="text-lg font-bold text-gray-800 break-all">
                       {order.orderNumber}
                     </h3>
                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${getStatusColor(order.status)}`}>
@@ -443,9 +460,9 @@ export function OrdersManager() {
                     })()}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="shrink-0 sm:text-right">
                   <p className="text-sm text-gray-600 mb-1">Total</p>
-                  <p className="text-2xl font-bold text-orange-500">
+                  <p className="text-xl sm:text-2xl font-bold text-orange-500">
                     ${calculateOrderTotals(order).finalTotal.toLocaleString('es-CO')} COP
                   </p>
                 </div>
@@ -455,7 +472,9 @@ export function OrdersManager() {
               {order.customerInfo && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Información del Cliente</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                {/* break-words global: correos, direcciones e IDs de PayPal no tienen
+                    espacios donde cortar y se salían de la tarjeta gris. */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm break-words">
                   <div>
                     <span className="text-gray-600">Nombre:</span>{' '}
                     <span className="font-medium text-gray-800">{order.customerInfo.name || 'N/A'}</span>
@@ -513,16 +532,18 @@ export function OrdersManager() {
                   {(order.items || []).map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                      className="flex items-start justify-between gap-2 py-2 border-b border-gray-100 last:border-0"
                     >
-                      <div className="flex items-center gap-3 flex-1">
+                      {/* min-w-0 en los dos niveles: sin él el nombre del producto y
+                          los IMEI empujaban el importe fuera de la tarjeta. */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         <ImageWithFallback
                           src={resolveOrderItemImage(item, products)}
                           alt={item.product?.name || 'Producto'}
-                          className="w-12 h-12 object-cover rounded bg-gray-100"
+                          className="w-12 h-12 shrink-0 object-cover rounded bg-gray-100"
                         />
-                        <div>
-                          <p className="font-medium text-gray-800">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-800 break-words">
                             {item.product?.name || 'Producto'}
                             {item.selectedStorage && <span className="text-xs text-blue-600 ml-1">{item.selectedStorage}</span>}
                             {item.selectedColor && <span className="text-xs text-gray-500 ml-1">({item.selectedColor})</span>}
@@ -532,20 +553,20 @@ export function OrdersManager() {
                           </p>
                           {Array.isArray(item.serialNumbers) && item.serialNumbers.length > 0
                             ? item.serialNumbers.map((sn, snIdx) => sn ? (
-                                <p key={snIdx} className="text-xs text-gray-500">
+                                <p key={snIdx} className="text-xs text-gray-500 break-all">
                                   IMEI {item.serialNumbers.length > 1 ? `#${snIdx + 1}` : ''}: {sn}
                                 </p>
                               ) : null)
                             : item.serialNumber && (
-                                <p className="text-xs text-gray-500">Serial: {item.serialNumber}</p>
+                                <p className="text-xs text-gray-500 break-all">Serial: {item.serialNumber}</p>
                               )
                           }
                           {item.invoiceNumber && (
-                            <p className="text-xs text-gray-500">Factura: {item.invoiceNumber}</p>
+                            <p className="text-xs text-gray-500 break-all">Factura: {item.invoiceNumber}</p>
                           )}
                         </div>
                       </div>
-                      <p className="font-semibold text-gray-800">
+                      <p className="shrink-0 text-sm sm:text-base font-semibold text-gray-800">
                         ${((item.product?.price || 0) * (item.quantity || 1)).toLocaleString('es-CO')} COP
                       </p>
                     </div>
@@ -688,57 +709,68 @@ export function OrdersManager() {
                   </div>
                 )}
                 
-                {/* Botones de ticket - siempre visibles */}
-                <div className="ml-auto flex gap-2">
+                {/*
+                  Botones de ticket. Los cinco con su texto medían unos 560px y el
+                  contenedor no envolvía (`ml-auto flex`), así que los dos últimos
+                  —enviar email y eliminar— quedaban fuera de la pantalla y no había
+                  forma de pulsarlos. En móvil se dejan solo los iconos (con
+                  aria-label para no perder el nombre) y la fila sí envuelve.
+                */}
+                <div className="flex flex-wrap gap-2 sm:ml-auto">
                   <Button
                     onClick={() => handleEditTicket(order)}
                     variant="outline"
                     size="sm"
+                    aria-label={`Editar ticket de la orden ${order.orderNumber}`}
                     className="border-purple-300 text-purple-600 hover:bg-purple-50"
                   >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Editar Ticket
+                    <Edit className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Editar Ticket</span>
                   </Button>
                   <Button
                     onClick={() => handleViewTicket(order)}
                     variant="outline"
                     size="sm"
+                    aria-label={`Ver ticket de la orden ${order.orderNumber}`}
                     className="border-orange-300 text-orange-600 hover:bg-orange-50"
                   >
-                    <Receipt className="w-4 h-4 mr-1" />
-                    Ver Ticket
+                    <Receipt className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Ver Ticket</span>
                   </Button>
                   <Button
                     onClick={() => handleDownloadTicket(order)}
                     variant="outline"
                     size="sm"
+                    aria-label={`Descargar ticket de la orden ${order.orderNumber}`}
                     className="border-blue-300 text-blue-600 hover:bg-blue-50"
                   >
-                    <Download className="w-4 h-4 mr-1" />
-                    Descargar
+                    <Download className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Descargar</span>
                   </Button>
                   <Button
                     onClick={() => handleSendInvoiceEmail(order)}
                     variant="outline"
                     size="sm"
                     disabled={isSendingEmail === order.id}
+                    aria-label={`Enviar factura por email de la orden ${order.orderNumber}`}
                     className="border-teal-300 text-teal-600 hover:bg-teal-50"
                   >
                     {isSendingEmail === order.id ? (
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      <Loader2 className="w-4 h-4 sm:mr-1 animate-spin" />
                     ) : (
-                      <Mail className="w-4 h-4 mr-1" />
+                      <Mail className="w-4 h-4 sm:mr-1" />
                     )}
-                    Enviar Email
+                    <span className="hidden sm:inline">Enviar Email</span>
                   </Button>
                   <Button
                     onClick={() => handleDeleteOrder(order)}
                     variant="outline"
                     size="sm"
+                    aria-label={`Eliminar la orden ${order.orderNumber}`}
                     className="border-red-300 text-red-600 hover:bg-red-50"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Eliminar
+                    <Trash2 className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Eliminar</span>
                   </Button>
                 </div>
               </div>
@@ -749,7 +781,7 @@ export function OrdersManager() {
       
       {/* Diálogo para ver el ticket */}
       <Dialog open={showTicketDialog} onOpenChange={setShowTicketDialog}>
-        <DialogContent className="max-w-[450px]">
+        <DialogContent className="w-full max-w-full sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-orange-500" />
@@ -761,8 +793,10 @@ export function OrdersManager() {
           </DialogHeader>
           
           {selectedOrder && (
-            <div className="overflow-y-auto max-h-[65vh] bg-gray-50 rounded-lg p-4">
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 mx-auto" style={{ maxWidth: '320px' }}>
+            <div className="overflow-y-auto max-h-[65vh] bg-gray-50 rounded-lg p-2 sm:p-4">
+              {/* El ancho era 320px fijos: con el padding del diálogo sobraba del
+                  borde en pantallas de 360px. max-w lo acota sin encogerlo en PC. */}
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 sm:p-4 mx-auto w-full max-w-[320px]">
                 <ThermalTicketPreview order={selectedOrder} />
               </div>
             </div>
@@ -793,7 +827,7 @@ export function OrdersManager() {
 
       {/* Diálogo para editar el ticket */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="w-full max-w-full sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-purple-500" />
@@ -805,17 +839,17 @@ export function OrdersManager() {
           </DialogHeader>
           
           {selectedOrder && (
-            <div className="overflow-y-auto flex-1 pr-2">
-              <div className="space-y-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="overflow-y-auto flex-1 pr-0 sm:pr-2">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
                   <p className="text-sm text-blue-800">
                     <strong>💡 Instrucción:</strong> Edita la información del cliente, valor del domicilio, total, y números de serie/factura para imprimir el ticket térmico correctamente.
                   </p>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 space-y-4">
                   <h4 className="font-semibold text-gray-800 border-b pb-2">Información del Cliente y Totales</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <Label htmlFor="edit-name" className="text-sm font-medium text-gray-700 mb-1 block">
                         Nombre o Razón Social
@@ -870,15 +904,15 @@ export function OrdersManager() {
                 </div>
 
                 {editingItems.map((item, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div className="flex items-start gap-4 mb-4">
+                  <div key={index} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    <div className="flex items-start gap-3 sm:gap-4 mb-4">
                       <ImageWithFallback
                         src={resolveOrderItemImage(item, products)}
                         alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded bg-gray-100"
+                        className="w-16 h-16 shrink-0 object-cover rounded bg-gray-100"
                       />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">{item.product.name}</h4>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-800 break-words">{item.product.name}</h4>
                         <p className="text-sm text-gray-600">
                           Cantidad: {item.quantity}
                           {item.selectedColor && ` • Color: ${item.selectedColor}`}
@@ -902,17 +936,20 @@ export function OrdersManager() {
                           return (
                             <div key={unitIdx} className="flex items-center gap-2 mb-2">
                               {item.quantity > 1 && (
-                                <span className="text-xs text-gray-500 font-medium w-20 flex-shrink-0">
+                                <span className="text-xs text-gray-500 font-medium w-16 sm:w-20 flex-shrink-0">
                                   Unidad {unitIdx + 1}:
                                 </span>
                               )}
+                              {/* min-w-0: el ancho intrínseco del input (unos 200px)
+                                  no se podía encoger y empujaba la fila fuera del
+                                  diálogo al haber varias unidades. */}
                               <Input
                                 id={`serial-${index}-${unitIdx}`}
                                 type="text"
                                 value={serials[unitIdx] || ''}
                                 onChange={(e) => updateItemSerialByUnit(index, unitIdx, e.target.value)}
                                 placeholder={`IMEI / Serial ${item.quantity > 1 ? `#${unitIdx + 1}` : ''}`}
-                                className="w-full"
+                                className="w-full min-w-0"
                               />
                             </div>
                           );

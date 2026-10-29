@@ -25,3 +25,12 @@ frontend.log
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporales y respaldos locales
+_dev.json
+_prod.js
+.preview-proxy.cjs
+ape/
+as/
+cccp/
+assets-fuente/

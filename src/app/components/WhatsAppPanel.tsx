@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { io as socketIO, Socket } from 'socket.io-client';
-import { API_BASE_URL, API_ORIGIN } from '../lib/api-base';
+import { API_BASE_URL, API_ORIGIN, getAdminToken } from '../lib/api-base';
 import WhatsAppCampaigns from './WhatsAppCampaigns';
 
 
@@ -41,6 +41,8 @@ type WAStatus = 'loading' | 'disconnected' | 'qr_ready' | 'connected';
 export function WhatsAppPanel() {
   const [status, setStatus] = useState<WAStatus>('loading');
   const [qrImage, setQrImage] = useState<string | null>(null);
+  /** Número realmente emparejado, lo informa el backend desde sock.user.id. */
+  const [numeroVinculado, setNumeroVinculado] = useState<string | null>(null);
   const [ownerPhone, setOwnerPhone] = useState('');
   const [customerTemplate, setCustomerTemplate] = useState('');
   const [ownerTemplate, setOwnerTemplate] = useState('');
@@ -63,6 +65,7 @@ export function WhatsAppPanel() {
       const res = await fetch(`${API_BASE_URL}/whatsapp/status`);
       const data = await res.json();
       setStatus(data.status || 'disconnected');
+      setNumeroVinculado(data.numero || null);
       if (data.qr) setQrImage(data.qr);
     } catch {
       setStatus('disconnected');
@@ -86,10 +89,13 @@ export function WhatsAppPanel() {
     fetchStatus();
     fetchTemplates();
 
-    // Conectar Socket.io para actualizaciones en tiempo real
+    // Conectar Socket.io para actualizaciones en tiempo real.
+    // El token va en el handshake: por aquí pasa el QR de WhatsApp de la
+    // tienda y el servidor ahora rechaza los sockets sin sesión.
     const socket = socketIO(API_ORIGIN || '/', {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
+      auth: { token: getAdminToken() || '' },
     });
     socketRef.current = socket;
 
@@ -99,17 +105,19 @@ export function WhatsAppPanel() {
       setIsConnecting(false);
     });
 
-    socket.on('whatsapp-status', (data: { status: string }) => {
+    socket.on('whatsapp-status', (data: { status: string; numero?: string | null }) => {
       const s = data.status as WAStatus;
       setStatus(s);
       if (s === 'connected') {
         setQrImage(null);
         setIsConnecting(false);
+        setNumeroVinculado(data.numero || null);
         toast.success('✅ ¡WhatsApp conectado exitosamente!');
       }
       if (s === 'disconnected') {
         setQrImage(null);
         setIsConnecting(false);
+        setNumeroVinculado(null);
       }
     });
 
@@ -258,21 +266,29 @@ export function WhatsAppPanel() {
   const StatusIcon = sc.icon;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
       {/* ======== HEADER ======== */}
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#25D366] flex items-center justify-center shadow-lg shadow-green-200">
+      {/* El bloque de texto reclama 200px como mínimo para que el badge de estado
+          salte a su propia línea en vez de estrujar el título hasta partirlo. */}
+      <div className="flex flex-wrap items-start gap-3 sm:gap-4">
+        <div className="w-12 h-12 shrink-0 rounded-2xl bg-[#25D366] flex items-center justify-center shadow-lg shadow-green-200">
           <MessageCircle className="w-6 h-6 text-white" />
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Notificaciones WhatsApp</h2>
+        <div className="min-w-[200px] flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Notificaciones WhatsApp</h2>
           <p className="text-sm text-gray-500">
             Conecta tu WhatsApp para enviar confirmaciones automáticas a clientes y alertas de venta.
           </p>
+          {/* Sin esta nota es muy fácil creer que este QR cubre también la cobranza
+              y no entender por qué los recordatorios de cuotas no salen. */}
+          <p className="text-xs text-gray-400 mt-0.5">
+            Este es el número de la <strong>tienda</strong>. Los recordatorios de CrediLock van por otro
+            número, que se conecta en <strong>Financiamiento</strong>.
+          </p>
         </div>
         {/* Badge de estado */}
-        <div className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
+        <div className={`ml-auto flex shrink-0 items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
           status === 'connected' ? 'bg-green-50 text-green-700 border border-green-200' :
           status === 'qr_ready' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
           status === 'loading' ? 'bg-gray-50 text-gray-600 border border-gray-200' :
@@ -285,14 +301,14 @@ export function WhatsAppPanel() {
 
       {/* ======== SECCIÓN CONEXIÓN ======== */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50/50">
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
-            <Wifi className="w-4 h-4 text-[#25D366]" />
+            <Wifi className="w-4 h-4 text-[#25D366] shrink-0" />
             Conexión con WhatsApp
           </h3>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Estado: Cargando */}
           {status === 'loading' && (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -337,13 +353,15 @@ export function WhatsAppPanel() {
                 </p>
               </div>
 
-              <div className="relative">
+              {/* El QR sale del backend a 280px: con el marco y el borde pasaba de
+                  los 300px y desbordaba el panel en pantallas de 360px. */}
+              <div className="relative w-full max-w-[18rem] sm:w-auto sm:max-w-none">
                 {qrImage ? (
                   <div className="p-3 bg-white border-4 border-[#25D366] rounded-2xl shadow-xl shadow-green-100">
-                    <img src={qrImage} alt="WhatsApp QR Code" className="w-64 h-64 rounded-xl" />
+                    <img src={qrImage} alt="WhatsApp QR Code" className="w-full max-w-full h-auto rounded-xl sm:w-64 sm:h-64" />
                   </div>
                 ) : (
-                  <div className="w-72 h-72 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center">
+                  <div className="w-full aspect-square bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center sm:w-72 sm:h-72 sm:aspect-auto">
                     <Loader2 className="w-12 h-12 text-gray-400 animate-spin" />
                   </div>
                 )}
@@ -352,18 +370,18 @@ export function WhatsAppPanel() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-4">
+              <div className="flex flex-wrap justify-center gap-3 mt-4">
                 <button
                   onClick={handleConnect}
                   disabled={isConnecting}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-4 py-2 transition-colors"
+                  className="flex min-h-11 items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-4 py-2 transition-colors sm:min-h-0"
                 >
                   <RefreshCw className={`w-4 h-4 ${isConnecting ? 'animate-spin' : ''}`} />
                   Regenerar QR
                 </button>
                 <button
                   onClick={() => setStatus('disconnected')}
-                  className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 border border-red-100 rounded-lg px-4 py-2 transition-colors"
+                  className="flex min-h-11 items-center gap-2 text-sm text-red-500 hover:text-red-700 border border-red-100 rounded-lg px-4 py-2 transition-colors sm:min-h-0"
                 >
                   <AlertCircle className="w-4 h-4" />
                   Cancelar
@@ -374,12 +392,17 @@ export function WhatsAppPanel() {
 
           {/* Estado: Conectado */}
           {status === 'connected' && (
-            <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div className="flex flex-col gap-3 p-4 bg-green-50 border border-green-200 rounded-xl sm:flex-row sm:items-center sm:gap-4">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
-              <div>
-                <p className="font-bold text-green-900">¡WhatsApp conectado y listo!</p>
+              <div className="min-w-0">
+                <p className="font-bold text-green-900">
+                  ¡WhatsApp conectado y listo!
+                  {numeroVinculado && (
+                    <span className="font-mono font-normal break-all"> · +{numeroVinculado}</span>
+                  )}
+                </p>
                 <p className="text-sm text-green-700">
                   Las notificaciones automáticas se enviarán a clientes y administradores al procesar pedidos.
                 </p>
@@ -388,7 +411,7 @@ export function WhatsAppPanel() {
                 onClick={handleDisconnect}
                 disabled={isDisconnecting}
                 variant="outline"
-                className="ml-auto shrink-0 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
+                className="shrink-0 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400 sm:ml-auto"
               >
                 {isDisconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unplug className="w-4 h-4" />}
                 <span className="ml-2">Desconectar</span>
@@ -400,15 +423,15 @@ export function WhatsAppPanel() {
 
       {/* ======== SECCIÓN CONFIGURACIÓN DESTINATARIO ======== */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-green-100 flex items-center justify-center">
             <Phone className="w-4 h-4 text-green-600" />
           </div>
           <h3 className="font-bold text-gray-850">
             Receptor de Alertas de Ventas
           </h3>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="max-w-2xl">
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Número de WhatsApp del Administrador/Dueño
@@ -465,26 +488,28 @@ export function WhatsAppPanel() {
 
       {/* ======== PLANTILLAS DE MENSAJES ======== */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
-            <MessageCircle className="w-4 h-4 text-[#25D366]" />
+            <MessageCircle className="w-4 h-4 text-[#25D366] shrink-0" />
             Plantillas de Mensajes
           </h3>
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+            className="flex h-11 items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm text-gray-600 transition-colors hover:text-gray-900 sm:h-auto sm:py-1.5"
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-3.5 h-3.5 shrink-0" />
             {showPreview ? 'Ocultar preview' : 'Ver preview'}
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Tabs para las plantillas */}
-          <div className="flex rounded-xl overflow-hidden border border-gray-200">
+        <div className="p-4 sm:p-6 space-y-6">
+          {/* Tabs para las plantillas. Apiladas en el móvil: repartidas en tres
+              columnas de 110px, títulos como "Cliente (Tienda Física)" se partían
+              en cuatro líneas y se desbordaban del botón. */}
+          <div className="flex flex-col sm:flex-row rounded-xl overflow-hidden border border-gray-200">
             <button
               onClick={() => setActiveTemplate('customer')}
-              className={`flex-1 py-3 text-sm font-bold transition-colors ${
+              className={`flex-1 py-3 px-3 text-sm font-bold transition-colors ${
                 activeTemplate === 'customer'
                   ? 'bg-[#25D366] text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -494,7 +519,7 @@ export function WhatsAppPanel() {
             </button>
             <button
               onClick={() => setActiveTemplate('inStore')}
-              className={`flex-1 py-3 text-sm font-bold transition-colors border-l border-gray-200 ${
+              className={`flex-1 py-3 px-3 text-sm font-bold transition-colors border-t border-gray-200 sm:border-t-0 sm:border-l ${
                 activeTemplate === 'inStore'
                   ? 'bg-[#25D366] text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -504,7 +529,7 @@ export function WhatsAppPanel() {
             </button>
             <button
               onClick={() => setActiveTemplate('owner')}
-              className={`flex-1 py-3 text-sm font-bold transition-colors border-l border-gray-200 ${
+              className={`flex-1 py-3 px-3 text-sm font-bold transition-colors border-t border-gray-200 sm:border-t-0 sm:border-l ${
                 activeTemplate === 'owner'
                   ? 'bg-[#25D366] text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -525,7 +550,7 @@ export function WhatsAppPanel() {
                   key={v.var}
                   onClick={() => { setFocusedArea(activeTemplate); insertVariable(v.var); }}
                   title={v.desc}
-                  className="group relative flex items-center gap-1.5 bg-gray-100 hover:bg-green-50 hover:border-green-400 border border-transparent text-gray-700 hover:text-green-800 text-xs font-mono font-bold px-2.5 py-1.5 rounded-lg transition-all"
+                  className="group relative flex min-h-11 items-center gap-1.5 rounded-lg border border-transparent bg-gray-100 px-3 font-mono text-xs font-bold text-gray-700 transition-all hover:border-green-400 hover:bg-green-50 hover:text-green-800 sm:min-h-0 sm:px-2.5 sm:py-1.5"
                 >
                   <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   {v.var}
@@ -637,7 +662,7 @@ export function WhatsAppPanel() {
           )}
 
           {/* Botón guardar */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+          <div className="flex flex-col items-stretch gap-3 pt-2 border-t border-gray-100 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <p className="text-xs text-gray-500">
               {status !== 'connected' && (
                 <span className="text-amber-600 font-medium flex items-center gap-1">
@@ -649,7 +674,7 @@ export function WhatsAppPanel() {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-gray-900 hover:bg-black text-white px-8 py-2.5 h-auto font-bold rounded-xl"
+              className="w-full sm:w-auto shrink-0 bg-gray-900 hover:bg-black text-white px-8 py-2.5 h-auto font-bold rounded-xl"
             >
               {isSaving ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
@@ -662,9 +687,9 @@ export function WhatsAppPanel() {
       </div>
 
       {/* ======== INFO BOX ======== */}
-      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex gap-4">
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5 flex gap-3 sm:gap-4">
         <AlertCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-        <div className="text-sm text-blue-800 space-y-1">
+        <div className="min-w-0 text-sm text-blue-800 space-y-1">
           <p className="font-bold">¿Cómo funciona?</p>
           <ol className="list-decimal list-inside space-y-1 text-blue-700">
             <li>Conectas tu WhatsApp escaneando el QR con tu celular.</li>

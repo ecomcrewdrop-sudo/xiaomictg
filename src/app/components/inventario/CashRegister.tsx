@@ -193,35 +193,46 @@ export function CashRegister() {
   return (
     <div className="space-y-4">
       {/* Balance cards — dynamic grid */}
-      <div className={`grid gap-3 ${cuentas.length <= 2 ? 'grid-cols-2' : cuentas.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {/* Con tres cuentas el grid-cols-3 dejaba tarjetas de 105px y un saldo
+          como "$207.039.894" las partía: en móvil siempre dos columnas. */}
+      <div className={`grid gap-3 grid-cols-2 ${cuentas.length === 3 ? 'sm:grid-cols-3' : ''}`}>
         {cuentas.map(c => {
           const Icon = CARD_ICONS[c.id] || CreditCard;
           const gradient = CARD_COLORS[c.color] || CARD_COLORS.purple;
           const saldo = saldos[c.id] || 0;
           return (
-            <div key={c.id} className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 text-white shadow-lg relative group`}>
+            <div key={c.id} className={`min-w-0 bg-gradient-to-br ${gradient} rounded-2xl p-3 text-white shadow-lg relative group sm:p-4`}>
               {c.id !== 'efectivo' && c.id !== 'banco' && (
+                /* En táctil no hay :hover, así que la X nunca llegaría a aparecer.
+                 *
+                 * 36px a propósito, por debajo del mínimo táctil de 44px que se
+                 * aplica en el resto del panel: la tarjeta mide unos 160px de
+                 * ancho y una diana de 44px en la esquina se comería el nombre de
+                 * la cuenta y volvería fácil borrarla sin querer. Pasa de 20px a
+                 * 36px, que ya se acierta, y la acción pide confirmación antes de
+                 * borrar nada. */
                 <button
                   onClick={() => handleDeleteCuenta(c.id)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-black/20 hover:bg-black/40 rounded-full p-1 transition-opacity"
+                  aria-label={`Eliminar cuenta ${c.nombre}`}
+                  className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/20 transition-opacity hover:bg-black/40 md:right-2 md:top-2 md:h-auto md:w-auto md:p-1 md:opacity-0 md:group-hover:opacity-100"
                 >
                   <X className="w-3 h-3" />
                 </button>
               )}
-              <div className="flex items-center gap-2 mb-1">
-                <Icon className="w-5 h-5 opacity-80" />
-                <span className="text-xs font-bold uppercase tracking-wider opacity-80">{c.nombre}</span>
+              <div className="flex items-center gap-2 mb-1 pr-5">
+                <Icon className="w-5 h-5 shrink-0 opacity-80" />
+                <span className="min-w-0 truncate text-xs font-bold uppercase tracking-wider opacity-80">{c.nombre}</span>
               </div>
-              <p className="text-xl font-black">{fmt(saldo)}</p>
+              <p className="text-lg font-black leading-tight break-all sm:text-xl">{fmt(saldo)}</p>
             </div>
           );
         })}
         {/* Add account button */}
         <button
           onClick={() => setShowNewCuenta(!showNewCuenta)}
-          className="border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-1 transition-colors"
+          className="min-w-0 border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 transition-colors sm:p-4"
         >
-          <Plus className="w-5 h-5 text-gray-400" />
+          <Plus className="w-5 h-5 shrink-0 text-gray-400" />
           <span className="text-xs font-semibold text-gray-400">Nueva cuenta</span>
         </button>
       </div>
@@ -240,12 +251,15 @@ export function CashRegister() {
           </div>
           <div>
             <Label>Color</Label>
+            {/* Mismo criterio que en el punto de venta: los círculos de 32px
+                quedaban por debajo del mínimo táctil y pegados entre sí. */}
             <div className="flex gap-2 mt-1 flex-wrap">
               {Object.keys(CARD_COLORS).map(color => (
                 <button
                   key={color}
                   onClick={() => setNewCuentaColor(color)}
-                  className={`w-8 h-8 rounded-full bg-gradient-to-br ${CARD_COLORS[color]} ${
+                  aria-label={`Color ${color}`}
+                  className={`h-11 w-11 shrink-0 rounded-full bg-gradient-to-br sm:h-8 sm:w-8 ${CARD_COLORS[color]} ${
                     newCuentaColor === color ? 'ring-2 ring-offset-2 ring-violet-500' : ''
                   }`}
                 />
@@ -259,21 +273,23 @@ export function CashRegister() {
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      {/* Los tres botones suman ~330px y no caben en los 328px útiles de un
+          móvil de 360: "Registrar movimiento" se queda con la fila completa. */}
+      <div className="flex flex-wrap gap-2">
         <Button
           onClick={() => { setShowForm(!showForm); setShowAjuste(false); setShowNewCuenta(false); }}
-          className="flex-1 bg-violet-600 hover:bg-violet-700 text-white gap-1"
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-1 sm:w-auto sm:flex-1"
         >
-          <Plus className="w-4 h-4" /> Registrar movimiento
+          <Plus className="w-4 h-4 shrink-0" /> Registrar movimiento
         </Button>
         <Button
           onClick={() => { setShowAjuste(!showAjuste); setShowForm(false); setShowNewCuenta(false); }}
           variant="outline"
-          className="gap-1"
+          className="flex-1 gap-1 sm:flex-none"
         >
-          <Settings2 className="w-4 h-4" /> Ajustar
+          <Settings2 className="w-4 h-4 shrink-0" /> Ajustar
         </Button>
-        <Button onClick={() => loadData()} variant="outline" size="icon">
+        <Button onClick={() => loadData()} variant="outline" size="icon" aria-label="Recargar movimientos" className="shrink-0">
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
@@ -283,11 +299,12 @@ export function CashRegister() {
         <div className="bg-white rounded-xl border p-4 space-y-3 animate-in slide-in-from-top-2">
           <p className="font-bold text-sm text-gray-700">Nuevo movimiento</p>
 
-          {/* Tipo */}
+          {/* Tipo. `py-2.5` sobre una línea de 20px daba 40px: por debajo del
+              mínimo táctil, y elegir mal aquí invierte el signo del movimiento. */}
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setTipo('ingreso')}
-              className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
+              className={`min-h-11 py-2.5 rounded-lg text-sm font-bold transition-all sm:min-h-0 ${
                 tipo === 'ingreso' ? 'bg-green-100 text-green-700 ring-2 ring-green-400' : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -295,7 +312,7 @@ export function CashRegister() {
             </button>
             <button
               onClick={() => setTipo('egreso')}
-              className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
+              className={`min-h-11 py-2.5 rounded-lg text-sm font-bold transition-all sm:min-h-0 ${
                 tipo === 'egreso' ? 'bg-red-100 text-red-700 ring-2 ring-red-400' : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -313,7 +330,7 @@ export function CashRegister() {
                   <button
                     key={c.id}
                     onClick={() => setCuenta(c.id)}
-                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    className={`max-w-full min-h-11 px-3 py-2 rounded-lg text-sm font-semibold break-words transition-all sm:min-h-0 ${
                       cuenta === c.id ? `${badge} ring-2 ring-offset-1 ring-current` : 'bg-gray-100 text-gray-500'
                     }`}
                   >
@@ -325,7 +342,7 @@ export function CashRegister() {
           </div>
 
           {/* Monto + Concepto */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label>Monto *</Label>
               <Input type="number" value={monto} onChange={e => setMonto(e.target.value)} placeholder="0" />
@@ -359,7 +376,9 @@ export function CashRegister() {
                 <button
                   key={c.id}
                   onClick={() => setAjusteCuenta(c.id)}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  /* El chip incluye el saldo ("Nequi ($1.250.000)") y se salía
+                     del ancho del formulario: max-w-full + break-all lo contiene. */
+                  className={`max-w-full min-h-11 px-3 py-2 rounded-lg text-sm font-semibold break-all transition-all sm:min-h-0 ${
                     ajusteCuenta === c.id ? `${badge} ring-2 ring-offset-1 ring-current` : 'bg-gray-100 text-gray-500'
                   }`}
                 >
@@ -381,10 +400,11 @@ export function CashRegister() {
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
+      {/* La barra de scroll horizontal nativa tapaba media fila de botones. */}
+      <div className="flex snap-x gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           onClick={() => setFilterCuenta('todas')}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+          className={`flex h-11 flex-none shrink-0 snap-start items-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition-all sm:h-auto sm:py-1.5 ${
             filterCuenta === 'todas' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -394,7 +414,7 @@ export function CashRegister() {
           <button
             key={c.id}
             onClick={() => setFilterCuenta(c.id)}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`flex h-11 flex-none shrink-0 snap-start items-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition-all sm:h-auto sm:py-1.5 ${
               filterCuenta === c.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -420,7 +440,7 @@ export function CashRegister() {
               const cColor = getCuentaColor(m.cuenta);
               const badge = BADGE_COLORS[cColor] || BADGE_COLORS.purple;
               return (
-                <div key={m.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
+                <div key={m.id} className="flex items-center justify-between gap-2 px-3 py-3 hover:bg-gray-50/50 sm:px-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${config.color}`}>
                       <Icon className="w-4 h-4" />
@@ -438,10 +458,10 @@ export function CashRegister() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-bold break-all ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
                       {isPositive ? '+' : '-'}{fmt(m.monto)}
                     </span>
-                    <button onClick={() => handleDelete(m.id)} className="text-gray-300 hover:text-red-500">
+                    <button onClick={() => handleDelete(m.id)} aria-label={`Eliminar movimiento ${m.concepto || config.label}`} className="shrink-0 text-gray-300 hover:text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

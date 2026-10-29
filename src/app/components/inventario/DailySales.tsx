@@ -362,48 +362,54 @@ export function DailySales() {
   return (
     <div className="space-y-4">
       {/* Date selector */}
-      <div className="flex items-center justify-between bg-white rounded-xl border p-3">
-        <button onClick={() => changeDate(-1)} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronLeft className="w-5 h-5" /></button>
-        <div className="text-center">
-          <p className="text-sm font-bold text-gray-900 capitalize">{fechaDisplay}</p>
+      <div className="flex items-center justify-between gap-2 bg-white rounded-xl border p-3">
+        <button onClick={() => changeDate(-1)} aria-label="Día anterior" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-gray-100 sm:h-9 sm:w-9"><ChevronLeft className="w-5 h-5" /></button>
+        {/* La fecha larga ("miércoles, 1 de octubre de 2025") no cabe en una línea a
+            360px: min-w-0 permite que se reparta en dos en lugar de empujar las flechas. */}
+        <div className="min-w-0 text-center">
+          <p className="text-sm font-bold text-gray-900 capitalize break-words">{fechaDisplay}</p>
           {isToday && <span className="text-xs text-violet-600 font-semibold">HOY</span>}
         </div>
-        <button onClick={() => changeDate(1)} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronRight className="w-5 h-5" /></button>
+        <button onClick={() => changeDate(1)} aria-label="Día siguiente" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-gray-100 sm:h-9 sm:w-9"><ChevronRight className="w-5 h-5" /></button>
       </div>
 
       {/* KPI Cards */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+        /*
+          Las cifras en pesos son cadenas sin espacios: a text-2xl desbordaban la
+          tarjeta de media pantalla. Tamaño menor en móvil y break-all por si acaso.
+        */
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+          <div className="min-w-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-3 text-white shadow-lg sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-5 h-5 opacity-80" />
+              <DollarSign className="w-5 h-5 shrink-0 opacity-80" />
               <span className="text-xs font-bold uppercase tracking-wider opacity-80">Total Ventas</span>
             </div>
-            <p className="text-2xl font-black">{fmt(summary.totalVentas)}</p>
+            <p className="text-xl font-black break-all sm:text-2xl">{fmt(summary.totalVentas)}</p>
             <p className="text-xs opacity-70">{summary.cantidadVentas} ventas</p>
           </div>
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+          <div className="min-w-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-3 text-white shadow-lg sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-5 h-5 opacity-80" />
+              <TrendingUp className="w-5 h-5 shrink-0 opacity-80" />
               <span className="text-xs font-bold uppercase tracking-wider opacity-80">Ganancia</span>
             </div>
-            <p className="text-2xl font-black">{fmt(summary.totalGanancia)}</p>
+            <p className="text-xl font-black break-all sm:text-2xl">{fmt(summary.totalGanancia)}</p>
             <p className="text-xs opacity-70">Utilidad del dia</p>
           </div>
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+          <div className="min-w-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-3 text-white shadow-lg sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Wallet className="w-5 h-5 opacity-80" />
+              <Wallet className="w-5 h-5 shrink-0 opacity-80" />
               <span className="text-xs font-bold uppercase tracking-wider opacity-80">Caja Efectivo</span>
             </div>
-            <p className="text-2xl font-black">{fmt(summary.cajaDisponible)}</p>
+            <p className="text-xl font-black break-all sm:text-2xl">{fmt(summary.cajaDisponible)}</p>
             <p className="text-xs opacity-70">Efectivo - gastos</p>
           </div>
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+          <div className="min-w-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-3 text-white shadow-lg sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Clock className="w-5 h-5 opacity-80" />
+              <Clock className="w-5 h-5 shrink-0 opacity-80" />
               <span className="text-xs font-bold uppercase tracking-wider opacity-80">Gastos</span>
             </div>
-            <p className="text-2xl font-black">{fmt(summary.totalGastos)}</p>
+            <p className="text-xl font-black break-all sm:text-2xl">{fmt(summary.totalGastos)}</p>
             <p className="text-xs opacity-70">Retiros y gastos</p>
           </div>
         </div>
@@ -415,12 +421,12 @@ export function DailySales() {
           {Object.entries(summary.porMetodo).map(([clave, data]) => {
             const method = methods.find(m => m.clave === clave);
             return (
-              <div key={clave} className="bg-white rounded-xl border p-3">
-                <p className="text-xs text-gray-400 font-semibold uppercase">{method?.nombre || clave}</p>
-                <p className="text-lg font-bold text-gray-900">{fmt(data.total)}</p>
+              <div key={clave} className="min-w-0 bg-white rounded-xl border p-3">
+                <p className="truncate text-xs text-gray-400 font-semibold uppercase">{method?.nombre || clave}</p>
+                <p className="text-base font-bold text-gray-900 break-all sm:text-lg">{fmt(data.total)}</p>
                 {data.pendiente > 0 && (
-                  <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {fmt(data.pendiente)} pendiente
+                  <p className="text-xs text-amber-600 font-semibold flex items-start gap-1">
+                    <Clock className="w-3 h-3 mt-0.5 shrink-0" /> <span className="min-w-0 break-all">{fmt(data.pendiente)} pendiente</span>
                   </p>
                 )}
               </div>
@@ -430,14 +436,16 @@ export function DailySales() {
       )}
 
       {/* Add sale / service buttons */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <h3 className="font-bold text-gray-700 text-sm">Ventas registradas</h3>
-        <div className="flex gap-2">
+        {/* Los dos botones no caben al lado del título a 360px: con flex-wrap bajan
+            juntos a la fila siguiente en lugar de salirse del contenedor. */}
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => { resetServiceForm(); setServiceDialogOpen(true); }} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white gap-1">
-            <Wrench className="w-4 h-4" /> Servicio Técnico
+            <Wrench className="w-4 h-4 shrink-0" /> Servicio Técnico
           </Button>
           <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1">
-            <Plus className="w-4 h-4" /> Agregar Venta
+            <Plus className="w-4 h-4 shrink-0" /> Agregar Venta
           </Button>
         </div>
       </div>
@@ -451,7 +459,112 @@ export function DailySales() {
             <p className="text-xs">Agrega una venta o espera ordenes de la web</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/*
+            MÓVIL: tarjetas. La tabla tiene nueve columnas (más de 1000px) y el
+            overflow-x-auto solo dejaba ver "Cliente": para cambiar el método de pago
+            o borrar había que arrastrar de lado en cada fila. Aquí todo queda a la
+            vista y los dos selectores editables siguen funcionando igual.
+          */}
+          <ul className="divide-y divide-gray-200 md:hidden">
+            {ventas.map(v => (
+              <li key={v.id} className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {v.tipo === 'servicio' ? (
+                        <Wrench className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
+                      ) : v.creadoPor === 'web' ? (
+                        <Smartphone className="w-3.5 h-3.5 shrink-0 text-violet-500" />
+                      ) : null}
+                      <span className="min-w-0 break-words font-semibold text-gray-900">{v.cliente}</span>
+                    </div>
+                    <p className="mt-0.5 break-words text-sm text-gray-600">{v.producto}</p>
+                    {v.imei && <p className="break-all font-mono text-xs text-gray-400">{v.imei}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => openEdit(v)} aria-label={`Editar venta de ${v.cliente}`} className="flex h-11 w-11 items-center justify-center rounded text-gray-400 transition-colors hover:bg-violet-50 hover:text-violet-600 sm:h-9 sm:w-9">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(v.id)} aria-label={`Eliminar venta de ${v.cliente}`} className="flex h-11 w-11 items-center justify-center rounded text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 sm:h-9 sm:w-9">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-center">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase text-gray-400">Costo</p>
+                    <input
+                      type="number"
+                      defaultValue={v.precioCompra || ''}
+                      onBlur={e => handleCostoBlur(v.id, e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      placeholder="0"
+                      aria-label={`Costo de ${v.producto}`}
+                      className="w-full rounded-lg border border-gray-200 px-1 text-center text-xs font-semibold text-gray-700 outline-none transition-colors focus:border-violet-400 focus:ring-1 focus:ring-violet-200"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase text-gray-400">Venta</p>
+                    <p className="break-all text-sm font-bold text-gray-900">{fmt(v.precioVenta)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase text-gray-400">Ganancia</p>
+                    <p className="break-all text-sm font-bold text-emerald-600">{fmt(v.ganancia)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={v.esPropio ? 'propio' : v.proveedor}
+                    onChange={e => handleOrigenChange(v.id, e.target.value)}
+                    aria-label={`Origen de ${v.producto}`}
+                    className={`w-full rounded-lg border px-2 text-xs font-semibold ${
+                      v.esPropio
+                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        : 'bg-orange-50 border-orange-200 text-orange-700'
+                    }`}
+                  >
+                    <option value="propio">Propio</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={v.metodoPago}
+                    onChange={e => handleMetodoChange(v.id, e.target.value)}
+                    aria-label={`Método de pago de ${v.producto}`}
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-700"
+                  >
+                    {methods.filter(m => m.activo).map(m => (
+                      <option key={m.clave} value={m.clave}>{m.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {v.estadoPago === 'pendiente' ? (
+                  <button
+                    onClick={() => handleMarkReceived(v.id)}
+                    className="flex h-11 w-full items-center justify-center gap-1 rounded-lg bg-amber-100 px-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-200"
+                  >
+                    <Clock className="w-3 h-3" /> Pendiente — marcar recibido
+                  </button>
+                ) : (
+                  <span className="flex w-full items-center justify-center gap-1 rounded-lg bg-green-100 px-2 py-2 text-xs font-semibold text-green-700">
+                    <CheckCircle className="w-3 h-3" /> Recibido
+                  </span>
+                )}
+              </li>
+            ))}
+            <li className="flex flex-wrap items-center justify-between gap-x-3 bg-gray-50 px-3 py-3 text-sm font-bold">
+              <span>TOTALES</span>
+              <span className="text-gray-900">{fmt(ventas.reduce((s, v) => s + v.precioVenta, 0))}</span>
+              <span className="text-emerald-600">{fmt(ventas.reduce((s, v) => s + v.ganancia, 0))}</span>
+            </li>
+          </ul>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
@@ -570,6 +683,7 @@ export function DailySales() {
               </tfoot>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -581,9 +695,9 @@ export function DailySales() {
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(summary.deudasHoy).map(([prov, monto]) => (
-              <div key={prov} className="bg-white rounded-lg p-2 border border-orange-100">
-                <p className="text-xs text-gray-500 font-semibold">{prov}</p>
-                <p className="text-lg font-bold text-orange-700">{fmt(monto)}</p>
+              <div key={prov} className="min-w-0 bg-white rounded-lg p-2 border border-orange-100">
+                <p className="truncate text-xs text-gray-500 font-semibold">{prov}</p>
+                <p className="text-base font-bold text-orange-700 break-all sm:text-lg">{fmt(monto)}</p>
               </div>
             ))}
           </div>
@@ -620,9 +734,12 @@ export function DailySales() {
                       <p className="font-semibold text-sm text-gray-900 truncate">{form.producto}</p>
                       <p className="text-xs text-violet-600 font-bold">{fmt(Number(form.precioVenta))}</p>
                     </div>
+                    {/* `p-1` sobre un icono de 16px dejaba la X en 24px. Es la
+                        única forma de cambiar el producto ya elegido. */}
                     <button
                       onClick={handleClearProduct}
-                      className="p-1 hover:bg-violet-100 rounded-full text-violet-500"
+                      aria-label="Quitar producto"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-violet-500 hover:bg-violet-100 sm:h-auto sm:w-auto sm:p-1"
                       type="button"
                     >
                       <X className="w-4 h-4" />
@@ -682,15 +799,18 @@ export function DailySales() {
                                   <span className="text-[10px] text-gray-400 flex-shrink-0">{product.storageVariants.length} variantes</span>
                                 )}
                               </button>
-                              {/* Show storage variants inline */}
+                              {/* Show storage variants inline. `py-1` sobre un texto
+                                  de 11px dejaba estas fichas en 24px, y son las que
+                                  fijan el precio de la venta: elegir 128GB en vez de
+                                  256GB por fallar el toque descuadra la caja. */}
                               {product.storageVariants && product.storageVariants.length > 0 && (
-                                <div className="flex gap-1 px-3 pb-2 ml-13">
+                                <div className="flex flex-wrap gap-1 px-3 pb-2 sm:ml-13">
                                   {product.storageVariants.map(v => (
                                     <button
                                       key={v.storage}
                                       type="button"
                                       onClick={() => handleSelectProduct(product, v.storage)}
-                                      className="px-2 py-1 rounded-md bg-gray-100 hover:bg-violet-100 text-[11px] font-semibold text-gray-600 hover:text-violet-700 transition-colors"
+                                      className="flex min-h-11 items-center rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:bg-violet-100 hover:text-violet-700 sm:min-h-0"
                                     >
                                       {v.storage} - {fmt(v.price)}
                                     </button>
@@ -705,11 +825,11 @@ export function DailySales() {
                   </div>
                 )}
               </div>
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <Label>IMEI</Label>
                 <Input value={form.imei} onChange={e => setForm({ ...form, imei: e.target.value })} placeholder="Opcional" />
               </div>
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <Label>Origen</Label>
                 <select
                   value={form.esPropio ? 'propio' : 'proveedor'}
@@ -734,7 +854,9 @@ export function DailySales() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Etiqueta + ayuda debajo no caben en media pantalla sin partirse en tres
+                líneas y descuadrar las dos columnas: en móvil van apiladas. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Costo del equipo</Label>
                 <Input type="number" value={form.precioCompra} onChange={e => setForm({ ...form, precioCompra: e.target.value })} placeholder="0" />
@@ -750,11 +872,11 @@ export function DailySales() {
             {form.precioCompra && form.precioVenta && (
               <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-center">
                 <p className="text-xs text-emerald-600 font-semibold">GANANCIA</p>
-                <p className="text-2xl font-black text-emerald-700">{fmt(Number(form.precioVenta) - Number(form.precioCompra))}</p>
+                <p className="text-xl font-black text-emerald-700 break-all sm:text-2xl">{fmt(Number(form.precioVenta) - Number(form.precioCompra))}</p>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Metodo de pago</Label>
                 <select
@@ -825,7 +947,7 @@ export function DailySales() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Valor del servicio *</Label>
                 <Input
@@ -851,7 +973,7 @@ export function DailySales() {
             {serviceForm.valor && (
               <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-center">
                 <p className="text-xs text-emerald-600 font-semibold">GANANCIA DEL SERVICIO</p>
-                <p className="text-2xl font-black text-emerald-700">
+                <p className="text-xl font-black text-emerald-700 break-all sm:text-2xl">
                   {fmt(Number(serviceForm.valor) - Number(serviceForm.costoRepuestos || 0))}
                 </p>
               </div>

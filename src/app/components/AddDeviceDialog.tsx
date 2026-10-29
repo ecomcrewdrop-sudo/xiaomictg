@@ -7,326 +7,174 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Plus, User, Mail, DollarSign, CreditCard } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useDeviceStore } from '../lib/blocking/store';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
+const VACIO = { imei: '', brand: '', model: '', phoneNumber: '', owner: '', financingId: '' };
+
+/**
+ * Este alta es la excepción, no el camino normal: los equipos entran por
+ * "Sincronizar cartera" desde el financiamiento, que es donde viven las cuotas.
+ *
+ * Por eso aquí ya no hay formulario de plan de pagos ni creación de cuenta de
+ * cliente: el servidor no acepta esos campos y lo que se escribiera se perdía
+ * en silencio. Un alta manual con "4 pagos mensuales" tecleados a mano, además,
+ * habría dejado al automatismo decidiendo bloqueos sobre cuotas que no existen
+ * en la cartera real.
+ */
 export function AddDeviceDialog() {
   const [open, setOpen] = useState(false);
-  const [openPayment, setOpenPayment] = useState(false);
-  const addDevice = useDeviceStore((state) => state.addDevice);
-  const [clienteInfo, setClienteInfo] = useState<{email: string; password: string} | null>(null);
-  
-  const [formData, setFormData] = useState({
-    imei: '',
-    brand: '',
-    model: '',
-    phoneNumber: '',
-    owner: '',
-    email: '',
-    telefono: '',
-  });
+  const [guardando, setGuardando] = useState(false);
+  const [datos, setDatos] = useState(VACIO);
+  const addDevice = useDeviceStore((s) => s.addDevice);
 
-  const [paymentPlan, setPaymentPlan] = useState({
-    hasPlan: false,
-    totalAmount: '',
-    totalPayments: '4',
-    paymentFrequency: 'monthly',
-  });
+  const cerrar = () => {
+    setOpen(false);
+    setDatos(VACIO);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.imei || !formData.brand || !formData.model || !formData.phoneNumber || !formData.owner) {
-      toast.error('Por favor, completa todos los campos');
+    const imei = datos.imei.trim();
+
+    // Se valida aquí además del servidor porque el error más común es teclear
+    // 14 o 16 dígitos, y vale más atraparlo antes de ir a la API.
+    if (!/^\d{15}$/.test(imei)) {
+      toast.error('El IMEI debe tener exactamente 15 dígitos.');
+      return;
+    }
+    if (!datos.owner.trim()) {
+      toast.error('El nombre del propietario es obligatorio.');
       return;
     }
 
-    const deviceData: any = { ...formData };
-    
-    if (paymentPlan.hasPlan && paymentPlan.totalAmount) {
-      deviceData.paymentPlan = {
-        totalAmount: parseInt(paymentPlan.totalAmount),
-        totalPayments: parseInt(paymentPlan.totalPayments),
-        paymentFrequency: paymentPlan.paymentFrequency,
-        paymentAmount: Math.round(parseInt(paymentPlan.totalAmount) / parseInt(paymentPlan.totalPayments)),
-      };
-    }
+    setGuardando(true);
+    const r = await addDevice({
+      imei,
+      owner: datos.owner.trim(),
+      phoneNumber: datos.phoneNumber.trim(),
+      brand: datos.brand.trim(),
+      model: datos.model.trim(),
+      financingId: datos.financingId.trim() || null,
+    });
+    setGuardando(false);
 
-    addDevice(deviceData, (result: any) => {
-      if (result?.clientCreated) {
-        setClienteInfo({
-          email: result.email,
-          password: result.clientPassword
-        });
-        toast.success('Dispositivo y cuenta de cliente creados');
-      } else {
-        toast.success('Dispositivo agregado exitosamente');
-      }
-    });
-    
-    if (!formData.email) {
-      setOpen(false);
+    if (!r.ok) {
+      toast.error(r.mensaje, { duration: 8000 });
+      return;
     }
-    setFormData({
-      imei: '',
-      brand: '',
-      model: '',
-      phoneNumber: '',
-      owner: '',
-      email: '',
-      telefono: '',
-    });
-    setPaymentPlan({
-      hasPlan: false,
-      totalAmount: '',
-      totalPayments: '4',
-      paymentFrequency: 'monthly',
-    });
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    setClienteInfo(null);
-    setFormData({
-      imei: '',
-      brand: '',
-      model: '',
-      phoneNumber: '',
-      owner: '',
-      email: '',
-      telefono: '',
-    });
-    setPaymentPlan({
-      hasPlan: false,
-      totalAmount: '',
-      totalPayments: '4',
-      paymentFrequency: 'monthly',
-    });
+    toast.success(r.mensaje);
+    cerrar();
   };
 
   return (
     <>
-      <Button onClick={() => setOpenPayment(true)} className="gap-2 bg-green-600 hover:bg-green-700">
+      <Button onClick={() => setOpen(true)} className="gap-2">
         <Plus className="h-4 w-4" />
-        Agregar Dispositivo
+        Agregar equipo
       </Button>
 
-      <Dialog open={openPayment} onOpenChange={setOpenPayment}>
-        <DialogTrigger asChild>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Agregar Dispositivo
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          {clienteInfo ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-green-600 flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Cuenta de Cliente Creada
-                </DialogTitle>
-              </DialogHeader>
-              <div className="py-4 space-y-4">
-                <p className="text-gray-600">Se ha creado automáticamente la cuenta del cliente:</p>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
-                    <span className="font-medium">Email:</span>
-                    <span>{clienteInfo.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-500" />
-                    <span className="font-medium">Password:</span>
-                    <span className="font-mono bg-gray-200 px-2 py-0.5 rounded">{clienteInfo.password}</span>
-                  </div>
+      <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : cerrar())}>
+        <DialogContent className="max-h-[90vh] max-w-full overflow-y-auto sm:max-w-[560px]">
+          <form onSubmit={enviar}>
+            <DialogHeader>
+              <DialogTitle>Agregar equipo</DialogTitle>
+              <DialogDescription>
+                Al guardar se le pregunta al proveedor si el IMEI está enrolado, para saber si
+                se puede operar desde aquí o hay que gestionarlo a mano.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="imei">IMEI *</Label>
+                <Input
+                  id="imei"
+                  inputMode="numeric"
+                  placeholder="356789012345678"
+                  value={datos.imei}
+                  onChange={(e) =>
+                    setDatos({ ...datos, imei: e.target.value.replace(/\D/g, '') })
+                  }
+                  maxLength={15}
+                />
+                <p className="text-xs text-gray-500">15 dígitos, tal como salen en *#06#.</p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="owner">Propietario *</Label>
+                <Input
+                  id="owner"
+                  placeholder="Nombre completo"
+                  value={datos.owner}
+                  onChange={(e) => setDatos({ ...datos, owner: e.target.value })}
+                />
+              </div>
+
+              {/* En el móvil, a dos columnas estos campos se quedaban en ~140px:
+                  ni el modelo completo ni la etiqueta cabían en una línea. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="brand">Marca</Label>
+                  <Input
+                    id="brand"
+                    placeholder="Xiaomi"
+                    value={datos.brand}
+                    onChange={(e) => setDatos({ ...datos, brand: e.target.value })}
+                  />
                 </div>
-                <p className="text-sm text-orange-600">
-                  ⚠️ Comparte estas credenciales con el cliente para que pueda acceder a "Mi Cuenta"
+                <div className="grid gap-2">
+                  <Label htmlFor="model">Modelo</Label>
+                  <Input
+                    id="model"
+                    placeholder="Redmi Note 13"
+                    value={datos.model}
+                    onChange={(e) => setDatos({ ...datos, model: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="phoneNumber">Número de contacto</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="3001234567"
+                  value={datos.phoneNumber}
+                  onChange={(e) => setDatos({ ...datos, phoneNumber: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">
+                  A este número llegan los avisos de bloqueo y desbloqueo por WhatsApp.
                 </p>
               </div>
-              <DialogFooter>
-                <Button onClick={handleClose}>Cerrar</Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <DialogHeader>
-                <DialogTitle>Agregar Nuevo Dispositivo</DialogTitle>
-                <DialogDescription>
-                  Ingresa la información del teléfono o tableta a registrar.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="imei">IMEI *</Label>
-                  <Input
-                    id="imei"
-                    placeholder="356789012345678"
-                    value={formData.imei}
-                    onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
-                    maxLength={15}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="brand">Marca *</Label>
-                    <Input
-                      id="brand"
-                      placeholder="Xiaomi"
-                      value={formData.brand}
-                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="model">Modelo *</Label>
-                    <Input
-                      id="model"
-                      placeholder="Redmi Note 13"
-                      value={formData.model}
-                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="phoneNumber">Número de Teléfono *</Label>
-                  <Input
-                    id="phoneNumber"
-                    type="tel"
-                    placeholder="+573001234567"
-                    value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="owner">Propietario *</Label>
-                  <Input
-                    id="owner"
-                    placeholder="Nombre completo"
-                    value={formData.owner}
-                    onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-                  />
-                </div>
-                
-                <div className="border-t pt-4 mt-2">
-                  <div className="flex items-center gap-2 mb-4">
-                    <CreditCard className="h-5 w-5 text-[#ff6700]" />
-                    <span className="font-semibold">Datos del Cliente (opcional)</span>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email del Cliente</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="cliente@email.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                    <p className="text-xs text-gray-500">Si ingresas email, se creará automáticamente la cuenta del cliente</p>
-                  </div>
-                  <div className="grid gap-2 mt-2">
-                    <Label htmlFor="telefono">Teléfono del Cliente</Label>
-                    <Input
-                      id="telefono"
-                      type="tel"
-                      placeholder="+573001234567"
-                      value={formData.telefono}
-                      onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    />
-                  </div>
-                </div>
 
-                <div className="border-t pt-4 mt-2">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5 text-green-600" />
-                      <span className="font-semibold">Plan de Pagos</span>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={paymentPlan.hasPlan}
-                        onChange={(e) => setPaymentPlan({ ...paymentPlan, hasPlan: e.target.checked })}
-                        className="w-4 h-4"
-                      />
-                      <span>Agregar plan de pagos</span>
-                    </label>
-                  </div>
-                  
-                  {paymentPlan.hasPlan && (
-                    <div className="grid gap-3">
-                      <div className="grid gap-2">
-                        <Label htmlFor="totalAmount">Total del Plan ($)</Label>
-                        <Input
-                          id="totalAmount"
-                          type="number"
-                          placeholder="800000"
-                          value={paymentPlan.totalAmount}
-                          onChange={(e) => setPaymentPlan({ ...paymentPlan, totalAmount: e.target.value })}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="totalPayments">Número de Pagos</Label>
-                          <Select 
-                            value={paymentPlan.totalPayments} 
-                            onValueChange={(value) => setPaymentPlan({ ...paymentPlan, totalPayments: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="2">2 pagos</SelectItem>
-                              <SelectItem value="4">4 pagos</SelectItem>
-                              <SelectItem value="6">6 pagos</SelectItem>
-                              <SelectItem value="8">8 pagos</SelectItem>
-                              <SelectItem value="12">12 pagos</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="paymentFrequency">Frecuencia</Label>
-                          <Select 
-                            value={paymentPlan.paymentFrequency} 
-                            onValueChange={(value) => setPaymentPlan({ ...paymentPlan, paymentFrequency: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="weekly">Semanal</SelectItem>
-                              <SelectItem value="biweekly">Quincenal</SelectItem>
-                              <SelectItem value="monthly">Mensual</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      {paymentPlan.totalAmount && paymentPlan.totalPayments && (
-                        <div className="bg-green-50 p-3 rounded-lg">
-                          <p className="text-sm text-green-700">
-                            <strong>Monto por pago:</strong> ${Math.round(parseInt(paymentPlan.totalAmount) / parseInt(paymentPlan.totalPayments)).toLocaleString('es-CO')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="financingId">ID del financiamiento (opcional)</Label>
+                <Input
+                  id="financingId"
+                  placeholder="Déjalo vacío si no hay crédito asociado"
+                  value={datos.financingId}
+                  onChange={(e) => setDatos({ ...datos, financingId: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">
+                  Sin él, el equipo no tiene cuotas y el automatismo de mora lo ignora.
+                </p>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  Cancelar
-                </Button>
-                <Button type="submit">Agregar</Button>
-              </DialogFooter>
-            </form>
-          )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={cerrar}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={guardando}>
+                {guardando ? 'Verificando...' : 'Agregar'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

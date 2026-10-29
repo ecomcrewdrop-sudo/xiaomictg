@@ -255,7 +255,9 @@ export function HomePage() {
             <div>
               <Truck className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 md:mb-4 text-gray-700" />
               <div className="text-xs md:text-sm font-medium text-gray-900 mb-1">Envío a domicilio</div>
-              <div className="text-xs text-gray-500 font-light">GRATIS · Todo Cartagena</div>
+              {/* Es la home: no sabemos qué va a comprar, así que no podemos
+                  prometer GRATIS a secas. Gratis en celulares, $10.000 en el resto. */}
+              <div className="text-xs text-gray-500 font-light">GRATIS en celulares · Todo Cartagena</div>
             </div>
             <div>
               <Lock className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 md:mb-4 text-gray-700" />

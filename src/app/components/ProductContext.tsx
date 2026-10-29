@@ -53,6 +53,23 @@ export interface StorageVariant {
   stock: number;
 }
 
+/**
+ * Devuelve la primera capacidad CON stock. Si ninguna tiene, cae a la primera del array
+ * (para que la ficha siga mostrando precio y el cartel de AGOTADO sea real).
+ * Evita que un producto parezca agotado solo porque la variante 1 (p.ej. 256GB)
+ * se acabó mientras la 512GB sigue disponible.
+ */
+export function firstAvailableStorage(variants?: StorageVariant[]): string | undefined {
+  if (!variants || variants.length === 0) return undefined;
+  return (variants.find(v => (v.stock ?? 0) > 0) ?? variants[0]).storage;
+}
+
+/** Mismo criterio que firstAvailableStorage, para variantes de color. */
+export function firstAvailableColor(variants?: ColorVariant[]): string | undefined {
+  if (!variants || variants.length === 0) return undefined;
+  return (variants.find(v => (v.stock ?? 0) > 0) ?? variants[0]).color;
+}
+
 export interface Product {
   _id?: string;
   id: string;

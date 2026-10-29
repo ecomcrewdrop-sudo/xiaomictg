@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useProducts, Product, Banner, ColorVariant, StorageVariant } from '../ProductContext';
-import { Plus, Pencil, Trash2, Save, X, Package, ImageIcon, Upload, Palette, HardDrive, Cpu, MessageCircle } from 'lucide-react';
+import {
+  Plus, Pencil, Trash2, Save, X, Package, ImageIcon, Upload, Palette, HardDrive, Cpu, MessageCircle,
+  BarChart3, ShoppingBag, CreditCard, Warehouse, Link2, Receipt, DatabaseBackup, ShieldOff, Star, LogOut,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -16,9 +19,35 @@ import { WhatsAppPanel } from '../WhatsAppPanel';
 import { ReviewsManager } from '../ReviewsManager';
 import { FinancingManager } from '../FinancingManager';
 import { InventarioPanel } from '../inventario/InventarioPanel';
+import { NotificationBell } from '../NotificationBell';
 import { toast } from 'sonner';
 import { compressImageFile, isRemoteImageUrl } from '../../lib/product-image';
+import { useCredilockConectado } from '../../lib/useCredilockEstado';
 const SOCKET_URL = '';
+
+/**
+ * Las 12 secciones del panel, en una tabla en vez de 12 bloques de JSX repetidos.
+ *
+ * El icono no es decoración: en la tira horizontal del móvil es lo que permite
+ * encontrar una sección sin leer las doce etiquetas una por una. `clase` conserva
+ * el color propio que ya tenían las secciones destacadas (CrediLock, Inventario,
+ * Links VIP, WhatsApp y Reseñas) para no cambiar de sitio los puntos de referencia
+ * del dueño.
+ */
+const SECCIONES_ADMIN = [
+  { value: 'products',   label: 'Productos',    icon: Package },
+  { value: 'stats',      label: 'Estadísticas', icon: BarChart3 },
+  { value: 'orders',     label: 'Órdenes',      icon: ShoppingBag },
+  { value: 'financing',  label: 'CrediLock',    icon: CreditCard,     clase: 'font-bold text-blue-700 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700' },
+  { value: 'inventario', label: 'Inventario',   icon: Warehouse,      clase: 'font-bold text-violet-700 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700' },
+  { value: 'links',      label: 'Links VIP',    icon: Link2,          clase: 'font-bold text-sky-700 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-700' },
+  { value: 'banner',     label: 'Banners',      icon: ImageIcon },
+  { value: 'ticket',     label: 'Ticket',       icon: Receipt },
+  { value: 'backup',     label: 'Respaldo',     icon: DatabaseBackup },
+  { value: 'blocking',   label: 'Bloqueo',      icon: ShieldOff },
+  { value: 'whatsapp',   label: 'WhatsApp',     icon: MessageCircle,  clase: 'font-bold text-green-700 data-[state=active]:bg-green-50 data-[state=active]:text-green-700' },
+  { value: 'reviews',    label: 'Reseñas',      icon: Star,           clase: 'font-bold text-indigo-700 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700' },
+] as const;
 
 export function AdminPanel() {
   const { products, addProduct, updateProduct, deleteProduct, banners, updateBanner, addBanner, deleteBanner, orders, unreadOrdersCount, ticketConfig, updateTicketConfig, loadAdminData } = useProducts();
@@ -511,48 +540,87 @@ export function AdminPanel() {
     }
   }).length || 0;
 
+  // Si el WhatsApp de cobranza está caído no sale ningún recordatorio de cuotas,
+  // así que lo marcamos en la propia pestaña: es visible sin tener que entrar.
+  const credilockConectado = useCredilockConectado();
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-light text-gray-900 mb-2">Panel de Administración</h1>
-            <p className="text-gray-600 font-light">Gestiona el catálogo de productos y el banner publicitario</p>
+      {/*
+        Cabecera fija. En el móvil es una sola franja de 56px: el título largo y el
+        subtítulo explicativo se ocultan porque quien entra aquí ya sabe dónde está,
+        y ese espacio vale más para los datos. "Cerrar sesión" pasa a ser un icono
+        con su aria-label para no robar ancho al título.
+      */}
+      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-gray-900 sm:text-2xl sm:font-light">
+              <span className="sm:hidden">Panel</span>
+              <span className="hidden sm:inline">Panel de Administración</span>
+            </h1>
+            <p className="hidden text-sm font-light text-gray-600 sm:block">
+              Gestiona el catálogo de productos y el banner publicitario
+            </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            Cerrar Sesión
-          </button>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            {/* La campana de avisos de pedido nuevo vivía en la cabecera de la
+                tienda, que esta pantalla ya no monta. Sin esto el dueño se
+                quedaba sin aviso de que ha entrado una orden. */}
+            <NotificationBell />
+            <button
+              onClick={handleLogout}
+              aria-label="Cerrar sesión"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-red-500 px-3 text-sm font-medium text-white transition-colors hover:bg-red-600 active:bg-red-700 sm:px-4"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Cerrar Sesión</span>
+            </button>
+          </div>
         </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
 
       <Tabs defaultValue="products" className="w-full">
-      <TabsList className="grid w-full max-w-6xl grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 mb-8 h-auto gap-1">
-          <TabsTrigger value="products">Productos</TabsTrigger>
-          <TabsTrigger value="stats">Estadísticas</TabsTrigger>
-          <TabsTrigger value="orders" className="relative">
-            Órdenes
-            {todayOrdersCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {todayOrdersCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="financing" className="font-bold text-blue-700 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">CrediLock</TabsTrigger>
-          <TabsTrigger value="inventario" className="font-bold text-violet-700 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700">Inventario</TabsTrigger>
-          <TabsTrigger value="links" className="font-bold text-sky-700 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-700">Links VIP</TabsTrigger>
-          <TabsTrigger value="banner">Banners</TabsTrigger>
-          <TabsTrigger value="ticket">Ticket</TabsTrigger>
-          <TabsTrigger value="backup">Respaldo</TabsTrigger>
-          <TabsTrigger value="blocking">Bloqueo</TabsTrigger>
-          <TabsTrigger value="whatsapp" className="font-bold text-green-700 data-[state=active]:bg-green-50 data-[state=active]:text-green-700 flex items-center gap-1">
-            <MessageCircle className="w-4 h-4" />
-            WhatsApp
-          </TabsTrigger>
-          <TabsTrigger value="reviews" className="font-bold text-indigo-700 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">Reseñas</TabsTrigger>
-        </TabsList>
+        {/*
+          En el móvil esto es una tira que se desliza en horizontal, no una rejilla.
+          Antes eran 12 pestañas en 3 columnas: cuatro filas de 29px de alto que se
+          comían media pantalla antes de ver un solo dato, con los globos de aviso
+          recortados por el borde de la celda. Ahora cada pestaña mide 44px de alto
+          (el mínimo táctil de iOS y Android) y el icono permite reconocerla de un
+          vistazo sin leer. A partir de lg vuelve a ser rejilla, que en escritorio
+          sí cabe entera y es más cómoda.
+        */}
+        <div className="relative -mx-4 mb-5 sm:mx-0 sm:mb-6 lg:mb-8">
+          {/* Degradado en el borde derecho: la única pista de que la tira sigue. */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-gray-50 to-transparent lg:hidden" />
+          <TabsList className="flex h-auto w-full snap-x snap-mandatory justify-start gap-2 overflow-x-auto rounded-none bg-transparent px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:rounded-xl lg:bg-muted lg:p-1.5 [&::-webkit-scrollbar]:hidden">
+            {SECCIONES_ADMIN.map(({ value, label, icon: Icono, clase }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className={`relative h-11 flex-none shrink-0 snap-start gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-[13px] font-medium shadow-sm data-[state=active]:border-transparent data-[state=active]:shadow lg:h-10 lg:flex-1 lg:shrink lg:border-transparent lg:bg-transparent lg:px-2 lg:shadow-none ${clase ?? ''}`}
+              >
+                <Icono className="h-4 w-4 shrink-0" />
+                {label}
+                {value === 'orders' && todayOrdersCount > 0 && (
+                  <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                    {todayOrdersCount}
+                  </span>
+                )}
+                {value === 'financing' && credilockConectado === false && (
+                  <span
+                    title="El WhatsApp de CrediLock está desconectado: los recordatorios de cuotas NO se están enviando."
+                    className="ml-0.5 inline-flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white"
+                  >
+                    !
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* TAB DE ÓRDENES */}
         <TabsContent value="orders">
@@ -590,69 +658,148 @@ export function AdminPanel() {
 
         {/* TAB DE PRODUCTOS */}
         <TabsContent value="products">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Gestión de Productos</h2>
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 sm:text-2xl">Gestión de Productos</h2>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-sm text-gray-500 mb-1">Total Productos</div>
-          <div className="text-3xl font-bold text-orange-400">{products.length}</div>
+          {/*
+            Resumen. Antes era una columna de cuatro tarjetas con p-6: en el móvil
+            eran ~500px de alto para cuatro cifras, o sea media pantalla de scroll
+            antes de llegar al catálogo. En dos columnas y con el padding ajustado
+            caben las cuatro de un vistazo.
+          */}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:mb-8">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-1 text-xs text-gray-500 sm:text-sm">Total Productos</div>
+          <div className="text-2xl font-bold text-orange-400 sm:text-3xl">{products.length}</div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-sm text-gray-500 mb-1">Valor Inventario</div>
-          <div className="text-2xl font-bold text-green-500">
-            ${Math.round(products.reduce((sum, p) => sum + (p.price * p.stock), 0)).toLocaleString('es-CO')} COP
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-1 text-xs text-gray-500 sm:text-sm">Valor Inventario</div>
+          {/* "COP" va en su propia línea en el móvil: a media pantalla
+              "$207.039.894 COP" seguido se salía de la tarjeta. */}
+          <div className="text-lg leading-tight font-bold break-all text-green-500 sm:text-2xl sm:break-normal">
+            ${Math.round(products.reduce((sum, p) => sum + (p.price * p.stock), 0)).toLocaleString('es-CO')}
+            <span className="block text-xs font-semibold text-green-600/70 sm:ml-1 sm:inline">COP</span>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-sm text-gray-500 mb-1">Stock Total</div>
-          <div className="text-3xl font-bold text-blue-500">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-1 text-xs text-gray-500 sm:text-sm">Stock Total</div>
+          <div className="text-2xl font-bold text-blue-500 sm:text-3xl">
             {products.reduce((sum, p) => sum + p.stock, 0)}
           </div>
         </div>
-        <div 
+        <button
+          type="button"
           onClick={() => setShowLowStockModal(true)}
-          className="bg-white rounded-xl shadow-sm p-6 cursor-pointer hover:bg-red-50 hover:shadow-md transition-all duration-200 border border-transparent hover:border-red-100 group"
+          className="group rounded-xl border border-transparent bg-white p-4 text-left shadow-sm transition-all duration-200 hover:border-red-100 hover:bg-red-50 hover:shadow-md active:bg-red-50 sm:p-6"
         >
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="text-sm text-gray-500 mb-1 group-hover:text-red-600 transition-colors">Stock Bajo</div>
-              <div className="text-3xl font-bold text-red-500">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="mb-1 text-xs text-gray-500 transition-colors group-hover:text-red-600 sm:text-sm">Stock Bajo</div>
+              <div className="text-2xl font-bold text-red-500 sm:text-3xl">
                 {lowStockProducts.length}
               </div>
             </div>
-            <div className="bg-red-100 p-2 rounded-lg text-red-500 group-hover:scale-110 transition-transform">
-              <Package size={24} />
+            <div className="shrink-0 rounded-lg bg-red-100 p-1.5 text-red-500 transition-transform group-hover:scale-110 sm:p-2">
+              <Package className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="mt-4 text-xs text-red-500/80 font-medium flex items-center gap-1">
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-red-500/80 sm:mt-4">
             Ver detalles <span className="text-[10px]">▶</span>
           </div>
-        </div>
+        </button>
           </div>
 
           {/* Products by Category */}
           <div className="space-y-6">
         {productsByCategory.map(category => (
           <div key={category.value} className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-orange-400 to-orange-500 text-white px-6 py-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold">{category.label}</h2>
-                <p className="text-orange-100 text-sm">{category.products.length} productos</p>
+            <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-orange-400 to-orange-500 px-4 py-3 text-white sm:px-6 sm:py-4">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-bold sm:text-xl">{category.label}</h2>
+                <p className="text-sm text-orange-100">{category.products.length} productos</p>
               </div>
+              {/* En el móvil el botón se queda en el icono "+": repetir el nombre de
+                  la categoría que está justo al lado se comía la mitad del ancho. */}
               <Button
                 onClick={() => handleOpenDialog(undefined, category.value)}
-                className="bg-white/20 hover:bg-white/30 text-white border-2 border-white/40 flex items-center gap-2 backdrop-blur-sm"
-                size="sm"
+                aria-label={`Agregar en ${category.label}`}
+                className="h-11 shrink-0 gap-2 border-2 border-white/40 bg-white/20 px-3 text-white backdrop-blur-sm hover:bg-white/30 sm:px-4"
               >
-                <Plus className="w-4 h-4" />
-                Agregar en {category.label}
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Agregar en {category.label}</span>
               </Button>
             </div>
-            
-            <div className="overflow-x-auto">
+
+            {/*
+              MÓVIL: tarjetas. La tabla medía 962px dentro de una pantalla de 390px,
+              así que el `overflow-x-auto` dejaba a la vista solo la columna del
+              nombre: para editar o borrar había que arrastrar de lado hasta la
+              quinta columna, en cada producto. Con tarjetas todo queda accesible sin
+              desplazamiento lateral. La tabla sigue existiendo de md hacia arriba,
+              donde sí cabe y es más densa de leer.
+            */}
+            <ul className="divide-y divide-gray-200 md:hidden">
+              {category.products.length > 0 ? (
+                category.products.map(product => (
+                  <li key={product.id} className="flex gap-3 p-4">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      {/* `truncate` dejaba el nombre en una línea de 172px y se
+                          comía hasta 37px: "Redmi Note 15 Pro 5G 256GB" perdía
+                          justo el almacenamiento, que es lo que distingue una
+                          variante de otra en el inventario. Con dos líneas
+                          caben todos los nombres del catálogo. */}
+                      <div className="line-clamp-2 font-medium text-gray-900">{product.name}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="font-semibold text-orange-500">
+                          ${Math.round(product.price).toLocaleString('es-CO')}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-sm">
+                          <Package className="h-3.5 w-3.5 text-gray-400" />
+                          <span className={product.stock < 10 ? 'font-semibold text-red-600' : 'text-gray-600'}>
+                            {product.stock}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-gray-500">{product.description}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={`Editar ${product.name}`}
+                        onClick={() => handleOpenDialog(product)}
+                        className="h-11 w-11 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={`Eliminar ${product.name}`}
+                        onClick={() => handleDelete(product._id || product.id)}
+                        className="h-11 w-11 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                ))
+              ) : (
+                <li className="px-6 py-10 text-center">
+                  <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                  <p className="mb-2 text-gray-500">No hay productos en esta categoría</p>
+                  <p className="text-sm text-gray-400">Usa el botón “+” de arriba para comenzar</p>
+                </li>
+              )}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -749,19 +896,21 @@ export function AdminPanel() {
         {/* TAB DE BANNER PUBLICITARIO */}
         <TabsContent value="banner">
           <div className="max-w-6xl">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">Configurar Banners Publicitarios</h2>
+            <h2 className="mb-4 text-xl font-semibold text-gray-800 sm:mb-6 sm:text-2xl">Configurar Banners Publicitarios</h2>
             
             {/* Selector de Banner */}
             <div className="mb-6 bg-white rounded-xl shadow-sm p-4">
-              <div className="flex items-center justify-between mb-3">
+              {/* Apilado en el móvil: compartiendo fila con el botón, el título
+                  se partía en tres líneas y la fila quedaba desequilibrada. */}
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Label className="text-base font-semibold">Seleccionar Banner para Editar</Label>
                 <Button
                   type="button"
                   onClick={handleAddNewBanner}
-                  className="bg-green-500 hover:bg-green-600 text-white"
+                  className="w-full shrink-0 bg-green-500 text-white hover:bg-green-600 sm:w-auto"
                   size="sm"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Agregar Nuevo Banner
                 </Button>
               </div>
@@ -829,7 +978,7 @@ export function AdminPanel() {
             </div>
 
             {/* Formulario de Edición */}
-            <form onSubmit={handleBannerSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+            <form onSubmit={handleBannerSubmit} className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-6">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4 flex items-center justify-between">
                 <p className="text-sm text-orange-800">
                   <strong>Editando Banner {selectedBannerIndex + 1}:</strong> {bannerForm.title}
@@ -951,9 +1100,9 @@ export function AdminPanel() {
         {/* TAB DE CONFIGURACIÓN DEL TICKET */}
         <TabsContent value="ticket">
           <div className="max-w-4xl">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">Configuración del Ticket</h2>
+            <h2 className="mb-4 text-xl font-semibold text-gray-800 sm:mb-6 sm:text-2xl">Configuración del Ticket</h2>
             
-            <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="ticket-storeName">Nombre de la Tienda</Label>
@@ -1076,11 +1225,11 @@ export function AdminPanel() {
         {/* TAB DE RESPALDO */}
         <TabsContent value="backup">
           <div className="max-w-4xl">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">Respaldo y Restauración</h2>
+            <h2 className="mb-4 text-xl font-semibold text-gray-800 sm:mb-6 sm:text-2xl">Respaldo y Restauración</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Export/Backup */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                     <Upload className="w-6 h-6 text-blue-600" />
@@ -1103,7 +1252,7 @@ export function AdminPanel() {
               </div>
 
               {/* Import/Restore */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                     <HardDrive className="w-6 h-6 text-green-600" />
@@ -1151,16 +1300,18 @@ export function AdminPanel() {
 
         {/* TAB DE SISTEMA DE BLOQUEO */}
         <TabsContent value="blocking">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Sistema de Bloqueo MDM</h2>
-              <p className="text-gray-600 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+            <div className="py-8 text-center sm:py-12">
+              <h2 className="mb-3 text-xl font-semibold text-gray-900 sm:mb-4 sm:text-2xl">Sistema de Bloqueo MDM</h2>
+              <p className="mb-6 text-gray-600 sm:mb-8">
                 Gestiona el control remoto de teléfonos y tabletas, bloqueo y modo kiosk
               </p>
-              <div className="flex justify-center gap-4">
+              {/* Apilados en el móvil: los dos enlaces con su icono no caben en
+                  una fila de 360px y el segundo se partía en dos líneas. */}
+              <div className="flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
                 <a
                   href="/admin/blocking/devices"
-                  className="bg-[#ff6700] text-white px-6 py-3 rounded-lg hover:bg-[#e65d00] flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-[#ff6700] px-6 py-3 text-white hover:bg-[#e65d00]"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -1169,7 +1320,7 @@ export function AdminPanel() {
                 </a>
                 <a
                   href="/admin/blocking/dashboard"
-                  className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-gray-200 px-6 py-3 text-gray-800 hover:bg-gray-300"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -1185,7 +1336,10 @@ export function AdminPanel() {
 
       {/* Product Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+        {/* `dvh` y no `vh`: en el móvil la barra de direcciones del navegador se
+            cuenta dentro de `vh`, así que con 90vh el botón de guardar quedaba
+            justo por debajo del borde visible y parecía que no existía. */}
+        <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-[600px]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editingProduct ? 'Editar Producto' : 'Agregar Nuevo Producto'}
@@ -1227,7 +1381,9 @@ export function AdminPanel() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Apilados en el móvil: a 180px de ancho la etiqueta de stock
+                ("calculado automáticamente por colores") ocupaba cuatro líneas. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="price">Precio (COP)</Label>
                 <Input
@@ -1265,13 +1421,17 @@ export function AdminPanel() {
               </div>
             </div>
 
+            {/* La casilla mide 20px a propósito: una de 44px se vería enorme
+                al lado del texto. El área táctil real es el <Label htmlFor>
+                de abajo, que con `flex-1` y su descripción cubre toda la fila
+                (bastante más de 44px) y alterna la casilla al tocarlo. */}
             <div className="flex items-center space-x-2 bg-orange-50 p-4 rounded-lg border border-orange-100 mb-6">
               <input
                 type="checkbox"
                 id="isFeatured"
                 checked={formData.isFeatured}
                 onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                className="w-5 h-5 text-orange-500 rounded border-gray-300 focus:ring-orange-500"
+                className="w-5 h-5 shrink-0 text-orange-500 rounded border-gray-300 focus:ring-orange-500"
               />
               <Label htmlFor="isFeatured" className="text-base font-medium cursor-pointer flex-1">
                 Marcar como Producto Destacado
@@ -1286,25 +1446,29 @@ export function AdminPanel() {
                 <Label className="text-base font-medium">Variantes de Color (Opcional)</Label>
               </div>
               
-              {/* Lista de colores actuales */}
+              {/* Lista de colores actuales.
+                  Muestra + nombre + stock + borrar en una sola fila sólo caben
+                  en escritorio: dentro del diálogo la fila se iba 106px por
+                  fuera del borde y el grupo de stock quedaba cortado. En móvil
+                  el stock baja a su propia línea. */}
               {colorVariants.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {colorVariants.map((variant, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
-                      <div 
-                        className="w-8 h-8 rounded border-2 border-gray-300" 
+                    <div key={index} className="flex flex-wrap items-center gap-2 bg-gray-50 p-3 rounded-lg sm:flex-nowrap">
+                      <div
+                        className="w-8 h-8 shrink-0 rounded border-2 border-gray-300"
                         style={{ backgroundColor: variant.colorHex }}
                       />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{variant.color}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm break-words">{variant.color}</p>
                         <p className="text-xs text-gray-600">{variant.colorHex}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center gap-2 sm:w-auto">
                         <Input
                           type="number"
                           value={variant.stock}
                           onChange={(e) => handleUpdateColorStock(index, parseInt(e.target.value))}
-                          className="w-20"
+                          className="w-20 flex-1 sm:flex-none"
                           min="0"
                         />
                         <span className="text-sm text-gray-600">uds</span>
@@ -1326,18 +1490,26 @@ export function AdminPanel() {
               {/* Agregar nuevo color */}
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">Agregar nueva variante</p>
-                <div className="grid grid-cols-[1fr,auto,auto,auto] gap-2">
+                {/* Las cuatro columnas en una sola fila sólo caben en escritorio:
+                    dentro del diálogo (319px en un móvil de 360) al campo del
+                    nombre le quedaban unos 80px y el placeholder era ilegible.
+                    En móvil el nombre ocupa su propia fila y debajo van color,
+                    stock y el botón de añadir. */}
+                <div className="grid grid-cols-[auto,1fr,auto] gap-2 sm:grid-cols-[1fr,auto,auto,auto]">
                   <Input
                     placeholder="Nombre del color (ej: Negro, Azul)"
                     value={newColor.color}
                     onChange={(e) => setNewColor({ ...newColor, color: e.target.value })}
+                    className="col-span-3 sm:col-span-1"
                   />
                   <div className="flex items-center gap-1">
+                    {/* El selector de color medía 40px: justo por debajo del
+                        mínimo táctil. 44px en móvil, 40px de sm hacia arriba. */}
                     <input
                       type="color"
                       value={newColor.colorHex}
                       onChange={(e) => setNewColor({ ...newColor, colorHex: e.target.value })}
-                      className="w-10 h-10 rounded cursor-pointer"
+                      className="h-11 w-11 rounded cursor-pointer sm:w-10 sm:h-10"
                     />
                   </div>
                   <Input
@@ -1345,7 +1517,7 @@ export function AdminPanel() {
                     placeholder="Stock"
                     value={newColor.stock}
                     onChange={(e) => setNewColor({ ...newColor, stock: e.target.value })}
-                    className="w-24"
+                    className="w-full sm:w-24"
                     min="0"
                   />
                   <Button
@@ -1370,44 +1542,49 @@ export function AdminPanel() {
                 <Label className="text-base font-medium">Variantes de Almacenamiento (Opcional)</Label>
               </div>
               
-              {/* Lista de almacenamientos actuales */}
+              {/* Lista de almacenamientos actuales.
+                  Nombre + precio + COP + stock + uds + borrar en una sola fila
+                  necesitan unos 300px: dentro del diálogo (272px útiles en un
+                  móvil de 360) se salían 106px por fuera del borde. En móvil el
+                  nombre se queda arriba y precio/stock/borrar bajan a su propia
+                  línea repartiéndose el ancho. */}
               {storageVariants.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {storageVariants.map((variant, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{variant.storage}</p>
+                    <div key={index} className="flex flex-wrap items-center gap-2 bg-gray-50 p-3 rounded-lg sm:flex-nowrap">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm break-words">{variant.storage}</p>
                         <p className="text-xs text-gray-600">${variant.price.toLocaleString('es-CO')} COP</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={variant.price}
-                              onChange={(e) => handleUpdateStoragePrice(index, parseFloat(e.target.value))}
-                              className="w-24 h-8 text-xs"
-                              min="0"
-                              step="100"
-                              placeholder="COP"
-                            />
-                            <span className="text-xs text-gray-600">COP</span>
-                          </div>
+                      <div className="flex w-full items-center gap-2 sm:w-auto">
+                        <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none">
+                          <Input
+                            type="number"
+                            value={variant.price}
+                            onChange={(e) => handleUpdateStoragePrice(index, parseFloat(e.target.value))}
+                            className="w-full text-xs sm:w-24 sm:h-8"
+                            min="0"
+                            step="100"
+                            placeholder="COP"
+                          />
+                          <span className="shrink-0 text-xs text-gray-600">COP</span>
                         </div>
-                        <Input
-                          type="number"
-                          value={variant.stock}
-                          onChange={(e) => handleUpdateStorageStock(index, parseInt(e.target.value))}
-                          className="w-20"
-                          min="0"
-                        />
-                        <span className="text-sm text-gray-600">uds</span>
+                        <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none">
+                          <Input
+                            type="number"
+                            value={variant.stock}
+                            onChange={(e) => handleUpdateStorageStock(index, parseInt(e.target.value))}
+                            className="w-full sm:w-20"
+                            min="0"
+                          />
+                          <span className="shrink-0 text-sm text-gray-600">uds</span>
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRemoveStorage(index)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -1469,16 +1646,18 @@ export function AdminPanel() {
                 <div className="space-y-2 mb-4">
                   {specifications.map((spec, index) => (
                     <div key={index} className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{spec.key}</p>
-                        <p className="text-xs text-gray-600">{spec.value}</p>
+                      {/* `min-w-0` para que una especificación larga parta línea
+                          en vez de empujar el botón de borrar fuera del borde. */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm break-words">{spec.key}</p>
+                        <p className="text-xs text-gray-600 break-words">{spec.value}</p>
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setSpecifications(specifications.filter((_, i) => i !== index))}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -1487,19 +1666,23 @@ export function AdminPanel() {
                 </div>
               )}
               
-              <div className="flex items-center gap-2">
+              {/* Los dos campos en la misma fila dejaban unos 97px a cada uno
+                  dentro del diálogo, con placeholders de 35 caracteres. En
+                  móvil el nombre ocupa su línea y el valor baja junto al botón
+                  de añadir; los dos puntos sólo tienen sentido en una fila. */}
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   placeholder="Ej: Procesador, RAM, Batería"
                   value={newSpecKey}
                   onChange={(e) => setNewSpecKey(e.target.value)}
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                 />
-                <span className="text-gray-400">:</span>
+                <span className="hidden text-gray-400 sm:inline">:</span>
                 <Input
                   placeholder="Ej: Snapdragon 8 Gen 2, 8GB, 5000mAh"
                   value={newSpecValue}
                   onChange={(e) => setNewSpecValue(e.target.value)}
-                  className="flex-1"
+                  className="min-w-0 flex-1"
                 />
                 <Button
                   type="button"
@@ -1511,7 +1694,7 @@ export function AdminPanel() {
                     }
                   }}
                   size="sm"
-                  className="bg-purple-500 hover:bg-purple-600 text-white"
+                  className="shrink-0 bg-purple-500 hover:bg-purple-600 text-white"
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -1596,22 +1779,26 @@ export function AdminPanel() {
                 )}
               </div>
 
-                <div className="flex gap-3 pt-4 border-t flex-shrink-0">
-                  <Button 
+                {/* Pegado al fondo del diálogo: el formulario de producto es largo
+                    (colores, almacenamientos, especificaciones, imagen) y en el
+                    móvil obligaba a recorrerlo entero hasta abajo cada vez solo
+                    para llegar a "Guardar". */}
+                <div className="sticky bottom-0 -mx-1 flex gap-3 border-t bg-white px-1 pt-4 pb-1 flex-shrink-0">
+                  <Button
                     type="submit"
                     disabled={isSavingProduct || imageUploading}
                     className="flex-1 bg-orange-400 hover:bg-orange-500"
                   >
-                    <Save className="w-4 h-4 mr-2" />
+                    <Save className="mr-2 h-4 w-4" />
                     {isSavingProduct
                       ? 'Guardando...'
                       : editingProduct
                         ? 'Guardar Cambios'
                         : 'Agregar Producto'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleCloseDialog}>
-                    <X className="w-4 h-4 mr-2" />
-                    Cancelar
+                  <Button type="button" variant="outline" aria-label="Cancelar" onClick={handleCloseDialog} className="min-w-11 px-3 sm:px-4">
+                    <X className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Cancelar</span>
                   </Button>
                 </div>
               </div>
@@ -1621,7 +1808,7 @@ export function AdminPanel() {
 
       {/* Modal de Stock Bajo */}
       <Dialog open={showLowStockModal} onOpenChange={setShowLowStockModal}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="flex max-h-[85dvh] flex-col overflow-hidden max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Package size={20} />

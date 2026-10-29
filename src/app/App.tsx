@@ -77,6 +77,40 @@ function MainLayout({ children }: { children?: React.ReactNode }) {
   );
 }
 
+/**
+ * Envoltura de las pantallas de administración.
+ *
+ * POR QUÉ existe separada de MainLayout: el panel se maneja casi siempre desde el
+ * móvil, y MainLayout le colgaba encima toda la tienda —barra de promos, buscador,
+ * carrito, footer, el botón flotante de WhatsApp y los avisos de "alguien acaba de
+ * comprar"—. En un teléfono eso se comía ~190px de alto antes del primer control
+ * útil, el botón flotante tapaba los botones de la esquina inferior y los popups de
+ * prueba social salían encima mientras se despachaban pedidos. Nada de eso pinta
+ * nada en una herramienta interna.
+ *
+ * `overflow-x-hidden` es un cinturón de seguridad: evita que una tabla ancha de
+ * cualquier módulo haga desplazar la página entera de lado en el móvil.
+ *
+ * El atributo `data-admin-ui` en <html> es lo que activa las reglas táctiles de
+ * styles/admin.css (alto mínimo de 44px y tipografía de 16px en los campos).
+ * Va en <html> y no en este div a propósito: los diálogos y los desplegables de
+ * Radix se montan en un portal colgado de <body>, fuera de este árbol, así que un
+ * selector anclado aquí no los alcanzaría y los formularios —que es donde más
+ * duele— se quedarían sin arreglar.
+ */
+function AdminLayout({ children }: { children?: React.ReactNode }) {
+  useEffect(() => {
+    document.documentElement.setAttribute('data-admin-ui', '');
+    return () => document.documentElement.removeAttribute('data-admin-ui');
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+      {children ? children : <Outlet />}
+    </div>
+  );
+}
+
 function App() {
   return (
     <ProductProvider>
@@ -98,16 +132,16 @@ function App() {
             <Route path="/login-admin" element={<LoginPage />} />
             <Route path="/panel-gestion-xiaomi" element={
               <AdminRoute>
-                <MainLayout>
+                <AdminLayout>
                   <AdminPanel />
-                </MainLayout>
+                </AdminLayout>
               </AdminRoute>
             } />
             <Route path="/admin/gpedidos" element={
               <AdminRoute>
-                <MainLayout>
+                <AdminLayout>
                   <AdminLinkGenerator />
-                </MainLayout>
+                </AdminLayout>
               </AdminRoute>
             } />
             <Route path="/" element={
@@ -169,23 +203,23 @@ function App() {
             <Route path="/admin/blocking/login" element={<BlockingLogin />} />
             <Route path="/admin/blocking" element={
               <AdminRoute>
-                <MainLayout>
+                <AdminLayout>
                   <Dashboard />
-                </MainLayout>
+                </AdminLayout>
               </AdminRoute>
             } />
             <Route path="/admin/blocking/dashboard" element={
               <AdminRoute>
-                <MainLayout>
+                <AdminLayout>
                   <Dashboard />
-                </MainLayout>
+                </AdminLayout>
               </AdminRoute>
             } />
             <Route path="/admin/blocking/devices" element={
               <AdminRoute>
-                <MainLayout>
+                <AdminLayout>
                   <Devices />
-                </MainLayout>
+                </AdminLayout>
               </AdminRoute>
             } />
 

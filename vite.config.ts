@@ -14,6 +14,29 @@ export default defineConfig({
     },
   },
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  /**
+   * Solo afecta a `vite dev`; no entra en el build de producción.
+   *
+   * POR QUÉ: en localhost api-base.ts deja API_ORIGIN = '' , o sea que el front
+   * llama a /api del propio host. Sin este proxy el servidor de desarrollo no
+   * tiene backend y el panel de admin abre vacío (sin órdenes, sin productos, sin
+   * financiaciones), que es justo lo que hay que mirar para ajustar el móvil.
+   */
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://xiaomictg-backend-production-66f6.up.railway.app',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/socket.io': {
+        target: 'https://xiaomictg-backend-production-66f6.up.railway.app',
+        changeOrigin: true,
+        secure: true,
+        ws: true,
+      },
+    },
+  },
   build: {
     // Divide el bundle enorme en chunks cacheables separados
     rollupOptions: {

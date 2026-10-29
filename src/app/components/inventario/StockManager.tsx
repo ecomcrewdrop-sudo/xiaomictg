@@ -156,42 +156,51 @@ export function StockManager() {
 
   return (
     <div className="space-y-4">
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+      {/*
+        KPIs. Tres columnas a 360px dejaban cada tarjeta en ~100px: "Unidades
+        disponibles" ocupaba cuatro líneas y el importe del inventario se salía.
+        Dos columnas en móvil (la tercera, con el importe, a lo ancho) y tres desde sm.
+      */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+        <div className="min-w-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-3 text-white shadow-lg sm:p-4">
           <p className="text-xs font-bold uppercase tracking-wider opacity-80">Unidades disponibles</p>
-          <p className="text-2xl font-black">{totalUnidades}</p>
+          <p className="text-xl font-black sm:text-2xl">{totalUnidades}</p>
           <p className="text-[10px] opacity-60">{items.filter(i => i.estado === 'disponible').length} productos</p>
         </div>
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+        <div className="min-w-0 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-3 text-white shadow-lg sm:p-4">
           <p className="text-xs font-bold uppercase tracking-wider opacity-80">Vendidos</p>
-          <p className="text-2xl font-black">{vendidos}</p>
+          <p className="text-xl font-black sm:text-2xl">{vendidos}</p>
           <p className="text-[10px] opacity-60">unidades</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+        <div className="col-span-2 min-w-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-3 text-white shadow-lg sm:col-span-1 sm:p-4">
           <p className="text-xs font-bold uppercase tracking-wider opacity-80">Dinero en inventario</p>
-          <p className="text-2xl font-black">{fmt(valorInventario)}</p>
+          <p className="text-xl font-black break-all sm:text-2xl">{fmt(valorInventario)}</p>
           <p className="text-[10px] opacity-60">costo total</p>
         </div>
       </div>
 
       {/* Search & filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por producto, IMEI, proveedor..." className="pl-10" />
         </div>
-        <div className="flex items-center gap-2">
-          <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} className="h-10 rounded-md border border-gray-200 px-3 text-sm">
+        {/*
+          En móvil el filtro y el botón comparten fila (el select no necesita todo el
+          ancho y así no se gasta una fila entera en él). `sm:contents` deshace esta
+          agrupación de sm hacia arriba para dejar la fila de escritorio igual.
+        */}
+        <div className="flex items-center gap-2 sm:contents">
+          <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} className="h-10 min-w-0 flex-1 rounded-md border border-gray-200 px-3 text-sm sm:flex-none">
             <option value="todos">Todos</option>
             <option value="disponible">Disponible</option>
             <option value="vendido">Vendido</option>
             <option value="reservado">Reservado</option>
           </select>
+          <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white gap-1">
+            <Plus className="w-4 h-4 shrink-0" /> Agregar
+          </Button>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-violet-600 hover:bg-violet-700 text-white gap-1">
-          <Plus className="w-4 h-4" /> Agregar
-        </Button>
       </div>
 
       {/* Items table */}
@@ -202,7 +211,59 @@ export function StockManager() {
             <p className="font-semibold">No hay items en inventario</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/*
+            MÓVIL: tarjetas. La tabla son nueve columnas (IMEI, proveedor, dos
+            importes, estado, fecha y acciones): dentro de 360px el overflow-x-auto
+            obligaba a arrastrar hasta el final de cada fila para editar o borrar.
+          */}
+          <ul className="divide-y divide-gray-200 md:hidden">
+            {filtered.map(item => (
+              <li key={item.id} className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-medium text-gray-900">{item.producto}</p>
+                    {item.imei && <p className="break-all font-mono text-xs text-gray-500">{item.imei}</p>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
+                        <Hash className="w-3 h-3" />{item.cantidad || 1}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        item.estado === 'disponible' ? 'bg-green-100 text-green-700' :
+                        item.estado === 'vendido' ? 'bg-gray-100 text-gray-500' :
+                        item.estado === 'reservado' ? 'bg-amber-100 text-amber-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>{item.estado}</span>
+                      {item.esPropio ? (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Propio</span>
+                      ) : (
+                        <span className="min-w-0 truncate text-xs text-gray-700">{item.proveedor}</span>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {new Date(item.fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'UTC' })}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 text-xs">
+                      <span className="text-gray-500">Costo: {fmt(item.precioCompra)}</span>
+                      <span className="font-bold text-gray-900">Venta: {fmt(item.precioVenta)}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-1">
+                    <button onClick={() => openEdit(item)} aria-label={`Editar ${item.producto}`} className="flex h-11 w-11 items-center justify-center text-gray-400 hover:text-violet-600 sm:h-9 sm:w-9"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(item.id)} aria-label={`Eliminar ${item.producto}`} className="flex h-11 w-11 items-center justify-center text-gray-400 hover:text-red-600 sm:h-9 sm:w-9"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              </li>
+            ))}
+            <li className="flex flex-wrap items-center justify-between gap-x-3 bg-gray-50 px-3 py-3 text-sm font-bold">
+              <span>TOTALES</span>
+              <span className="text-violet-700">{filtered.reduce((s, i) => s + (i.cantidad || 1), 0)} uds</span>
+              <span className="text-gray-500">{fmt(filtered.reduce((s, i) => s + (i.precioCompra * (i.cantidad || 1)), 0))}</span>
+              <span className="text-gray-900">{fmt(filtered.reduce((s, i) => s + (i.precioVenta * (i.cantidad || 1)), 0))}</span>
+            </li>
+          </ul>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
@@ -268,6 +329,7 @@ export function StockManager() {
               </tfoot>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -311,7 +373,7 @@ export function StockManager() {
                 <Input value={form.imei} onChange={e => setForm({ ...form, imei: e.target.value })} placeholder="Opcional" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Categoria</Label>
                 <select value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} className="w-full h-10 rounded-md border border-gray-200 px-3 text-sm">
@@ -341,7 +403,9 @@ export function StockManager() {
                 </select>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Las ayudas de debajo ("Lo que costó cada unidad") se partían en tres
+                líneas en media pantalla y descuadraban las columnas. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Costo unitario</Label>
                 <Input type="number" value={form.precioCompra} onChange={e => setForm({ ...form, precioCompra: e.target.value })} placeholder="0" />
@@ -356,12 +420,12 @@ export function StockManager() {
 
             {form.precioCompra && form.cantidad && (
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <div className="flex justify-between text-xs">
+                <div className="flex flex-wrap justify-between gap-x-2 text-xs">
                   <span className="text-blue-600 font-semibold">Costo total ({form.cantidad} uds)</span>
                   <span className="font-black text-blue-800">{fmt(Number(form.precioCompra) * Number(form.cantidad || 1))}</span>
                 </div>
                 {form.precioVenta && (
-                  <div className="flex justify-between text-xs mt-1">
+                  <div className="flex flex-wrap justify-between gap-x-2 text-xs mt-1">
                     <span className="text-emerald-600 font-semibold">Ganancia potencial</span>
                     <span className="font-black text-emerald-700">{fmt((Number(form.precioVenta) - Number(form.precioCompra)) * Number(form.cantidad || 1))}</span>
                   </div>

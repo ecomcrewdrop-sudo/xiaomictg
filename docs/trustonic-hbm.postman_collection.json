@@ -1,0 +1,335 @@
+{
+	"info": {
+		"_postman_id": "44090a9e-93d2-448f-aee8-0828835ecac6",
+		"name": "Implementación ZT",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "17688994",
+		"_collection_link": "https://equality-mx.postman.co/workspace/ZeroTouch~836fe021-da9b-4bc8-9f36-6072247fd285/collection/17688994-44090a9e-93d2-448f-aee8-0828835ecac6?action=share&source=collection_link&creator=17688994"
+	},
+	"item": [
+		{
+			"name": "Enrolamiento",
+			"item": [
+				{
+					"name": "Paso 1 - Validación",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"QUERY_DEVICES\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"deviceList\": [\n      {\n      \"deviceUid\": \"354712521531030\"\n    }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Paso 2 - Carga",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"INVENTORY_UPLOAD\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"deviceList\": [\n      {\n        \"deviceType\": \"smartphone\",\n        \"idType\": \"imei\",\n        \"deviceUid\": \"351947257924263\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Paso 3 - Activación",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"SERVICE_ACTIVATE\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"deviceList\": [\n      {\n        \"deviceUid\": \"351847821412185\",\n        \"serviceList\": [\n        {\n          \"serviceName\": \"deviceFinancing\",\n          \"paymentMethod\": \"postpaid\"\n        }\n      ]\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Paso 4 - Validación",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"QUERY_DEVICES\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"deviceList\": [\n      {\n      \"deviceUid\": \"350182150759191\"\n    }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Gestion",
+			"item": [
+				{
+					"name": "Bloqueo",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"DEVICE_LOCK\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"lockList\": [\n      {\n        \"lockMsgTitle\": \"Telefono bloqueado\",\n        \"deviceUid\": \"3500000000000001\",\n        \"lockType\": \"lock\",\n        \"lockMsgContent\": \"Equipo bloqueado por falta de pago.\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Desbloqueo",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"DEVICE_UNLOCK\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"unLockList\": [\n      {\n        \"deviceUid\": \"1234567890098765\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Desbloqueo con PIN",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"DEVICE_PIN_UNLOCK\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"pinUnlockList\": [\n      {\n        \"challenge\": \"12345678\",\n        \"deviceUid\": \"350000000000001\"\n      },\n      {\n        \"deviceUid\": \"350000000000001\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Notificaciones",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"DEVICE_NOTIFY\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"messageList\": [\n      {\n        \"notificationTitle\": \"Proximo pago\",\n        \"deviceUid\": \"350000000000001\",\n        \"notificationType\": \"headsup\",        \n        \"notificationContent\": \"Se aproxima tu fecha de pago\"\n      },\n      {\n        \"notificationTitle\": \"string\",\n        \"deviceUid\": \"string\",\n        \"notificationType\": \"string\",\n        \"notificationContent\": \"string\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Notificación en bloqueo",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"DEVICE_LOCK_MESSAGE\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"lockMessageList\": [\n      {\n        \"messageTitle\": \"Tienes un pago vencido\",\n        \"deviceUid\": \"350000000000001\",\n        \"messageContent\": \"Desbloquea tu equipo haz tu pago.\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "FinFinanciamiento",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": {\n    \"code\": \"DEVICE_RELEASE\",\n    \"variant\": \"A\"\n  },\n  \"data\": {\n    \"deviceReleaseList\": [\n      {\n        \"reason\": \"End of contract\",\n        \"deviceUid\": \"350000000000001\"\n      },\n      {\n        \"reason\": \"string\",\n        \"deviceUid\": \"string\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseurl}}/v1/hbm",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"v1",
+								"hbm"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseurl",
+			"value": ""
+		},
+		{
+			"key": "token",
+			"value": ""
+		}
+	]
+}

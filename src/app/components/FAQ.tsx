@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: '¿Cuánto tiempo tarda el domicilio en Cartagena?',
-    a: 'Normalmente entre 30 minutos y 1 hora dentro de Cartagena. ¡El domicilio es GRATIS para cualquier dirección en la ciudad! Si prefieres, también puedes recoger en nuestra tienda (Cl. 31 #61-64, Los Ángeles).'
+    a: 'Normalmente entre 30 minutos y 1 hora dentro de Cartagena. El domicilio es GRATIS si compras un celular; en los demás productos (accesorios, relojes, audífonos, tablets y scooters) cuesta $10.000 para cualquier dirección de la ciudad. Si prefieres, también puedes recoger en nuestra tienda sin costo (Cl. 31 #61-64, Los Ángeles).'
   },
   {
     q: '¿Hacen envíos fuera de Cartagena?',

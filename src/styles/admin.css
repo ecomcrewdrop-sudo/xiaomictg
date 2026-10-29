@@ -1,0 +1,90 @@
+/**
+ * Reglas táctiles del panel de administración.
+ *
+ * POR QUÉ existe este archivo en lugar de tocar los componentes de ui/:
+ * el panel tiene más de cien controles repartidos en 18 módulos, y medidos en un
+ * iPhone casi todos quedaban por debajo del mínimo táctil (botones de 32px, iconos
+ * de acción de 36px, pestañas de 29px). Arreglarlos uno a uno es inviable y
+ * cambiar las primitivas de ui/ afectaría también a la tienda pública, que está en
+ * producción vendiendo. Con un selector colgado de `[data-admin-ui]` se corrigen
+ * todos de golpe sin que la tienda se entere.
+ *
+ * El atributo lo pone y lo quita AdminLayout sobre <html>; tiene que ser <html> y
+ * no un div porque los diálogos y desplegables de Radix viven en un portal colgado
+ * de <body>, fuera del árbol del panel.
+ *
+ * Todo va dentro de un `max-width: 767px` porque en escritorio los tamaños
+ * compactos originales son correctos y permiten ver más información a la vez.
+ */
+
+@media (max-width: 767px) {
+  /* 44px es el mínimo que piden tanto Apple (HIG) como Google (Material).
+     Las pestañas quedan fuera porque ya traen su propio alto explícito. */
+  [data-admin-ui] [data-slot='button'],
+  [data-admin-ui] [data-slot='select-trigger'],
+  [data-admin-ui] [data-slot='dropdown-menu-trigger'],
+  [data-admin-ui] [data-slot='select-item'],
+  [data-admin-ui] [data-slot='dropdown-menu-item'] {
+    min-height: 2.75rem;
+  }
+
+  /*
+   * Un botón que solo lleva un icono también necesita ancho, no solo alto.
+   *
+   * Antes esto colgaba de `:not(:has(> :not(svg)))`, o sea "botones cuyo único
+   * hijo es un icono". Pero el patrón que usa medio panel para quedarse en el
+   * icono en el móvil es `<svg/> + <span class="hidden sm:inline">Texto</span>`:
+   * el span sigue estando en el DOM aunque no se vea, así que contaba como hijo
+   * que no es svg y esos botones se quedaban fuera de la regla. Se medían 38px
+   * de ancho —los cinco de ticket de cada orden, entre otros—.
+   *
+   * Aplicarlo a todos los botones es más simple y no rompe nada: un ancho
+   * mínimo de 44px no estorba a un botón que ya es más ancho, y en el móvil no
+   * hay ningún caso en el que queramos un botón más estrecho que el dedo.
+   */
+  [data-admin-ui] [data-slot='button'] {
+    min-width: 2.75rem;
+  }
+
+  /*
+   * Safari de iOS amplía la página sola al enfocar un campo cuyo texto mida menos
+   * de 16px, y después la deja desplazada y ampliada. Los formularios del panel
+   * usan text-sm (14px), así que pasaba al editar cada producto. Subir a 16px es
+   * la única solución que no implica poner `maximum-scale=1`, que le quitaría al
+   * usuario el zoom manual.
+   */
+  [data-admin-ui] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  [data-admin-ui] select,
+  [data-admin-ui] textarea,
+  [data-admin-ui] [data-slot='select-trigger'] {
+    font-size: 16px;
+  }
+
+  [data-admin-ui] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  [data-admin-ui] textarea,
+  [data-admin-ui] select {
+    min-height: 2.75rem;
+  }
+
+  /* Las casillas de 16px son casi imposibles de acertar con el dedo. */
+  [data-admin-ui] input[type='checkbox'],
+  [data-admin-ui] input[type='radio'] {
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+  }
+
+  /*
+   * Los diálogos venían con `max-w-lg` y márgenes pensados para escritorio: en una
+   * pantalla de 360px quedaban estrechos y el contenido largo se cortaba sin poder
+   * desplazarlo. Aquí ocupan casi todo el ancho y nunca pasan del alto visible.
+   * `100dvh` y no `100vh` para descontar la barra de direcciones del navegador
+   * móvil, que si no deja los botones de guardar por debajo del borde.
+   */
+  [data-admin-ui] [data-slot='dialog-content'] {
+    width: calc(100vw - 1.5rem);
+    max-width: calc(100vw - 1.5rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}

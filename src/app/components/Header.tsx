@@ -4,7 +4,6 @@ import xiaomiLogo from '../../assets/xiaomi-logo-custom.png';
 import { useState, useEffect } from 'react';
 import { CartDialog } from './CartDialog';
 import { useProducts } from './ProductContext';
-import { NotificationBell } from './NotificationBell';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerClose } from './ui/drawer';
 import { Button } from './ui/button';
 import { SmartSearch } from './SmartSearch';
@@ -166,7 +165,9 @@ export function Header() {
                 <Search className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:scale-110" />
               </button>
 
-              {location.pathname === '/panel-gestion-xiaomi' && <NotificationBell />}
+              {/* La campana se mudó a la cabecera propia del panel (AdminPanel):
+                  /panel-gestion-xiaomi ya no monta esta cabecera de tienda, así
+                  que esta condición no podía cumplirse nunca. */}
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="relative flex items-center gap-1.5 md:gap-2 text-gray-700 hover:text-orange-500 p-1.5 md:p-2 rounded-full transition-colors"

@@ -625,61 +625,70 @@ export function PointOfSale() {
   return (
     <div className="space-y-4">
       {/* ── Control mensual de Rendimiento ────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-150 shadow-sm">
-        <div>
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-gray-50/50 p-3 rounded-2xl border border-gray-150 shadow-sm sm:p-4">
+        <div className="min-w-0">
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reportes Operativos</p>
           <h3 className="text-base font-black text-gray-800 flex items-center gap-1.5 mt-0.5">
-            <TrendingUp className="w-5 h-5 text-violet-600 animate-pulse" />
+            <TrendingUp className="w-5 h-5 shrink-0 text-violet-600 animate-pulse" />
             Rendimiento Mensual
           </h3>
         </div>
-        <div className="flex items-center gap-2">
+        {/* El selector de mes y el botón suman más de 360px juntos: en móvil ocupan
+            toda la fila siguiente y el input se reparte el espacio sobrante. */}
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Input
             type="month"
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="w-36 h-9 rounded-xl border-gray-200 text-xs font-semibold"
+            className="min-w-0 flex-1 h-9 rounded-xl border-gray-200 text-xs font-semibold sm:w-36 sm:flex-none"
           />
           <Button
             onClick={handleOpenSmartReport}
-            className="bg-violet-600 hover:bg-violet-700 text-white font-bold h-9 text-xs rounded-xl shadow-md active:scale-95 duration-200 flex items-center gap-1.5"
+            aria-label="Abrir reporte inteligente del mes"
+            className="bg-violet-600 hover:bg-violet-700 text-white font-bold h-9 text-xs rounded-xl shadow-md active:scale-95 duration-200 flex shrink-0 items-center gap-1.5"
           >
-            <BarChart2 className="w-4 h-4" /> Reporte Inteligente
+            <BarChart2 className="w-4 h-4 shrink-0" />
+            Reporte<span className="hidden sm:inline">&nbsp;Inteligente</span>
           </Button>
         </div>
       </div>
 
       {/* ── Resumen del mes ──────────────────────────────────────── */}
       {resumenMes && (
+        /*
+          Los importes en pesos ("$207.039.894") no tienen espacios donde partir y a
+          text-lg se salían de una tarjeta de media pantalla: de ahí el break-all y
+          el tamaño reducido solo en móvil.
+        */
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
-          <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-3 text-white shadow-md">
+          <div className="min-w-0 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-3 text-white shadow-md">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <TrendingUp className="w-4 h-4 opacity-80" />
+              <TrendingUp className="w-4 h-4 shrink-0 opacity-80" />
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Ganancia del mes</span>
             </div>
-            <p className="text-lg font-black leading-tight">{fmt(resumenMes.totalGanancia)}</p>
+            <p className="text-base font-black leading-tight break-all sm:text-lg">{fmt(resumenMes.totalGanancia)}</p>
             <p className="text-[10px] opacity-70">{resumenMes.cantidadVentas} ventas</p>
           </div>
-          <div className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl p-3 text-white shadow-md">
+          <div className="min-w-0 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl p-3 text-white shadow-md">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <DollarSign className="w-4 h-4 opacity-80" />
+              <DollarSign className="w-4 h-4 shrink-0 opacity-80" />
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Ventas del mes</span>
             </div>
-            <p className="text-lg font-black leading-tight">{fmt(resumenMes.totalVentas)}</p>
+            <p className="text-base font-black leading-tight break-all sm:text-lg">{fmt(resumenMes.totalVentas)}</p>
           </div>
-          <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white shadow-md">
+          <div className="min-w-0 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white shadow-md">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <ArrowUpCircle className="w-4 h-4 opacity-80" />
+              <ArrowUpCircle className="w-4 h-4 shrink-0 opacity-80" />
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Gastos del mes</span>
             </div>
-            <p className="text-lg font-black leading-tight">{fmt(resumenMes.totalGastos)}</p>
+            <p className="text-base font-black leading-tight break-all sm:text-lg">{fmt(resumenMes.totalGastos)}</p>
           </div>
-          <div className={`bg-gradient-to-br ${resumenMes.gananciaReal >= 0 ? 'from-teal-500 to-emerald-600' : 'from-red-500 to-rose-600'} rounded-xl p-3 text-white shadow-md`}>
+          <div className={`min-w-0 bg-gradient-to-br ${resumenMes.gananciaReal >= 0 ? 'from-teal-500 to-emerald-600' : 'from-red-500 to-rose-600'} rounded-xl p-3 text-white shadow-md`}>
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Wallet className="w-4 h-4 opacity-80" />
+              <Wallet className="w-4 h-4 shrink-0 opacity-80" />
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Utilidad real</span>
             </div>
-            <p className="text-lg font-black leading-tight">{fmt(resumenMes.gananciaReal)}</p>
+            <p className="text-base font-black leading-tight break-all sm:text-lg">{fmt(resumenMes.gananciaReal)}</p>
             <p className="text-[10px] opacity-70">ganancia - gastos</p>
           </div>
         </div>
@@ -690,28 +699,41 @@ export function PointOfSale() {
         <p className="text-xs font-bold text-gray-500 uppercase mb-2">Caja — Saldos actuales</p>
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {/* Total general */}
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-3 text-white shadow-md">
+          <div className="min-w-0 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-3 text-white shadow-md">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <DollarSign className="w-4 h-4 opacity-80" />
+              <DollarSign className="w-4 h-4 shrink-0 opacity-80" />
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Total caja</span>
             </div>
-            <p className="text-lg font-black leading-tight">{fmt(Object.values(saldos).reduce((s, v) => s + v, 0))}</p>
+            <p className="text-base font-black leading-tight break-all sm:text-lg">{fmt(Object.values(saldos).reduce((s, v) => s + v, 0))}</p>
           </div>
           {cuentas.map(c => {
             const Icon = ICONS[c.id] || CreditCard;
             const grad = GRADIENTS[c.color] || GRADIENTS.purple;
             return (
-              <div key={c.id} className={`bg-gradient-to-br ${grad} rounded-xl p-3 text-white shadow-md relative group`}>
+              <div key={c.id} className={`min-w-0 bg-gradient-to-br ${grad} rounded-xl p-3 text-white shadow-md relative group`}>
                 {!PROTECTED_ACCOUNTS.includes(c.id) && (
-                  <button onClick={() => handleDeleteCuenta(c.id)} className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-black/20 hover:bg-black/40 rounded-full p-0.5 transition-opacity">
+                  /* Sin :hover en táctil la X nunca aparecería: en móvil se queda
+                   * visible.
+                   *
+                   * 36px a propósito, por debajo del mínimo táctil de 44px del
+                   * resto del panel: con `p-0.5` sobre un icono de 12px la diana
+                   * eran 16px —imposible de acertar—, pero la tarjeta mide unos
+                   * 160px y una de 44px en la esquina se comería el nombre de la
+                   * cuenta y volvería fácil borrarla sin querer. Mismo criterio
+                   * que en CashRegister, y la acción pide confirmación. */
+                  <button
+                    onClick={() => handleDeleteCuenta(c.id)}
+                    aria-label={`Eliminar cuenta ${c.nombre}`}
+                    className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/20 transition-opacity hover:bg-black/40 md:right-1.5 md:top-1.5 md:h-auto md:w-auto md:p-0.5 md:opacity-0 md:group-hover:opacity-100"
+                  >
                     <X className="w-3 h-3" />
                   </button>
                 )}
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <Icon className="w-4 h-4 opacity-80" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{c.nombre}</span>
+                <div className="flex items-center gap-1.5 mb-0.5 pr-4">
+                  <Icon className="w-4 h-4 shrink-0 opacity-80" />
+                  <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wider opacity-80">{c.nombre}</span>
                 </div>
-                <p className="text-lg font-black leading-tight">{fmt(saldos[c.id] || 0)}</p>
+                <p className="text-base font-black leading-tight break-all sm:text-lg">{fmt(saldos[c.id] || 0)}</p>
               </div>
             );
           })}
@@ -757,7 +779,7 @@ export function PointOfSale() {
       {/* ── Product grid ──────────────────────────────────────────── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               value={search}
@@ -766,8 +788,12 @@ export function PointOfSale() {
               className="pl-9 h-9"
             />
           </div>
-          <Button onClick={() => openSale(null)} className="bg-violet-600 hover:bg-violet-700 text-white gap-1 h-9 text-xs">
-            <Plus className="w-3.5 h-3.5" /> Venta celular
+          <Button
+            onClick={() => openSale(null)}
+            aria-label="Registrar venta de celular"
+            className="bg-violet-600 hover:bg-violet-700 text-white gap-1 h-9 text-xs shrink-0 whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5 shrink-0" /> Venta<span className="hidden sm:inline">&nbsp;celular</span>
           </Button>
         </div>
 
@@ -779,7 +805,7 @@ export function PointOfSale() {
                 key={p.id}
                 onClick={() => !outOfStock && openSale(p)}
                 disabled={outOfStock}
-                className={`bg-white border rounded-xl p-3 text-left transition-all hover:shadow-md hover:border-violet-300 ${
+                className={`min-w-0 bg-white border rounded-xl p-2.5 text-left transition-all hover:shadow-md hover:border-violet-300 sm:p-3 ${
                   outOfStock ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                 }`}
               >
@@ -793,16 +819,16 @@ export function PointOfSale() {
                 </div>
                 <h3 className="font-bold text-xs text-gray-900 truncate">{p.name}</h3>
                 {p.storageVariants && p.storageVariants.length > 1 ? (
-                  <div>
-                    <p className="font-black text-sm text-violet-600">
+                  <div className="min-w-0">
+                    <p className="font-black text-sm text-violet-600 break-all">
                       Desde {fmt(Math.round(Math.min(...p.storageVariants.map(v => v.price))))}
                     </p>
-                    <p className="text-[9px] text-gray-400 font-semibold">
+                    <p className="truncate text-[9px] text-gray-400 font-semibold">
                       {p.storageVariants.map(v => v.storage).join(' · ')}
                     </p>
                   </div>
                 ) : (
-                  <p className="font-black text-sm text-violet-600">{fmt(Math.round(p.price))}</p>
+                  <p className="font-black text-sm text-violet-600 break-all">{fmt(Math.round(p.price))}</p>
                 )}
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
                   <Package className="w-3 h-3" /> Stock: {p.stock}
@@ -835,12 +861,12 @@ export function PointOfSale() {
               {selectedProduct && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <img src={selectedProduct.image} className="w-14 h-14 object-contain rounded-lg bg-white p-1" />
-                    <div className="flex-1">
-                      <p className="font-bold text-sm text-violet-900">
+                    <img src={selectedProduct.image} className="w-14 h-14 shrink-0 object-contain rounded-lg bg-white p-1" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm text-violet-900 break-words">
                         {selectedProduct.name}{selectedVariant ? ` - ${selectedVariant}` : ''}
                       </p>
-                      <p className="text-lg font-black text-violet-600">{fmt(Number(saleForm.precioVenta) || Math.round(selectedProduct.price))}</p>
+                      <p className="text-lg font-black text-violet-600 break-all">{fmt(Number(saleForm.precioVenta) || Math.round(selectedProduct.price))}</p>
                     </div>
                   </div>
                   {selectedProduct.storageVariants && selectedProduct.storageVariants.length > 0 && (
@@ -859,7 +885,7 @@ export function PointOfSale() {
                                 precioVenta: Math.round(sv.price).toString(),
                               }));
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                            className={`max-w-full px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                               selectedVariant === sv.storage
                                 ? 'bg-violet-600 text-white border-violet-600 ring-2 ring-violet-300 shadow-md'
                                 : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50 hover:border-violet-400'
@@ -883,21 +909,23 @@ export function PointOfSale() {
             {/* ── PASO 2: Datos del cliente ────────────────────── */}
             <div className="bg-gray-50 rounded-lg p-3 space-y-2">
               <p className="text-xs font-bold text-gray-500 uppercase">Datos del cliente</p>
-              <div className="grid grid-cols-2 gap-2">
+              {/* A 360px dos columnas dejan cada campo en ~130px: el placeholder
+                  "Cédula / NIT" se cortaba y el nombre tecleado no se veía entero. */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Input value={saleForm.cliente} onChange={e => setSaleForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Nombre *" />
                 <Input value={saleForm.cedula} onChange={e => setSaleForm(f => ({ ...f, cedula: e.target.value }))} placeholder="Cédula / NIT" />
               </div>
               <Input value={saleForm.telefono} onChange={e => setSaleForm(f => ({ ...f, telefono: e.target.value }))} placeholder="Teléfono" className="w-full" />
               {clientLoyalty && clientLoyalty.points > 0 && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between transition-all duration-300">
-                  <div className="space-y-0.5">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 transition-all duration-300">
+                  <div className="min-w-0 space-y-0.5">
                     <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Puntos VIP Disponibles</p>
-                    <p className="text-sm font-extrabold text-emerald-800 flex items-center gap-1">
+                    <p className="text-sm font-extrabold text-emerald-800 flex flex-wrap items-center gap-1">
                       🎁 {clientLoyalty.points.toLocaleString('es-CO')} puntos
                       <span className="text-xs text-emerald-600 font-normal">(= {fmt(clientLoyalty.points)})</span>
                     </p>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-sm select-none">
+                  <label className="flex shrink-0 items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-sm select-none">
                     <input
                       type="checkbox"
                       checked={usarPuntos}
@@ -913,11 +941,11 @@ export function PointOfSale() {
             {/* ── PASO 3: Precio y rebaja ──────────────────────── */}
             <div className="bg-gray-50 rounded-lg p-3 space-y-2">
               <p className="text-xs font-bold text-gray-500 uppercase">Precio</p>
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="min-w-0 flex-1">
                   <Input type="number" value={saleForm.precioVenta} onChange={e => setSaleForm(f => ({ ...f, precioVenta: e.target.value }))} placeholder="Precio venta *" className="text-lg font-bold h-11" />
                 </div>
-                <div className="w-28">
+                <div className="w-24 shrink-0 sm:w-28">
                   <Input type="number" value={saleForm.descuento} onChange={e => setSaleForm(f => ({ ...f, descuento: e.target.value }))} placeholder="Rebaja" className="border-orange-200 focus:border-orange-400 h-11" />
                 </div>
               </div>
@@ -935,7 +963,7 @@ export function PointOfSale() {
                       <span className="font-bold">-{fmt(Math.min((Number(saleForm.precioVenta) || 0) - (Number(saleForm.descuento) || 0), clientLoyalty.points))}</span>
                     </div>
                   )}
-                  <div className="border-t border-orange-200 pt-1 flex justify-between font-bold text-gray-800 text-sm">
+                  <div className="border-t border-orange-200 pt-1 flex flex-wrap justify-between gap-x-2 font-bold text-gray-800 text-sm">
                     <span>Total Real a Cobrar:</span>
                     <span>{fmt(Math.max(0, (Number(saleForm.precioVenta) || 0) - (Number(saleForm.descuento) || 0) - (usarPuntos && clientLoyalty ? clientLoyalty.points : 0)))}</span>
                   </div>
@@ -945,21 +973,25 @@ export function PointOfSale() {
 
             {/* ── Combo / Obsequio ──────────────────────────────── */}
             <div className={`rounded-lg p-3 space-y-2 ${obsequio.activo ? 'bg-pink-50 border-2 border-pink-400' : 'bg-amber-50 border border-amber-300'}`}>
+              {/* Sin relleno ni altura el botón medía 20px —solo el icono—, y es
+                  el que despliega todo el bloque del obsequio. */}
               <button
                 type="button"
                 onClick={() => setObsequio(o => ({ ...o, activo: !o.activo }))}
-                className="flex items-center gap-2 w-full text-left"
+                className="flex min-h-11 w-full items-center gap-2 text-left sm:min-h-0"
               >
-                <Gift className={`w-5 h-5 ${obsequio.activo ? 'text-pink-600' : 'text-amber-600'}`} />
-                <span className={`text-sm font-bold ${obsequio.activo ? 'text-pink-600' : 'text-amber-700'}`}>
+                <Gift className={`w-5 h-5 shrink-0 ${obsequio.activo ? 'text-pink-600' : 'text-amber-600'}`} />
+                <span className={`min-w-0 text-sm font-bold ${obsequio.activo ? 'text-pink-600' : 'text-amber-700'}`}>
                   {obsequio.activo ? '✓ Combo / Obsequio incluido' : '+ Agregar combo / obsequio'}
                 </span>
-                {!obsequio.activo && <span className="ml-auto text-[10px] text-amber-500 font-semibold">Ej: audífonos, forro, vidrio</span>}
+                {/* La pista de ejemplos no cabe junto al rótulo en móvil y empujaba
+                    el texto fuera de la tarjeta; solo aparece de sm hacia arriba. */}
+                {!obsequio.activo && <span className="ml-auto hidden text-[10px] text-amber-500 font-semibold sm:inline">Ej: audífonos, forro, vidrio</span>}
               </button>
               {obsequio.activo && (
                 <div className="space-y-2 pt-1">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-2 relative">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <div className="relative sm:col-span-2">
                       <Label className="text-[10px] text-pink-600 font-bold">Producto incluido</Label>
                       <Input
                         value={obsequio.nombre}
@@ -992,10 +1024,10 @@ export function PointOfSale() {
                                   });
                                   setShowGiftSuggestions(false);
                                 }}
-                                className="px-3 py-2 text-xs hover:bg-pink-50 cursor-pointer border-b border-gray-50 flex justify-between items-center"
+                                className="px-3 py-2 text-xs hover:bg-pink-50 cursor-pointer border-b border-gray-50 flex flex-wrap justify-between items-center gap-x-2"
                               >
-                                <span className="font-bold text-gray-800">{item.producto}</span>
-                                <span className="text-gray-400 font-mono text-[10px]">Costo: ${item.precioCompra?.toLocaleString('es-CO')}</span>
+                                <span className="min-w-0 break-words font-bold text-gray-800">{item.producto}</span>
+                                <span className="shrink-0 text-gray-400 font-mono text-[10px]">Costo: ${item.precioCompra?.toLocaleString('es-CO')}</span>
                               </div>
                             ))}
                         </div>
@@ -1020,7 +1052,7 @@ export function PointOfSale() {
                   <button
                     type="button"
                     onClick={() => setObsequio({ activo: false, nombre: '', costo: '', inventarioId: '' })}
-                    className="text-[10px] text-pink-400 hover:text-pink-600 font-semibold"
+                    className="inline-flex min-h-11 items-center text-[10px] font-semibold text-pink-400 hover:text-pink-600 sm:min-h-0"
                   >
                     ✕ Quitar combo
                   </button>
@@ -1039,14 +1071,19 @@ export function PointOfSale() {
                 const val = Number(pagos[c.id] || 0);
                 return (
                   <div key={c.id}>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 w-28 flex-shrink-0">
-                        <Icon className="w-4 h-4 text-gray-500" />
+                    {/*
+                      La etiqueta de la cuenta iba en una columna fija de 112px con el
+                      nombre, el badge "+5%" y el reloj dentro: se desbordaba y el campo
+                      de monto quedaba en 100px. En móvil el rótulo va encima del campo.
+                    */}
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <div className="flex items-center gap-1.5 sm:w-28 sm:flex-shrink-0">
+                        <Icon className="w-4 h-4 shrink-0 text-gray-500" />
                         <span className="text-sm font-semibold text-gray-700">{c.nombre}</span>
-                        {isDatafono && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1 rounded">+5%</span>}
-                        {(isDatafono || isAddi) && <Clock className="w-3 h-3 text-amber-500" />}
+                        {isDatafono && <span className="shrink-0 text-[9px] font-bold text-orange-600 bg-orange-100 px-1 rounded">+5%</span>}
+                        {(isDatafono || isAddi) && <Clock className="w-3 h-3 shrink-0 text-amber-500" />}
                       </div>
-                      <div className="relative flex-1">
+                      <div className="relative min-w-0 flex-1">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                         <Input
                           type="number"
@@ -1058,12 +1095,12 @@ export function PointOfSale() {
                       </div>
                     </div>
                     {isDatafono && val > 0 && (
-                      <p className="ml-28 pl-2 mt-0.5 text-[10px] text-orange-600 font-semibold">
+                      <p className="mt-0.5 text-[10px] text-orange-600 font-semibold sm:ml-28 sm:pl-2">
                         Cliente paga: {fmt(val + Math.round(val * DATAFONO_SURCHARGE))} · Cae al siguiente día hábil
                       </p>
                     )}
                     {isAddi && val > 0 && (
-                      <p className="ml-28 pl-2 mt-0.5 text-[10px] text-purple-600 font-semibold">
+                      <p className="mt-0.5 text-[10px] text-purple-600 font-semibold sm:ml-28 sm:pl-2">
                         Pendiente · Addi paga en ~7 días
                       </p>
                     )}
@@ -1088,9 +1125,16 @@ export function PointOfSale() {
             {/* Notas */}
             <Input value={saleForm.notas} onChange={e => setSaleForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas (opcional)" />
 
-            <Button onClick={handleSale} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2 h-12 text-base font-bold">
-              <Printer className="w-5 h-5" /> {saving ? 'Registrando...' : 'Facturar e imprimir'}
-            </Button>
+            {/*
+              El formulario mide varias pantallas en un móvil y el botón de cobrar
+              quedaba al final: había que desplazarse a ciegas con el cliente delante.
+              Fijado abajo del diálogo con fondo opaco está siempre a un toque.
+            */}
+            <div className="sticky bottom-0 -mx-1 bg-white/95 px-1 pt-2 pb-1 backdrop-blur-sm">
+              <Button onClick={handleSale} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2 h-12 text-base font-bold">
+                <Printer className="w-5 h-5 shrink-0" /> {saving ? 'Registrando...' : 'Facturar e imprimir'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1105,11 +1149,13 @@ export function PointOfSale() {
             <DialogDescription>Ingreso o egreso manual a una cuenta</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 mt-2">
+            {/* `py-2` sobre una línea de 20px dejaba el botón en 36px, y elegir
+                mal aquí invierte el signo del movimiento de caja. */}
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setMovTipo('ingreso')} className={`py-2 rounded-lg text-sm font-bold ${movTipo === 'ingreso' ? 'bg-green-100 text-green-700 ring-2 ring-green-400' : 'bg-gray-100 text-gray-500'}`}>
+              <button onClick={() => setMovTipo('ingreso')} className={`min-h-11 py-2 rounded-lg text-sm font-bold sm:min-h-0 ${movTipo === 'ingreso' ? 'bg-green-100 text-green-700 ring-2 ring-green-400' : 'bg-gray-100 text-gray-500'}`}>
                 <ArrowDownCircle className="w-4 h-4 inline mr-1" /> Ingreso
               </button>
-              <button onClick={() => setMovTipo('egreso')} className={`py-2 rounded-lg text-sm font-bold ${movTipo === 'egreso' ? 'bg-red-100 text-red-700 ring-2 ring-red-400' : 'bg-gray-100 text-gray-500'}`}>
+              <button onClick={() => setMovTipo('egreso')} className={`min-h-11 py-2 rounded-lg text-sm font-bold sm:min-h-0 ${movTipo === 'egreso' ? 'bg-red-100 text-red-700 ring-2 ring-red-400' : 'bg-gray-100 text-gray-500'}`}>
                 <ArrowUpCircle className="w-4 h-4 inline mr-1" /> Egreso
               </button>
             </div>
@@ -1117,13 +1163,13 @@ export function PointOfSale() {
               <Label>Cuenta</Label>
               <div className="flex gap-2 mt-1 flex-wrap">
                 {cuentas.map(c => (
-                  <button key={c.id} onClick={() => setMovCuenta(c.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${movCuenta === c.id ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-400' : 'bg-gray-100 text-gray-500'}`}>
+                  <button key={c.id} onClick={() => setMovCuenta(c.id)} className={`min-h-11 rounded-lg px-3 text-xs font-semibold sm:min-h-0 sm:py-1.5 ${movCuenta === c.id ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-400' : 'bg-gray-100 text-gray-500'}`}>
                     {c.nombre}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div><Label>Monto *</Label><Input type="number" value={movMonto} onChange={e => setMovMonto(e.target.value)} placeholder="0" /></div>
               <div><Label>Concepto *</Label><Input value={movConcepto} onChange={e => setMovConcepto(e.target.value)} placeholder="Ej: Pago..." /></div>
             </div>
@@ -1146,7 +1192,7 @@ export function PointOfSale() {
           <div className="space-y-3 mt-2">
             <div className="flex gap-2 flex-wrap">
               {cuentas.map(c => (
-                <button key={c.id} onClick={() => setAjusteCuenta(c.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${ajusteCuenta === c.id ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-400' : 'bg-gray-100 text-gray-500'}`}>
+                <button key={c.id} onClick={() => setAjusteCuenta(c.id)} className={`min-h-11 max-w-full break-all rounded-lg px-3 text-xs font-semibold sm:min-h-0 sm:py-1.5 ${ajusteCuenta === c.id ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-400' : 'bg-gray-100 text-gray-500'}`}>
                   {c.nombre} ({fmt(saldos[c.id] || 0)})
                 </button>
               ))}
@@ -1182,7 +1228,7 @@ export function PointOfSale() {
                 autoFocus
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-xs font-bold text-gray-500">Precio venta *</Label>
                 <Input
@@ -1218,7 +1264,7 @@ export function PointOfSale() {
                     <button
                       key={c.id}
                       onClick={() => setQuickPago(c.id)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                      className={`flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all sm:min-h-0 ${
                         quickPago === c.id
                           ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-400'
                           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -1234,7 +1280,7 @@ export function PointOfSale() {
             <Button
               onClick={handleQuickSale}
               disabled={saving}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-white gap-2 h-12 text-base font-bold"
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white gap-2 h-auto min-h-12 py-2 text-base font-bold whitespace-normal break-words"
             >
               {saving ? 'Registrando...' : `Facturar ${quickForm.producto || 'accesorio'}`}
             </Button>
@@ -1255,9 +1301,13 @@ export function PointOfSale() {
             <div><Label>Nombre *</Label><Input value={newCuentaNombre} onChange={e => setNewCuentaNombre(e.target.value)} placeholder="Ej: Bold, Deuda Pedro, Nequi..." /></div>
             <div>
               <Label>Color</Label>
+              {/* Los ocho círculos medían 28px: por debajo del mínimo táctil y
+                  pegados entre sí, así que acertar el color era cuestión de
+                  suerte. En móvil pasan a 44px (caben en dos filas) y de sm
+                  hacia arriba se quedan en los 28px de siempre. */}
               <div className="flex gap-2 mt-1 flex-wrap">
                 {Object.keys(GRADIENTS).map(color => (
-                  <button key={color} onClick={() => setNewCuentaColor(color)} className={`w-7 h-7 rounded-full bg-gradient-to-br ${GRADIENTS[color]} ${newCuentaColor === color ? 'ring-2 ring-offset-2 ring-violet-500' : ''}`} />
+                  <button key={color} onClick={() => setNewCuentaColor(color)} aria-label={`Color ${color}`} className={`h-11 w-11 shrink-0 rounded-full bg-gradient-to-br sm:h-7 sm:w-7 ${GRADIENTS[color]} ${newCuentaColor === color ? 'ring-2 ring-offset-2 ring-violet-500' : ''}`} />
                 ))}
               </div>
             </div>
@@ -1270,11 +1320,11 @@ export function PointOfSale() {
           SMART MONTHLY REPORT DIALOG
          ══════════════════════════════════════════════════════════════ */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-4 bg-white sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-black text-gray-800 text-lg flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-violet-600" />
-              Reporte de Rendimiento Mensual Inteligente ({selectedMonth})
+            <DialogTitle className="font-black text-gray-800 text-base flex items-center gap-2 sm:text-lg">
+              <BarChart2 className="w-5 h-5 shrink-0 text-violet-600" />
+              <span className="min-w-0 break-words">Reporte de Rendimiento Mensual Inteligente ({selectedMonth})</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
               Análisis completo de ventas, utilidades, balances de caja, deudas pendientes y recomendaciones de negocio.
@@ -1287,16 +1337,16 @@ export function PointOfSale() {
               <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Generando Insights...</p>
             </div>
           ) : smartReport ? (
-            <div className="space-y-6 mt-4">
+            <div className="space-y-4 mt-4 sm:space-y-6">
               {/* ── SECCIÓN 1: MÉTRICAS CLAVE Y COMPARATIVAS ── */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
                 {/* Ventas */}
-                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <div className="min-w-0 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm flex flex-col justify-between sm:p-4">
                   <div>
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ventas Totales</span>
-                    <h4 className="text-base font-extrabold text-gray-800 mt-1">{fmt(smartReport.totalVentas)}</h4>
+                    <h4 className="text-base font-extrabold text-gray-800 mt-1 break-all">{fmt(smartReport.totalVentas)}</h4>
                   </div>
-                  <div className="flex items-center gap-1 mt-2 text-[10px] font-bold">
+                  <div className="flex flex-wrap items-center gap-1 mt-2 text-[10px] font-bold">
                     {smartReport.pctVentas >= 0 ? (
                       <span className="text-emerald-600 flex items-center"><ArrowUp className="w-3 h-3 mr-0.5" /> +{smartReport.pctVentas}%</span>
                     ) : (
@@ -1307,12 +1357,12 @@ export function PointOfSale() {
                 </div>
 
                 {/* Ganancia Bruta */}
-                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <div className="min-w-0 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm flex flex-col justify-between sm:p-4">
                   <div>
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ganancia Bruta</span>
-                    <h4 className="text-base font-extrabold text-gray-800 mt-1">{fmt(smartReport.totalGanancia)}</h4>
+                    <h4 className="text-base font-extrabold text-gray-800 mt-1 break-all">{fmt(smartReport.totalGanancia)}</h4>
                   </div>
-                  <div className="flex items-center gap-1 mt-2 text-[10px] font-bold">
+                  <div className="flex flex-wrap items-center gap-1 mt-2 text-[10px] font-bold">
                     {smartReport.pctGanancia >= 0 ? (
                       <span className="text-emerald-600 flex items-center"><ArrowUp className="w-3 h-3 mr-0.5" /> +{smartReport.pctGanancia}%</span>
                     ) : (
@@ -1323,12 +1373,12 @@ export function PointOfSale() {
                 </div>
 
                 {/* Gastos */}
-                <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <div className="min-w-0 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm flex flex-col justify-between sm:p-4">
                   <div>
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Gastos</span>
-                    <h4 className="text-base font-extrabold text-gray-800 mt-1">{fmt(smartReport.totalGastos)}</h4>
+                    <h4 className="text-base font-extrabold text-gray-800 mt-1 break-all">{fmt(smartReport.totalGastos)}</h4>
                   </div>
-                  <div className="flex items-center gap-1 mt-2 text-[10px] font-bold">
+                  <div className="flex flex-wrap items-center gap-1 mt-2 text-[10px] font-bold">
                     {smartReport.pctGastos >= 0 ? (
                       <span className="text-red-500 flex items-center"><ArrowUp className="w-3 h-3 mr-0.5" /> +{smartReport.pctGastos}%</span>
                     ) : (
@@ -1339,10 +1389,10 @@ export function PointOfSale() {
                 </div>
 
                 {/* Utilidad Real */}
-                <div className={`rounded-2xl p-4 shadow-sm flex flex-col justify-between text-white ${smartReport.gananciaReal >= 0 ? 'bg-gradient-to-br from-teal-500 to-emerald-600' : 'bg-gradient-to-br from-red-500 to-rose-600'}`}>
+                <div className={`min-w-0 rounded-2xl p-3 shadow-sm flex flex-col justify-between text-white sm:p-4 ${smartReport.gananciaReal >= 0 ? 'bg-gradient-to-br from-teal-500 to-emerald-600' : 'bg-gradient-to-br from-red-500 to-rose-600'}`}>
                   <div>
                     <span className="text-[10px] opacity-85 font-bold uppercase tracking-wider">Ganancia Real Neta</span>
-                    <h4 className="text-base font-black mt-1">{fmt(smartReport.gananciaReal)}</h4>
+                    <h4 className="text-base font-black mt-1 break-all">{fmt(smartReport.gananciaReal)}</h4>
                   </div>
                   <div className="text-[9px] opacity-75 font-semibold mt-2">
                     Ventas y ganancias menos gastos operativos
@@ -1351,8 +1401,8 @@ export function PointOfSale() {
               </div>
 
               {/* ── SECCIÓN 2: DESGLOSE POR CATEGORÍA ── */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-4">
+              <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-4 sm:p-5">
                   <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Package className="w-4 h-4 text-violet-600" />
                     Desglose por Categoría
@@ -1360,7 +1410,7 @@ export function PointOfSale() {
                   
                   {/* Celulares */}
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-bold text-gray-600">
+                    <div className="flex flex-wrap justify-between gap-x-2 text-xs font-bold text-gray-600">
                       <span>Celulares ({smartReport.desgloseCategorias.celulares.cantidad} unds)</span>
                       <span>{fmt(smartReport.desgloseCategorias.celulares.ventas)}</span>
                     </div>
@@ -1372,7 +1422,7 @@ export function PointOfSale() {
 
                   {/* Accesorios */}
                   <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-xs font-bold text-gray-600">
+                    <div className="flex flex-wrap justify-between gap-x-2 text-xs font-bold text-gray-600">
                       <span>Accesorios / Vidrios / Forros ({smartReport.desgloseCategorias.accesorios.cantidad} unds)</span>
                       <span>{fmt(smartReport.desgloseCategorias.accesorios.ventas)}</span>
                     </div>
@@ -1384,16 +1434,16 @@ export function PointOfSale() {
                 </div>
 
                 {/* Métodos de Pago */}
-                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-3.5">
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-3.5 sm:p-5">
                   <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Wallet className="w-4 h-4 text-violet-600" />
                     Distribución de Métodos de Pago
                   </h5>
                   <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                     {Object.entries(smartReport.porMetodo).map(([metodo, valor]: any) => (
-                      <div key={metodo} className="flex justify-between items-center text-xs border-b border-gray-100 pb-1.5">
-                        <span className="font-bold text-gray-600 capitalize">{metodo}</span>
-                        <span className="font-mono text-gray-700 font-semibold">{fmt(valor)}</span>
+                      <div key={metodo} className="flex justify-between items-center gap-2 text-xs border-b border-gray-100 pb-1.5">
+                        <span className="min-w-0 truncate font-bold text-gray-600 capitalize">{metodo}</span>
+                        <span className="shrink-0 font-mono text-gray-700 font-semibold">{fmt(valor)}</span>
                       </div>
                     ))}
                     {Object.keys(smartReport.porMetodo).length === 0 && (
@@ -1404,29 +1454,29 @@ export function PointOfSale() {
               </div>
 
               {/* ── SECCIÓN 3: DEUDAS Y SALDOS PENDIENTES ── */}
-              <div className="bg-white border border-gray-150 rounded-2xl p-5">
+              <div className="bg-white border border-gray-150 rounded-2xl p-4 sm:p-5">
                 <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 mb-4">
-                  <DollarSign className="w-4 h-4 text-violet-600" />
+                  <DollarSign className="w-4 h-4 shrink-0 text-violet-600" />
                   Deudas y Cuentas por Cobrar (Saldos en el Aire)
                 </h5>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <div className="bg-red-50/50 border border-red-100 rounded-xl p-3.5">
+                <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+                  <div className="min-w-0 bg-red-50/50 border border-red-100 rounded-xl p-3.5">
                     <p className="text-[9px] text-red-500 font-bold uppercase">Deudas con Proveedores</p>
-                    <p className="text-base font-extrabold text-red-800 mt-1">{fmt(smartReport.deudasSaldos.proveedores)}</p>
+                    <p className="text-base font-extrabold text-red-800 mt-1 break-all">{fmt(smartReport.deudasSaldos.proveedores)}</p>
                   </div>
-                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3.5">
+                  <div className="min-w-0 bg-blue-50/50 border border-blue-100 rounded-xl p-3.5">
                     <p className="text-[9px] text-blue-500 font-bold uppercase">Financiación CrediLock Activa</p>
-                    <p className="text-base font-extrabold text-blue-800 mt-1">{fmt(smartReport.deudasSaldos.credilock)}</p>
+                    <p className="text-base font-extrabold text-blue-800 mt-1 break-all">{fmt(smartReport.deudasSaldos.credilock)}</p>
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-3.5">
+                  <div className="min-w-0 bg-amber-50/50 border border-amber-100 rounded-xl p-3.5">
                     <p className="text-[9px] text-amber-500 font-bold uppercase">Ventas Pendientes por Cobrar</p>
-                    <p className="text-base font-extrabold text-amber-800 mt-1">{fmt(smartReport.deudasSaldos.ventasPendientes)}</p>
+                    <p className="text-base font-extrabold text-amber-800 mt-1 break-all">{fmt(smartReport.deudasSaldos.ventasPendientes)}</p>
                   </div>
                 </div>
               </div>
 
               {/* ── SECCIÓN 4: INSIGHTS E INTELIGENCIA DE NEGOCIO ── */}
-              <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-5 space-y-3">
+              <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-3 sm:p-5">
                 <h5 className="text-xs font-bold text-amber-850 uppercase tracking-wider flex items-center gap-1.5">
                   <Lightbulb className="w-4 h-4 text-amber-600" />
                   Insights y Recomendaciones de Operación
@@ -1435,7 +1485,7 @@ export function PointOfSale() {
                   {smartReport.insights.map((insight: string, idx: number) => (
                     <div key={idx} className="flex gap-2.5 items-start text-xs text-amber-900 leading-relaxed font-semibold">
                       <Check className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                      <span dangerouslySetInnerHTML={{ __html: insight }} />
+                      <span className="min-w-0 break-words" dangerouslySetInnerHTML={{ __html: insight }} />
                     </div>
                   ))}
                 </div>

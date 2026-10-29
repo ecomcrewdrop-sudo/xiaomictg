@@ -92,6 +92,10 @@ vi.mock('../app/components/ProductContext', () => ({
     markOrdersAsRead: vi.fn(),
     ticketConfig: mockTicketConfig,
     updateTicketConfig: vi.fn().mockResolvedValue(undefined),
+    // AdminPanel la llama en un useEffect al montar; sin ella el componente
+    // revienta antes de pintar y los 11 casos de abajo fallan con
+    // "loadAdminData is not a function".
+    loadAdminData: vi.fn().mockResolvedValue(undefined),
     cart: [],
     addToCart: vi.fn(),
     removeFromCart: vi.fn(),
@@ -159,8 +163,12 @@ describe('AdminPanel', () => {
         <AdminPanel />
       </BrowserRouter>
     );
-    expect(screen.getByText('Xiaomi Redmi Note 12')).toBeInTheDocument();
-    expect(screen.getByText('Xiaomi Watch S1')).toBeInTheDocument();
+    // getAllByText y no getByText: el panel pinta DOS veces cada producto, las
+    // tarjetas para móvil (`md:hidden`) y la tabla para escritorio
+    // (`hidden md:table`). En el navegador sólo se ve una porque Tailwind oculta
+    // la otra, pero jsdom no aplica CSS y las dos están en el DOM.
+    expect(screen.getAllByText('Xiaomi Redmi Note 12').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Xiaomi Watch S1').length).toBeGreaterThan(0);
   });
 
   it('tiene botón de cerrar sesión', () => {

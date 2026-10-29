@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import { createHash, createHmac, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, timingSafeEqual, randomBytes, scryptSync } from 'crypto';
 import dns from 'dns';
 
 // Resolver a IPv4 primero para evitar errores "ENETUNREACH" con SMTP/Gmail
@@ -22,14 +22,124 @@ import makeWASocket, {
   proto,
 } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
+// CrediLock: bloqueo remoto de equipos financiados. Vive en su propio módulo
+// porque este archivo ya pasa de 5.600 líneas.
+import { registrarBloqueo, alRegistrarPago, alOtorgarProrroga, alAnularProrroga, type DepsBloqueo } from './blocking';
+import {
+  fechaLarga,
+  fechaLimite,
+  prorrogaVigente,
+  tieneProrroga,
+  validarProrroga,
+  type Prorroga,
+} from './prorroga';
+// Portal del cliente y pago en línea de cuotas. Mismo motivo que arriba para que
+// viva aparte: son ~1.000 líneas entre lógica, página y rutas.
+import {
+  asegurarSecretoPortal,
+  cerrarSolicitudAlConceder,
+  confirmarPagoDeCuotas,
+  rechazarPagoDeCuotas,
+  registrarPortal,
+  type DepsPortal,
+} from './portal-rutas';
+import { esReferenciaDeCuota, linkPortal } from './portal';
+import { type ConfigBold, crearLinkDePago } from './bold-link';
+import { type DepsConciliador, conciliarPagos } from './conciliador';
+import { diasQueFaltan, tipoDeAviso } from './recordatorios';
+import { asegurarCodigoCorto, asegurarIndiceCodigo } from './codigo-corto';
 
 dotenv.config();
+
+// Dominios autorizados a llamar a la API desde un navegador. Antes era '*',
+// lo que permitía que cualquier web montara un panel falso contra este
+// backend o leyera las respuestas con la sesión del administrador.
+// ORIGENES_EXTRA (en Railway, separados por comas) sirve para dar de alta un
+// dominio nuevo sin tener que recompilar.
+const ORIGENES_PERMITIDOS = new Set([
+  'https://xiaomicartagena.com',
+  'https://www.xiaomicartagena.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  ...(process.env.ORIGENES_EXTRA || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean),
+]);
+
+/**
+ * Dirección pública de ESTE backend. Es la base de los links que se le mandan al
+ * cliente (el portal, la vuelta de la pasarela), así que tiene que ser una URL
+ * absoluta y correcta incluso cuando no hay una petición de la que deducirla:
+ * el cron de recordatorios arma links sin que nadie haya entrado a nada.
+ *
+ * `RAILWAY_PUBLIC_DOMAIN` lo pone Railway solo, así que en producción esto
+ * acierta sin configurar nada. En local sale `http://localhost:PORT`, que es lo
+ * correcto para probar. `PUBLIC_BASE_URL` manda sobre todo lo demás para el día
+ * que el backend viva detrás de un dominio propio.
+ */
+const BASE_PUBLICA: string = (() => {
+  const explicita = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '');
+  if (explicita) return explicita;
+  const railway = (process.env.RAILWAY_PUBLIC_DOMAIN || '').trim();
+  if (railway) return `https://${railway}`;
+  return `http://localhost:${process.env.PORT || 3001}`;
+})();
+
+/**
+ * Dominio que se IMPRIME en la pantalla de un equipo bloqueado, sin esquema.
+ *
+ * Es otra variable y no `BASE_PUBLICA` porque sirve a un propósito distinto:
+ * esto no se toca con el dedo, se lee de una pantalla y se teclea en otro
+ * aparato. `xiaomicartagena.com/p/K7M2QX` son 28 caracteres;
+ * `xiaomictg-backend-production-66f6.up.railway.app/p/K7M2QX` son 57 y encima
+ * tiene un `-66f6` que nadie va a copiar bien. Sin esquema por lo mismo:
+ * `https://` son ocho caracteres más que el navegador pone solo.
+ *
+ * El valor por defecto es el dominio del backend —feo, pero que FUNCIONA—. El
+ * bonito exige que `xiaomicartagena.com/p/*` llegue hasta aquí, y hoy lo atiende
+ * el Apache de cPanel, que devuelve el index.html del SPA. El `.htaccess` de
+ * `public/` ya trae la regla; en cuanto esté subido, se pone
+ * `PORTAL_DOMINIO_CORTO=xiaomicartagena.com` y el mensaje de bloqueo se acorta.
+ *
+ * Antes que al revés: un dominio bonito que no resuelve deja al cliente mirando
+ * la tienda en vez de su cuenta, y sin nadie a quien reclamarlo salvo el
+ * teléfono que el mismo mensaje le da.
+ */
+const PORTAL_DOMINIO_CORTO: string = (() => {
+  const explicito = (process.env.PORTAL_DOMINIO_CORTO || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '');
+  return explicito || BASE_PUBLICA.replace(/^https?:\/\//i, '');
+})();
+
+/**
+ * Secreto con el que se firman los links del portal del cliente.
+ *
+ * Vive aquí arriba y no junto a las rutas porque lo usan tres sitios muy
+ * separados: las rutas del portal, el cron de recordatorios y el endpoint que
+ * le da el link al panel. Lo llena `asegurarSecretoPortal` al conectar a Mongo
+ * (ver `connectDB`), así que antes de eso está vacío: `tokenPortal` devuelve
+ * `null` con secreto vacío y los mensajes salen sin link en lugar de salir con
+ * un link roto.
+ */
+let secretoPortal = '';
+
+// Sin cabecera Origin (curl, el webhook de Bold, monitores) no hay nada que
+// restringir: CORS sólo protege a los navegadores. Se deja pasar para no
+// romper las integraciones servidor a servidor.
+function esOrigenPermitido(origin?: string): boolean {
+  if (!origin) return true;
+  return ORIGENES_PERMITIDOS.has(origin);
+}
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: (origin, cb) => cb(null, esOrigenPermitido(origin || undefined)),
     methods: ['GET', 'POST']
   }
 });
@@ -285,9 +395,34 @@ async function connectDB() {
     await setupIndexes();
     await seedData();
     await fixCorruptedCuotas();
+
+    // El secreto del portal se resuelve ANTES de anunciar que la base está
+    // lista, porque el cron de recordatorios y el panel ya pueden pedir links
+    // en cuanto haya `db`. Si fallara, se registra y se sigue: el portal queda
+    // inaccesible, pero la tienda entera no se cae por eso.
+    try {
+      secretoPortal = await asegurarSecretoPortal(db);
+    } catch (err) {
+      console.error('[portal] No se pudo resolver el secreto del portal:', err);
+    }
+
     console.log('[server] MongoDB ready');
     // Inicializar WhatsApp con sesión persistente en MongoDB
     whatsappService.init(db, io).catch(err => console.error('[WA] Error en init:', err));
+
+    // CREDILOCK va por un número aparte. Solo la levantamos sola si YA está
+    // emparejada; si no, Baileys se pondría a pedir QR en bucle contra el servidor
+    // de WhatsApp sin que nadie lo escanee. Queda esperando a que el admin pulse
+    // Conectar en el panel de financiamiento.
+    credilockService.tieneCredenciales(db)
+      .then(emparejada => {
+        if (emparejada) {
+          return credilockService.init(db, io);
+        }
+        console.warn('[CREDILOCK-WA] ⚠️ Sin sesión emparejada. Los recordatorios de cuotas NO se enviarán ' +
+          'hasta que se escanee el QR en Admin → Financiamiento.');
+      })
+      .catch(err => console.error('[CREDILOCK-WA] Error en init:', err));
   } catch (error) {
     console.error('MongoDB connection error:', error);
     db = undefined;
@@ -300,6 +435,10 @@ async function connectDB() {
 async function setupIndexes() {
   await db.collection('products').createIndex({ id: 1 }, { unique: true });
   await db.collection('orders').createIndex({ createdAt: -1 });
+  // El único sitio donde se decide que dos clientes no comparten código corto.
+  // Se crea aquí y no al asignar el primero porque un índice único creado a
+  // mitad de la carrera que pretende arbitrar no arbitra nada.
+  await asegurarIndiceCodigo(db);
 }
 
 const initialProducts = [
@@ -499,9 +638,16 @@ async function seedData() {
 // WHATSAPP SERVICE — Sesión en MongoDB + QR via Socket.io
 // ====================================================================
 
-/** Auth state de Baileys guardado en MongoDB (sin archivos en disco) */
-async function useMongoAuthState(dbRef: any, logger: any) {
-  const col = dbRef.collection('whatsappAuth');
+/**
+ * Auth state de Baileys guardado en MongoDB (sin archivos en disco).
+ *
+ * `coleccion` es un parámetro porque ahora hay DOS sesiones de WhatsApp en
+ * paralelo: la de la tienda ('whatsappAuth') y la de CREDILOCK ('credilockAuth').
+ * Cada una tiene su propio número emparejado, así que sus credenciales NO pueden
+ * compartir colección: se sobrescribirían entre ellas y ninguna quedaría estable.
+ */
+async function useMongoAuthState(dbRef: any, logger: any, coleccion: string) {
+  const col = dbRef.collection(coleccion);
 
   const write = async (data: any, id: string) => {
     const value = JSON.stringify(data, BufferJSON.replacer);
@@ -559,6 +705,75 @@ async function useMongoAuthState(dbRef: any, logger: any) {
 
 type WAStatus = 'disconnected' | 'loading' | 'qr_ready' | 'connected';
 
+/**
+ * ¿Estas credenciales corresponden a un teléfono ya emparejado?
+ *
+ * CUIDADO CON `creds.registered`: parece el campo obvio, pero en Baileys solo lo
+ * pone a true el flujo de emparejamiento por CÓDIGO (registerPhoneNumber). Si
+ * emparejas escaneando el QR —que es lo que hacemos— `registered` se queda en
+ * FALSE para siempre y en cambio se rellenan `me` y `account`. Verificado contra
+ * producción: la sesión de la tienda lleva meses funcionando con
+ * me.id = '573022875280:24@s.whatsapp.net' y registered = false.
+ *
+ * Esto no es un detalle menor: mirar `registered` hacía que al morir la sesión
+ * (401) el código creyera que las credenciales ya estaban limpias, NO las borrara,
+ * y tras 5 intentos se rindiera con 'blocked_401' sin volver a emitir un QR nunca
+ * más. Es la causa más probable de que los recordatorios estuvieran dos meses
+ * caídos sin que nadie lo notara.
+ */
+function credencialesEmparejadas(creds: any): boolean {
+  return Boolean(creds?.me?.id || creds?.account);
+}
+
+/**
+ * Normaliza un teléfono colombiano a '57XXXXXXXXXX'. Devuelve null si no hay
+ * ningún número utilizable en el campo.
+ *
+ * POR QUÉ EXISTE: en la colección 'financing' hay campos con DOS números metidos
+ * en el mismo string ('3233993505/ 3053652200', '3011091384 / 3244415347') y alguno
+ * de 11 dígitos ('30168337929'). Antes se limpiaban solo los espacios y guiones, así
+ * que los dos números quedaban PEGADOS en un JID basura; el envío no fallaba rápido,
+ * se quedaba colgado hasta el timeout y frenaba la cola entera. Eso es parte de lo
+ * que retrasó los avisos el 2026-09-30.
+ *
+ * Nos quedamos con el primer número que sí sirve. Si ninguno sirve devolvemos null
+ * para que quien llame decida saltarse ese registro en vez de colgar la cola.
+ */
+function normalizarTelefonoCo(phone: unknown): string | null {
+  const sinAdornos = String(phone ?? '').replace(/[\s\-\+\(\)\.]/g, '');
+  // Partimos por cualquier cosa que no sea dígito: así '3233993505/3053652200'
+  // se convierte en dos candidatos en vez de un número de 20 cifras.
+  for (let trozo of sinAdornos.split(/\D+/).filter(Boolean)) {
+    if (trozo.startsWith('0')) trozo = trozo.slice(1);
+    if (trozo.length === 12 && trozo.startsWith('57')) return trozo;
+    // Los móviles colombianos son 10 dígitos y empiezan por 3.
+    if (trozo.length === 10 && trozo.startsWith('3')) return '57' + trozo;
+  }
+  return null;
+}
+
+/**
+ * Identidad de una sesión de WhatsApp. Antes todo esto estaba hardcodeado dentro
+ * de la clase; ahora es configuración porque corren DOS sesiones a la vez y cada
+ * una necesita su propia colección de credenciales y sus propios eventos de
+ * Socket.io (si compartieran eventos, el QR de CREDILOCK aparecería en el panel
+ * de la tienda y viceversa).
+ */
+interface WASessionConfig {
+  /** Identificador corto, va en la respuesta de /api/health. */
+  id: string;
+  /** Nombre legible para los mensajes de error del panel. */
+  etiqueta: string;
+  /** Colección de MongoDB donde viven las credenciales de ESTA sesión. */
+  coleccionAuth: string;
+  /** Prefijo de los console.log, para poder distinguirlas en los logs de Railway. */
+  tagLog: string;
+  /** Evento de Socket.io con el QR nuevo. */
+  eventoQR: string;
+  /** Evento de Socket.io con los cambios de estado. */
+  eventoEstado: string;
+}
+
 class WhatsAppService {
   private sock: ReturnType<typeof makeWASocket> | null = null;
   private status: WAStatus = 'disconnected';
@@ -566,22 +781,104 @@ class WhatsAppService {
   private ioRef: Server | null = null;
   private dbRef: any = null;
   private reconnecting = false;
+  private fatalRetries = 0;
+  /** Número emparejado, en formato '57XXXXXXXXXX'. Null mientras no haya sesión. */
+  private numero: string | null = null;
+  private readonly cfg: WASessionConfig;
+  /**
+   * Temporizador de reconexión pendiente.
+   *
+   * Lo guardamos para poder CANCELARLO en disconnect(). Antes no se guardaba, así
+   * que al desconectar quedaba un setTimeout en vuelo que volvía a llamar a
+   * _connect() unos segundos después: la sesión «desconectada» revivía sola y
+   * seguía pidiendo QR. disconnect() no era realmente definitivo.
+   */
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  /**
+   * QRs emitidos desde el último emparejamiento correcto.
+   *
+   * Sirve para cortar el bucle de QR sin escanear: Baileys regenera un QR cada
+   * ~20 s indefinidamente, así que si alguien pulsa Conectar y se marcha, el
+   * servidor se queda pidiendo QR a WhatsApp para siempre desde una IP de centro
+   * de datos. Eso es justo lo que acaba en un rechazo por IP (el estado
+   * 'blocked_' que ya contempla este código). Tras MAX_QR_SIN_ESCANEAR paramos y
+   * dejamos que el admin pulse Conectar otra vez.
+   */
+  private qrEmitidos = 0;
+  private static readonly MAX_QR_SIN_ESCANEAR = 10;
+
+  constructor(cfg: WASessionConfig) {
+    this.cfg = cfg;
+  }
 
   getStatus(): WAStatus { return this.status; }
   getQRDataUrl(): string | null { return this.qrDataUrl; }
+  getNumero(): string | null { return this.numero; }
+  getConfig(): WASessionConfig { return this.cfg; }
+
+  /**
+   * Resumen para /api/health, que NO lleva autenticación.
+   *
+   * A propósito sin el número completo: el de cobranza es un número interno y no
+   * hay por qué publicarlo en un endpoint que cualquiera puede consultar. Para
+   * monitorizar basta con saber si está vivo; los 4 últimos dígitos permiten
+   * confirmar cuál es sin exponerlo entero.
+   */
+  getInfoSalud() {
+    return {
+      id: this.cfg.id,
+      status: this.status,
+      conectado: this.status === 'connected',
+      numeroParcial: this.numero ? `***${this.numero.slice(-4)}` : null,
+    };
+  }
+
+  /**
+   * ¿Existen credenciales guardadas para esta sesión?
+   *
+   * Hace falta para el arranque de CREDILOCK: si la sesión nunca se ha emparejado
+   * no queremos levantarla sola, porque Baileys se pondría a regenerar QR cada pocos
+   * segundos contra el servidor de WhatsApp sin que nadie lo vaya a escanear. Mejor
+   * quedarse quieto hasta que el admin pulse Conectar en el panel.
+   */
+  async tieneCredenciales(dbInstance: any): Promise<boolean> {
+    try {
+      const doc = await dbInstance.collection(this.cfg.coleccionAuth).findOne({ _id: 'creds' as any });
+      if (!doc?.value) return false;
+      // Un doc de 'creds' puede existir sin que el teléfono se haya emparejado nunca,
+      // porque Baileys guarda sus claves antes del escaneo. Lo que confirma el
+      // emparejamiento es `me`/`account`, NO `registered` (ver credencialesEmparejadas).
+      return credencialesEmparejadas(JSON.parse(doc.value, BufferJSON.reviver));
+    } catch {
+      return false;
+    }
+  }
 
   async init(dbInstance: any, ioInstance: Server) {
     this.dbRef = dbInstance;
     this.ioRef = ioInstance;
     if (this.reconnecting) return;
+    this.fatalRetries = 0; // reintento manual: permitimos de nuevo los 5 intentos
+    this.qrEmitidos = 0;   // y la tanda de QR empieza de cero
     await this._connect();
+  }
+
+  /** Programa un reintento, guardando el temporizador para poder cancelarlo. */
+  private _reintentarEn(ms: number) {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnecting = true;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.reconnecting = false;
+      this._connect();
+    }, ms);
   }
 
   private async _connect() {
     try {
       this.status = 'loading';
-      this.ioRef?.emit('whatsapp-status', { status: 'loading' });
-      
+      this.ioRef?.emit(this.cfg.eventoEstado, { status: 'loading' });
+
       // 1. Desconectar y limpiar cualquier socket anterior para evitar colisiones en Railway
       if (this.sock) {
         try {
@@ -597,31 +894,65 @@ class WhatsAppService {
         fatal: () => {}, child: () => silentLogger,
       } as any;
 
-      const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger);
+      const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger, this.cfg.coleccionAuth);
+
+      // Versión de protocolo de WhatsApp Web. Si la omitimos, Baileys usa la que trae
+      // hardcodeada y WhatsApp rechaza la conexión con código 405 cuando queda vieja.
+      let waVersion: [number, number, number] | undefined;
+      try {
+        const fetchVersion = (fetchLatestBaileysVersion as any).default || fetchLatestBaileysVersion;
+        const { version, isLatest } = await fetchVersion();
+        waVersion = version;
+        console.log(this.cfg.tagLog, 'Versión de protocolo WA:', version.join('.'), '| última:', isLatest);
+      } catch (e) {
+        console.warn(this.cfg.tagLog, 'No se pudo obtener la versión más reciente, se usa la interna de Baileys:', (e as any)?.message);
+      }
 
       // Baileys puede ser un modulo CommonJS tradicional o ESM
-      // Omitimos la propiedad version para que use por defecto la version interna mas actualizada y compatible de la libreria
       const makeSocket = (makeWASocket as any).default || makeWASocket;
       this.sock = makeSocket({
+        ...(waVersion ? { version: waVersion } : {}),
         auth: { creds: state.creds, keys: state.keys },
         logger: silentLogger,
         printQRInTerminal: false,
-        browser: ['Xiaomi Cartagena', 'Chrome', '126.0'],
-        connectTimeoutMs: 30000,
+        browser: ['Ubuntu', 'Chrome', '120.0.0.0'],
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000,
+        generateHighQualityLinkPreview: false,
+        markOnlineOnConnect: false,
+        syncFullHistory: false,
       });
 
       this.sock.ev.on('creds.update', saveCreds);
 
       this.sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
         if (qr) {
+          this.qrEmitidos++;
+          if (this.qrEmitidos > WhatsAppService.MAX_QR_SIN_ESCANEAR) {
+            // Nadie está escaneando. Cortamos en seco para no seguir martilleando
+            // a WhatsApp desde la IP de Railway.
+            console.warn(this.cfg.tagLog, `⏹️ ${this.qrEmitidos - 1} QR emitidos sin que nadie los escanee. ` +
+              'Se detiene el bucle; hay que pulsar Conectar de nuevo.');
+            this.status = 'disconnected';
+            this.qrDataUrl = null;
+            this.ioRef?.emit(this.cfg.eventoEstado, { status: 'disconnected', error: 'qr_sin_escanear' });
+            if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+            this.reconnecting = false;
+            try {
+              this.sock?.ev.removeAllListeners();
+              if (this.sock?.ws) this.sock.ws.close();
+            } catch {}
+            this.sock = null;
+            return;
+          }
           try {
             const dataUrl = await QRCode.toDataURL(qr, { margin: 2, width: 280 });
             this.qrDataUrl = dataUrl;
             this.status = 'qr_ready';
-            this.ioRef?.emit('whatsapp-qr', { qr: dataUrl });
-            console.log('[WA] QR generado y emitido');
+            this.ioRef?.emit(this.cfg.eventoQR, { qr: dataUrl });
+            console.log(this.cfg.tagLog, `QR generado y emitido (${this.qrEmitidos}/${WhatsAppService.MAX_QR_SIN_ESCANEAR})`);
           } catch (e) {
-            console.error('[WA] Error generando QR:', e);
+            console.error(this.cfg.tagLog, 'Error generando QR:', e);
           }
         }
 
@@ -629,42 +960,68 @@ class WhatsAppService {
           this.status = 'connected';
           this.qrDataUrl = null;
           this.reconnecting = false;
-          this.ioRef?.emit('whatsapp-status', { status: 'connected' });
-          console.log('[WA] ✅ Conectado exitosamente');
+          this.fatalRetries = 0;
+          this.qrEmitidos = 0; // emparejado: la cuenta de QR vuelve a cero
+          // sock.user.id llega como '573001234567:12@s.whatsapp.net'. Nos quedamos
+          // solo con el número para poder mostrarlo en el panel y que el admin
+          // confirme de un vistazo que emparejó el teléfono correcto.
+          this.numero = String(this.sock?.user?.id || '').split(':')[0].split('@')[0] || null;
+          this.ioRef?.emit(this.cfg.eventoEstado, { status: 'connected', numero: this.numero });
+          console.log(this.cfg.tagLog, '✅ Conectado exitosamente', this.numero ? `como ${this.numero}` : '');
         }
 
         if (connection === 'close') {
           const code = (lastDisconnect?.error as any)?.output?.statusCode;
-          const isLogout = code === DisconnectReason.loggedOut;
+          // Códigos que significan "esta sesión ya no sirve, hay que emparejar de nuevo".
+          // 401 loggedOut · 403 forbidden · 405 (versión/registro rechazado) · 411 multideviceMismatch · 500 badSession
+          const DEAD_SESSION_CODES = [401, 403, 405, 411, 500];
+          const isDeadSession = DEAD_SESSION_CODES.includes(code);
+          const hadCreds = credencialesEmparejadas(state?.creds);
           this.status = 'disconnected';
           this.qrDataUrl = null;
-          this.ioRef?.emit('whatsapp-status', { status: 'disconnected' });
-          console.log('[WA] Conexión cerrada — código:', code, '| logout:', isLogout);
-          
-          if (isLogout) {
-            console.log('[WA] 🧹 Sesión caducada o inválida. Limpiando credenciales en base de datos...');
+          this.numero = null;
+          this.ioRef?.emit(this.cfg.eventoEstado, { status: 'disconnected' });
+          console.log(this.cfg.tagLog, 'Conexión cerrada — código:', code, '| sesión muerta:', isDeadSession, '| registrada:', hadCreds);
+
+          if (isDeadSession && hadCreds) {
+            // Solo limpiamos si REALMENTE había una sesión emparejada. Si no la había,
+            // borrar de nuevo no aporta nada y provocaría un bucle infinito de limpieza.
+            console.log(this.cfg.tagLog, '🧹 Sesión caducada o inválida. Limpiando credenciales en base de datos...');
             try {
-              if (this.dbRef) await this.dbRef.collection('whatsappAuth').deleteMany({});
+              if (this.dbRef) await this.dbRef.collection(this.cfg.coleccionAuth).deleteMany({});
             } catch (err) {
-              console.error('[WA] Error limpiando credenciales:', err);
+              console.error(this.cfg.tagLog, 'Error limpiando credenciales:', err);
             }
-          } else {
-            this.reconnecting = true;
-            setTimeout(() => { this.reconnecting = false; this._connect(); }, 8000);
+            // Reconectamos para que Baileys emita un QR nuevo sin intervención manual.
+            this._reintentarEn(5000);
+            return;
           }
+
+          if (isDeadSession && !hadCreds) {
+            // Credenciales limpias y aun así nos rechazan: no es la sesión, es el servidor/IP/versión.
+            this.fatalRetries++;
+            if (this.fatalRetries >= 5) {
+              console.error(this.cfg.tagLog + ' ⛔ WhatsApp rechaza la conexión (código ' + code + ') con credenciales limpias tras ' +
+                this.fatalRetries + ' intentos. Se detiene el bucle. Causa probable: versión de protocolo o IP bloqueada.');
+              this.ioRef?.emit(this.cfg.eventoEstado, { status: 'disconnected', error: 'blocked_' + code });
+              return;
+            }
+          }
+
+          this._reintentarEn(8000);
         }
       });
     } catch (err) {
-      console.error('[WA] Error fatal al inicializar Baileys:', err);
+      console.error(this.cfg.tagLog, 'Error fatal al inicializar Baileys:', err);
       // Blindaje supremo: si las credenciales en MongoDB estan corruptas o son incompatibles,
-      // limpiamos la coleccion whatsappAuth para forzar una sesion limpia en el siguiente reintento.
+      // limpiamos la coleccion de auth para forzar una sesion limpia en el siguiente reintento.
       try {
         if (this.dbRef) {
-          await this.dbRef.collection('whatsappAuth').deleteMany({});
-          console.log('[WA] 🧹 Colección whatsappAuth limpiada automáticamente por credenciales corruptas.');
+          await this.dbRef.collection(this.cfg.coleccionAuth).deleteMany({});
+          console.log(this.cfg.tagLog, `🧹 Colección ${this.cfg.coleccionAuth} limpiada automáticamente por credenciales corruptas.`);
         }
       } catch (cleanErr) {
-        console.error('[WA] Error al limpiar colección tras fallo:', cleanErr);
+        console.error(this.cfg.tagLog, 'Error al limpiar colección tras fallo:', cleanErr);
       }
       this.status = 'disconnected';
     }
@@ -682,23 +1039,35 @@ class WhatsAppService {
       } else {
         await this.sock.sendMessage(jid, { text });
       }
-      console.log('[WA] Mensaje enviado a', phone, imageUrl ? 'con imagen' : '');
+      console.log(this.cfg.tagLog, 'Mensaje enviado a', phone, imageUrl ? 'con imagen' : '');
       return true;
     } catch (err) {
-      console.error('[WA] Error al enviar mensaje:', err);
+      console.error(this.cfg.tagLog, 'Error al enviar mensaje:', err);
       return false;
     }
   }
 
   _formatPhone(phone: string): string {
+    // Ruta buena: un móvil colombiano reconocible (ver normalizarTelefonoCo).
+    const normalizado = normalizarTelefonoCo(phone);
+    if (normalizado) return normalizado + '@s.whatsapp.net';
+
+    // Si no lo reconocemos NO lo descartamos aquí: por este método también pasan
+    // fijos y números de fuera, y romperlos sería peor. Se mantiene el
+    // comportamiento de siempre y que decida WhatsApp.
     let clean = String(phone).replace(/[\s\-\+\(\)\.]/g, '');
     if (clean.startsWith('0')) clean = clean.slice(1);
     if (clean.length === 10 && !clean.startsWith('57')) clean = '57' + clean;
-    if (clean.length === 12 && clean.startsWith('57')) { /* ok */ }
     return clean + '@s.whatsapp.net';
   }
 
   async disconnect() {
+    // Lo PRIMERO es matar el reintento pendiente. Si no, el setTimeout en vuelo
+    // resucita la sesión unos segundos después de haberla desconectado.
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     try {
       if (this.sock) {
         this.sock.ev.removeAllListeners();
@@ -706,19 +1075,47 @@ class WhatsAppService {
         this.sock = null;
       }
       if (this.dbRef) {
-        await this.dbRef.collection('whatsappAuth').deleteMany({});
+        await this.dbRef.collection(this.cfg.coleccionAuth).deleteMany({});
       }
     } catch (e) {
-      console.error('[WA] Error al desconectar:', e);
+      console.error(this.cfg.tagLog, 'Error al desconectar:', e);
     }
     this.status = 'disconnected';
     this.qrDataUrl = null;
+    this.numero = null;
     this.reconnecting = false;
-    this.ioRef?.emit('whatsapp-status', { status: 'disconnected' });
+    this.fatalRetries = 0;
+    this.qrEmitidos = 0;
+    this.ioRef?.emit(this.cfg.eventoEstado, { status: 'disconnected' });
   }
 }
 
-const whatsappService = new WhatsAppService();
+/** Sesión de la TIENDA: confirmaciones de pedido, alertas de stock, campañas. */
+const whatsappService = new WhatsAppService({
+  id: 'tienda',
+  etiqueta: 'WhatsApp de la tienda',
+  coleccionAuth: 'whatsappAuth',
+  tagLog: '[WA]',
+  eventoQR: 'whatsapp-qr',
+  eventoEstado: 'whatsapp-status',
+});
+
+/**
+ * Sesión de CREDILOCK: recordatorios de cuotas y avisos de mora.
+ *
+ * Va por un número aparte porque lo pidió el dueño: los avisos de cobro son
+ * conversaciones delicadas y de mucho volumen (109 financiaciones activas), así
+ * que conviene aislarlas del número comercial. Si WhatsApp llegara a restringir
+ * el número de cobranza, la tienda sigue vendiendo con normalidad.
+ */
+const credilockService = new WhatsAppService({
+  id: 'credilock',
+  etiqueta: 'WhatsApp de CREDILOCK',
+  coleccionAuth: 'credilockAuth',
+  tagLog: '[CREDILOCK-WA]',
+  eventoQR: 'credilock-qr',
+  eventoEstado: 'credilock-status',
+});
 
 // ---- Plantillas por defecto ----
 const DEFAULT_CUSTOMER_TEMPLATE =
@@ -748,7 +1145,7 @@ Hola *{{nombre}}*, gracias por visitarnos en nuestra tienda física. 🧡
 🛍️ *Tu compra:*
 • {{producto}}
 
-💰 *Total:* ${{total}} COP
+💰 *Total:* \${{total}} COP
 💳 *Método de pago:* {{metodoPago}}
 📄 *Facturado a:* {{cedula}}
 
@@ -884,31 +1281,39 @@ async function sendWhatsAppNotifications(order: any) {
 
     const customerPhone: string = order.customerInfo?.phone || '';
 
-    if (customerPhone) {
-      const msg = processWhatsAppTemplate(customerTemplate, order);
-      console.log(`[WA] Intentando enviar al cliente: ${customerPhone}`);
-      const success = await Promise.race([
-        whatsappService.sendMessage(customerPhone, msg),
-        new Promise(resolve => setTimeout(() => {
-          console.error('[WA] Timeout al enviar mensaje al cliente');
-          resolve(false);
-        }, 10000))
-      ]);
-      console.log(`[WA] Resultado envío cliente: ${success}`);
-      // Pequeño delay para evitar bloqueo por spam (error 401)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
+    // El timeout es solo para no dejar colgada esta función: cuando salta, Baileys
+    // sigue entregando el mensaje por su cuenta. Por eso el log dice "sin confirmar"
+    // y no "fallido" — antes decía false y despistaba, porque el mensaje SÍ llegaba.
+    // Aquí no se reintenta nada a propósito: un reintento duplicaría el aviso.
+    const TIMEOUT_AVISO_MS = 30000;
+
+    // PRIMERO EL DUEÑO. Antes iba primero el cliente, y como entre los dos envíos hay
+    // 3 s de cortesía (más lo que tardara el del cliente, hasta el timeout), el aviso
+    // de venta nueva siempre salía el último. Si el número del cliente es inválido o
+    // no tiene WhatsApp, el envío se queda colgado y el dueño se comía toda la espera.
+    // El aviso al dueño es el crítico para el negocio, así que va primero.
     if (ownerPhone) {
       const msg = processWhatsAppTemplate(ownerTemplate, order);
-      console.log(`[WA] Intentando enviar al administrador: ${ownerPhone}`);
+      console.log(`[WA] Enviando al administrador: ${ownerPhone}`);
       const success = await Promise.race([
         whatsappService.sendMessage(ownerPhone, msg),
-        new Promise(resolve => setTimeout(() => {
-          console.error('[WA] Timeout al enviar mensaje al admin');
-          resolve(false);
-        }, 10000))
+        new Promise(resolve => setTimeout(() => resolve(false), TIMEOUT_AVISO_MS))
       ]);
-      console.log(`[WA] Resultado envío admin: ${success}`);
+      console.log(`[WA] Admin ${ownerPhone}: ${success ? 'confirmado' : 'despachado SIN confirmar (Baileys lo entregará)'}`);
+      if (customerPhone) {
+        // Pequeño delay para evitar bloqueo por spam (error 401)
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+
+    if (customerPhone) {
+      const msg = processWhatsAppTemplate(customerTemplate, order);
+      console.log(`[WA] Enviando al cliente: ${customerPhone}`);
+      const success = await Promise.race([
+        whatsappService.sendMessage(customerPhone, msg),
+        new Promise(resolve => setTimeout(() => resolve(false), TIMEOUT_AVISO_MS))
+      ]);
+      console.log(`[WA] Cliente ${customerPhone}: ${success ? 'confirmado' : 'despachado SIN confirmar (Baileys lo entregará)'}`);
     }
   } catch (err) {
     console.error('[WA] Error al enviar notificaciones:', err);
@@ -1276,7 +1681,29 @@ async function sendInvoiceEmail(order: any) {
   }
 }
 
-app.use(cors());
+app.use(cors({
+  // cb(null, false) simplemente no añade las cabeceras CORS y el navegador
+  // bloquea la respuesta. Devolver un Error aquí daría un 500 y ensuciaría
+  // los logs con algo que no es un fallo del servidor.
+  origin: (origin, cb) => cb(null, esOrigenPermitido(origin)),
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+}));
+
+// Cabeceras de seguridad básicas. No se usa helmet para no añadir una
+// dependencia: el backend sólo sirve JSON y la página de /api/bold-checkout,
+// así que con estas cuatro se cubre lo que aplica.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // La API no debe quedar guardada en cachés intermedias: hay respuestas con
+  // pedidos y teléfonos de clientes.
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 app.use(compression());
 app.use(express.json({
   limit: '50mb',
@@ -1290,7 +1717,15 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     dbReady: Boolean(db),
-    uptimeSeconds: Math.round(process.uptime())
+    uptimeSeconds: Math.round(process.uptime()),
+    // Las dos sesiones de WhatsApp van aquí para poder comprobar de un curl si los
+    // recordatorios de CREDILOCK están vivos. La de la tienda cayéndose se nota
+    // enseguida (no salen las confirmaciones de pedido); la de CREDILOCK puede estar
+    // muerta meses sin que nadie lo vea, que es justo lo que pasó.
+    whatsapp: {
+      tienda: whatsappService.getInfoSalud(),
+      credilock: credilockService.getInfoSalud(),
+    },
   });
 });
 
@@ -1306,8 +1741,205 @@ function hashPassword(plain: string): string {
   return createHash('sha256').update(plain).digest('hex');
 }
 
+// ---------------------------------------------------------------------------
+// Autenticación
+//
+// Antes el token era la cadena 'admin-token-' + Date.now(): cualquiera podía
+// fabricarse uno, pero daba igual porque además NINGUNA ruta lo comprobaba.
+// El panel entero (pedidos, caja, inventario, teléfonos de clientes) estaba
+// abierto a quien supiera la URL del backend. Lo que sigue arregla las dos
+// mitades: tokens firmados que no se pueden falsificar y un middleware que
+// los exige en todo lo que no sea explícitamente público.
+// ---------------------------------------------------------------------------
+
+// El secreto de firma. Si no está definido se deriva de las credenciales de
+// admin en lugar de usar un valor por defecto fijo: un secreto por defecto en
+// el código fuente no es un secreto. Derivarlo tiene un efecto secundario
+// deseable: al cambiar la contraseña caducan todas las sesiones abiertas.
+const AUTH_SECRET: string = (() => {
+  const explicito = (process.env.AUTH_SECRET || '').trim();
+  if (explicito.length >= 32) return explicito;
+  if (explicito) {
+    console.warn('[auth] AUTH_SECRET es demasiado corto (mínimo 32 caracteres); se ignora.');
+  }
+  if (ADMIN_USER && ADMIN_PASSWORD) {
+    console.warn('[auth] AUTH_SECRET no está configurada: se deriva de las credenciales de admin. Define AUTH_SECRET en Railway.');
+    return createHash('sha256').update(`${ADMIN_USER}:${ADMIN_PASSWORD}:xiaomictg`).digest('hex');
+  }
+  // Sin nada de dónde derivar, se genera uno al azar en cada arranque: el
+  // panel sigue funcionando pero las sesiones no sobreviven a un reinicio.
+  console.error('[auth] No hay AUTH_SECRET ni credenciales de admin: las sesiones se invalidarán en cada reinicio.');
+  return randomBytes(32).toString('hex');
+})();
+
+const TOKEN_VIGENCIA_MS = 12 * 60 * 60 * 1000; // 12 h: una jornada de tienda
+
+function base64url(valor: Buffer | string): string {
+  return Buffer.from(valor as any)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+function desdeBase64url(valor: string): Buffer {
+  return Buffer.from(valor.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+}
+
+interface SesionAdmin {
+  usuario: string;
+  rol: string;
+  exp: number;
+}
+
+function firmarToken(usuario: string, rol: string): string {
+  const cuerpo: SesionAdmin = { usuario, rol, exp: Date.now() + TOKEN_VIGENCIA_MS };
+  const cuerpoCodificado = base64url(JSON.stringify(cuerpo));
+  const firma = base64url(createHmac('sha256', AUTH_SECRET).update(cuerpoCodificado).digest());
+  return `${cuerpoCodificado}.${firma}`;
+}
+
+function verificarToken(token: string): SesionAdmin | null {
+  if (!token || typeof token !== 'string') return null;
+  const partes = token.split('.');
+  if (partes.length !== 2) return null;
+  const [cuerpoCodificado, firmaRecibida] = partes;
+
+  const firmaEsperada = base64url(createHmac('sha256', AUTH_SECRET).update(cuerpoCodificado).digest());
+  const bufRecibida = Buffer.from(firmaRecibida, 'utf8');
+  const bufEsperada = Buffer.from(firmaEsperada, 'utf8');
+  if (bufRecibida.length !== bufEsperada.length) return null;
+  if (!timingSafeEqual(bufRecibida, bufEsperada)) return null;
+
+  try {
+    const cuerpo = JSON.parse(desdeBase64url(cuerpoCodificado).toString('utf8')) as SesionAdmin;
+    if (!cuerpo?.usuario || typeof cuerpo.exp !== 'number') return null;
+    if (Date.now() > cuerpo.exp) return null;
+    return cuerpo;
+  } catch {
+    return null;
+  }
+}
+
+// Socket.io también exige sesión. Por estos sockets se emiten los QR de
+// WhatsApp ('whatsapp-qr', 'credilock-qr'): quien escanee uno se queda con la
+// sesión de WhatsApp de la tienda. Antes cualquiera podía conectarse y
+// quedarse escuchando. Sólo los conecta el panel, así que no rompe la tienda.
+io.use((socket, next) => {
+  const token = (socket.handshake.auth as any)?.token || '';
+  if (verificarToken(String(token))) return next();
+  console.warn(`[socket] Conexión rechazada sin sesión válida (${socket.handshake.address}).`);
+  next(new Error('No autorizado'));
+});
+
+// Comparación en tiempo constante de dos cadenas de longitud distinta.
+// Se hashean antes para que los buffers midan siempre lo mismo y la propia
+// longitud de la contraseña no se filtre por el tiempo de respuesta.
+function igualSeguro(a: string, b: string): boolean {
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
+
+// Contraseñas de la colección `users`.
+// Formato nuevo: scrypt$<sal>$<hash>. Se mantiene la verificación del SHA-256
+// antiguo (64 hexadecimales) para no dejar fuera a los usuarios ya creados,
+// pero se ha quitado la comparación en texto plano que había antes: aceptaba
+// como válida una contraseña guardada sin cifrar.
+function hashPasswordScrypt(plain: string, sal?: string): string {
+  const salUsada = sal || randomBytes(16).toString('hex');
+  const derivada = scryptSync(plain, salUsada, 64).toString('hex');
+  return `scrypt$${salUsada}$${derivada}`;
+}
+
+function verificarPassword(plain: string, almacenada: unknown): boolean {
+  if (typeof almacenada !== 'string' || !almacenada) return false;
+
+  if (almacenada.startsWith('scrypt$')) {
+    const [, sal, hash] = almacenada.split('$');
+    if (!sal || !hash) return false;
+    try {
+      const derivada = scryptSync(plain, sal, 64).toString('hex');
+      return igualSeguro(derivada, hash);
+    } catch {
+      return false;
+    }
+  }
+
+  // Formato antiguo: SHA-256 sin sal.
+  if (/^[a-f\d]{64}$/i.test(almacenada)) {
+    return igualSeguro(hashPassword(plain), almacenada);
+  }
+
+  // Cualquier otra cosa es una contraseña en texto plano guardada en la base
+  // de datos. No se acepta: hay que regenerarla con hashPasswordScrypt.
+  console.error('[login] El usuario tiene la contraseña sin cifrar en la base de datos; se rechaza el acceso.');
+  return false;
+}
+
+// Límite de intentos de login por IP. En memoria, sin dependencias: con un
+// solo proceso en Railway es suficiente, y lo que evita es que alguien pruebe
+// contraseñas a miles por minuto contra /api/login.
+const INTENTOS_MAX = 8;
+const VENTANA_INTENTOS_MS = 15 * 60 * 1000;
+const BLOQUEO_MS = 15 * 60 * 1000;
+const intentosLogin = new Map<string, { fallos: number; primero: number; bloqueadoHasta: number }>();
+
+function ipDe(req: express.Request): string {
+  // Railway va detrás de un proxy, así que req.ip es la IP del proxy.
+  const reenviada = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return reenviada || req.ip || 'desconocida';
+}
+
+function loginBloqueado(ip: string): number {
+  const registro = intentosLogin.get(ip);
+  if (!registro) return 0;
+  if (registro.bloqueadoHasta > Date.now()) return registro.bloqueadoHasta - Date.now();
+  return 0;
+}
+
+function anotarFalloLogin(ip: string): void {
+  const ahora = Date.now();
+  const registro = intentosLogin.get(ip);
+  if (!registro || ahora - registro.primero > VENTANA_INTENTOS_MS) {
+    intentosLogin.set(ip, { fallos: 1, primero: ahora, bloqueadoHasta: 0 });
+    return;
+  }
+  registro.fallos += 1;
+  if (registro.fallos >= INTENTOS_MAX) {
+    registro.bloqueadoHasta = ahora + BLOQUEO_MS;
+    registro.fallos = 0;
+    registro.primero = ahora;
+    console.warn(`[login] IP ${ip} bloqueada ${BLOQUEO_MS / 60000} minutos por intentos fallidos.`);
+  }
+}
+
+function limpiarIntentos(ip: string): void {
+  intentosLogin.delete(ip);
+}
+
+// El Map no debe crecer sin límite si alguien rota IPs: se purgan las entradas
+// que ya no están bloqueadas y cuya ventana ha expirado.
+setInterval(() => {
+  const ahora = Date.now();
+  for (const [ip, registro] of intentosLogin) {
+    if (registro.bloqueadoHasta < ahora && ahora - registro.primero > VENTANA_INTENTOS_MS) {
+      intentosLogin.delete(ip);
+    }
+  }
+}, 10 * 60 * 1000).unref();
+
 // Login: variables de entorno (Railway) o colección users (MongoDB)
 app.post('/api/login', async (req, res) => {
+  const ip = ipDe(req);
+  const restante = loginBloqueado(ip);
+  if (restante > 0) {
+    return res.status(429).json({
+      success: false,
+      message: `Demasiados intentos fallidos. Espera ${Math.ceil(restante / 60000)} minutos.`,
+    });
+  }
+
   const { username, password } = req.body || {};
 
   if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
@@ -1318,26 +1950,36 @@ app.post('/api/login', async (req, res) => {
   const pass = password;
 
   if (ADMIN_USER && ADMIN_PASSWORD) {
-    if (user === ADMIN_USER.trim() && pass === ADMIN_PASSWORD.trim()) {
-      return res.json({ success: true, token: 'admin-token-' + Date.now() });
+    if (igualSeguro(user, ADMIN_USER.trim()) && igualSeguro(pass, ADMIN_PASSWORD.trim())) {
+      limpiarIntentos(ip);
+      return res.json({
+        success: true,
+        token: firmarToken(user, 'admin'),
+        user: { username: user, role: 'admin' },
+      });
     }
   }
 
   if (!db) {
+    anotarFalloLogin(ip);
     return res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
   }
 
   try {
-    const hashedPwd = hashPassword(pass);
-    const dbUser = await db.collection('users').findOne({
-      username: user,
-      $or: [{ password: pass }, { password: hashedPwd }],
-    });
+    const dbUser = await db.collection('users').findOne({ username: user });
 
-    if (dbUser) {
+    if (dbUser && verificarPassword(pass, dbUser.password)) {
+      // Migración silenciosa: si la contraseña seguía en SHA-256 se reescribe
+      // con scrypt ahora que la tenemos en claro y ya validada.
+      if (!String(dbUser.password || '').startsWith('scrypt$')) {
+        db.collection('users')
+          .updateOne({ _id: dbUser._id }, { $set: { password: hashPasswordScrypt(pass) } })
+          .catch(err => console.error('[login] No se pudo migrar la contraseña a scrypt:', err));
+      }
+      limpiarIntentos(ip);
       return res.json({
         success: true,
-        token: 'admin-token-' + Date.now(),
+        token: firmarToken(dbUser.username, dbUser.role || 'admin'),
         user: { username: dbUser.username, role: dbUser.role || 'admin' },
       });
     }
@@ -1346,11 +1988,123 @@ app.post('/api/login', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error del servidor' });
   }
 
+  anotarFalloLogin(ip);
   return res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
 });
 
-// Todas las rutas /api (excepto login y health) requieren DB disponible
+// Limitador genérico por IP, para las rutas que escriben en la base de datos
+// sin pedir sesión (pedidos, reseñas, avisos de stock). Sin esto cualquiera
+// puede meter documentos en Mongo en bucle: no roba nada, pero llena la base
+// de basura y deja el panel inservible.
+function limitadorPorIp(nombre: string, maximo: number, ventanaMs: number) {
+  const registro = new Map<string, { usos: number; desde: number }>();
+
+  setInterval(() => {
+    const ahora = Date.now();
+    for (const [ip, dato] of registro) {
+      if (ahora - dato.desde > ventanaMs) registro.delete(ip);
+    }
+  }, ventanaMs).unref();
+
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = ipDe(req);
+    const ahora = Date.now();
+    const dato = registro.get(ip);
+
+    if (!dato || ahora - dato.desde > ventanaMs) {
+      registro.set(ip, { usos: 1, desde: ahora });
+      return next();
+    }
+
+    dato.usos += 1;
+    if (dato.usos > maximo) {
+      console.warn(`[${nombre}] IP ${ip} ha excedido el límite (${dato.usos} en ${Math.round(ventanaMs / 60000)} min).`);
+      return res.status(429).json({ error: 'Demasiadas peticiones', message: 'Has hecho demasiadas peticiones. Espera unos minutos.' });
+    }
+    return next();
+  };
+}
+
+// 20 escrituras cada 10 minutos: un cliente real hace una o dos (su pedido,
+// quizá un aviso de stock), así que sobra margen de forma holgada.
+const limitarEscrituraPublica = limitadorPorIp('escritura-publica', 20, 10 * 60 * 1000);
+
+// ---------------------------------------------------------------------------
+// Rutas públicas: TODO lo que no esté en esta lista exige un token válido.
+//
+// La lista es blanca a propósito. Al revés (marcar lo privado) cada ruta nueva
+// nacería abierta y bastaría olvidarse una vez para volver al punto de
+// partida; así una ruta nueva nace cerrada y, si de verdad tiene que ser
+// pública, se añade aquí a mano.
+//
+// Las rutas van relativas a /api, que es donde está montado el middleware.
+// ---------------------------------------------------------------------------
+const RUTAS_PUBLICAS: { metodo: string; patron: RegExp }[] = [
+  { metodo: 'GET', patron: /^\/health$/ },
+  { metodo: 'POST', patron: /^\/login$/ },
+  // Imágenes de productos y banners servidas desde Mongo.
+  { metodo: 'GET', patron: /^\/media\/[^/]+$/ },
+  // Catálogo de la tienda.
+  { metodo: 'GET', patron: /^\/products$/ },
+  { metodo: 'GET', patron: /^\/products\/[^/]+$/ },
+  { metodo: 'GET', patron: /^\/banners$/ },
+  // Reseñas: el cliente las lee y las escribe (quedan pendientes de aprobar).
+  { metodo: 'GET', patron: /^\/products\/[^/]+\/reviews$/ },
+  { metodo: 'POST', patron: /^\/products\/[^/]+\/reviews$/ },
+  // Avisos de "notifícame cuando haya stock".
+  { metodo: 'POST', patron: /^\/stock-alerts$/ },
+  { metodo: 'GET', patron: /^\/stock-alerts\/[^/]+\/count$/ },
+  // Pasarela de pago: la página del SDK y el webhook de Bold, que llega desde
+  // los servidores de Bold y se valida con su propia firma HMAC.
+  { metodo: 'GET', patron: /^\/bold-checkout$/ },
+  { metodo: 'POST', patron: /^\/bold\/webhook$/ },
+  // Portal del cliente. El token firmado que va en la ruta ES la autenticación:
+  // lo verifica cada handler contra el secreto del portal y sólo abre la ficha de
+  // ese contrato. Las tres acciones van listadas una por una, no con un comodín,
+  // para que añadir mañana una ruta bajo /portal/ no la publique sin querer.
+  //
+  // Ojo: /portal-admin/* NO entra aquí y por tanto sigue exigiendo sesión de
+  // administrador. El patrón pide la barra después de "portal" justamente para
+  // que no se cuele.
+  { metodo: 'GET', patron: /^\/portal\/[^/]+$/ },
+  { metodo: 'POST', patron: /^\/portal\/[^/]+\/pagar$/ },
+  { metodo: 'POST', patron: /^\/portal\/[^/]+\/comprobante$/ },
+  { metodo: 'POST', patron: /^\/portal\/[^/]+\/plazo$/ },
+  // Creación del pedido al terminar la compra. Ojo: sólo POST /orders.
+  // El GET /orders (listado completo con datos de clientes) es de admin.
+  { metodo: 'POST', patron: /^\/orders$/ },
+  // Webhook de Trustonic: lo llaman los servidores del proveedor, que no
+  // tienen sesión de administrador. Se autentica con el secreto compartido que
+  // va en la propia ruta y que compara el handler; además el evento no se cree
+  // tal cual, sólo dispara una reconsulta. El resto de /api/blocking/* sigue
+  // exigiendo token.
+  { metodo: 'POST', patron: /^\/blocking\/webhook\/[^/]+$/ },
+];
+
+function esRutaPublica(metodo: string, ruta: string): boolean {
+  // El preflight CORS nunca lleva cabecera Authorization.
+  if (metodo === 'OPTIONS') return true;
+  // Normalizar la barra final para que /products/ no esquive la lista.
+  const limpia = ruta.length > 1 ? ruta.replace(/\/+$/, '') : ruta;
+  return RUTAS_PUBLICAS.some(r => r.metodo === metodo && r.patron.test(limpia));
+}
+
+// Todas las rutas /api requieren DB disponible (salvo login y health) y,
+// si no son públicas, un token de administrador válido.
 app.use('/api', (req, res, next) => {
+  if (!esRutaPublica(req.method, req.path)) {
+    const cabecera = req.headers.authorization || '';
+    const token = cabecera.startsWith('Bearer ') ? cabecera.slice(7).trim() : '';
+    const sesion = verificarToken(token);
+    if (!sesion) {
+      return res.status(401).json({
+        error: 'No autorizado',
+        message: 'Sesión no válida o caducada. Vuelve a iniciar sesión.',
+      });
+    }
+    (req as any).sesion = sesion;
+  }
+
   if (req.path === '/login' || req.path === '/health') return next();
   return requireDb(req, res, next);
 });
@@ -1728,11 +2482,15 @@ app.delete('/api/products/:id', async (req, res) => {
 // STOCK ALERTS — "Notificarme cuando haya stock"
 // ====================================================================
 
-app.post('/api/stock-alerts', async (req, res) => {
+app.post('/api/stock-alerts', limitarEscrituraPublica, async (req, res) => {
   try {
-    const { productId, productName, phone } = req.body;
+    const { productId, productName, phone } = req.body || {};
     if (!productId || !phone) {
       return res.status(400).json({ error: 'productId y phone son requeridos' });
+    }
+    // Ruta pública: se acotan las longitudes antes de guardar nada.
+    if (String(productId).length > 120 || String(phone).length > 25 || String(productName || '').length > 200) {
+      return res.status(400).json({ error: 'Datos demasiado largos' });
     }
 
     // Evitar duplicados (mismo teléfono + mismo producto)
@@ -1837,126 +2595,6 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-app.post('/api/addi/create-transaction', async (req, res) => {
-  try {
-    const { orderId, totalAmount, items, client, shippingAddress } = req.body;
-    
-    // 1. Obtener Token de Addi
-    const tokenRes = await fetch('https://auth.addi.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: 'upT8WKxtMzHHtFI9SrWThPjjghzHkATy',
-        client_secret: '1YB3cFJDfFyeEAxhKBGjPfvLeto1NIKygCPlKmDGCG1YD4eQG0rkLrH_DMFep_MP',
-        grant_type: 'client_credentials',
-        audience: 'https://api.addi.com'
-      })
-    });
-    
-    const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) {
-      console.error('Addi Token Error:', tokenData);
-      return res.status(500).json({ error: 'Error de autenticación con Addi' });
-    }
-
-    // 2. Crear Transacción en Addi
-    const transactionRes = await fetch('https://api.addi.com/v1/online-applications', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Content-Type': 'application/json'
-      },
-      redirect: 'manual', // Importante para capturar el header Location
-      body: JSON.stringify({
-        orderId,
-        totalAmount: Number(totalAmount),
-        shippingAmount: 0,
-        currency: "COP",
-        items,
-        client,
-        shippingAddress: shippingAddress || {
-          lineOne: client.address.lineOne,
-          city: client.address.city,
-          country: "CO"
-        },
-        allyUrlRedirection: {
-          logoUrl: "https://xiaomicartagena.com/favicon.ico",
-          callbackUrl: "https://xiaomictg-production.up.railway.app/api/addi/callback",
-          redirectionUrl: "https://xiaomicartagena.com/?addi_success=true"
-        }
-      })
-    });
-
-    if (transactionRes.status === 301 || transactionRes.status === 302) {
-      const addiUrl = transactionRes.headers.get('location');
-      return res.json({ success: true, redirectUrl: addiUrl });
-    } else {
-      const errorText = await transactionRes.text();
-      console.error('Addi Transaction Error:', transactionRes.status, errorText);
-      return res.status(500).json({ error: 'Error al crear la transacción en Addi' });
-    }
-
-  } catch (error) {
-    console.error('Addi API Error:', error);
-    res.status(500).json({ error: 'Error interno conectando con Addi' });
-  }
-});
-
-// Webhook / Callback de Addi cuando la transacción es aprobada o rechazada
-app.post('/api/addi/callback', async (req, res) => {
-  try {
-    const addiPayload = req.body;
-    console.log('Addi Callback Payload:', JSON.stringify(addiPayload));
-
-    // El payload de Addi generalmente trae el status y el orderId
-    const { orderId, status } = addiPayload;
-    
-    if (orderId && status === 'APPROVED') {
-      const order = await db.collection('orders').findOne({ orderNumber: orderId });
-      
-      if (order && order.status === 'pending_addi') {
-        // Actualizamos a pagado
-        await db.collection('orders').updateOne(
-          { orderNumber: orderId },
-          { $set: { status: 'paid' } }
-        );
-
-        // Marcar ventas asociadas como recibidas y registrar en caja
-        const ventasOrden = await db.collection('daily_sales').find({ orderId: order.id }).toArray();
-        for (const v of ventasOrden) {
-          if (v.estadoPago !== 'recibido') {
-            await db.collection('daily_sales').updateOne({ id: v.id }, { $set: { estadoPago: 'recibido' } });
-            await crearMovimientosCajaDesdeVenta(
-              v.metodoPago || 'efectivo',
-              v.precioVenta,
-              `Venta Addi: ${v.producto} — ${v.cliente}`,
-            );
-          }
-        }
-
-        // Notificamos por WhatsApp y Correo ahora sí!
-        const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: 'paid' } as OrderDoc]);
-        sendOrderEmail(hydratedOrder).catch(err => console.error('Error sending email:', err));
-        sendWhatsAppNotifications(hydratedOrder).catch(err => console.error('[WA] Error notificaciones:', err));
-
-        io.emit('orderUpdated', { id: order.id, status: 'paid' });
-      }
-    }
-    
-    // Addi exige un 200 OK
-    res.status(200).send('OK');
-  } catch (error) {
-    console.error('Addi Callback Error:', error);
-    res.status(500).send('Error');
-  }
-});
-
-// En caso de que Addi redirija al cliente por GET al callback
-app.get('/api/addi/callback', async (req, res) => {
-  // Redirigimos al inicio con un mensaje de éxito
-  res.redirect('/?addi_success=true');
-});
-
 // ====================================================================
 // ██████  BOLD — Pasarela de pago con tarjeta  ██████
 // ====================================================================
@@ -1968,19 +2606,73 @@ app.get('/api/bold-checkout', async (req, res) => {
     return res.status(500).send('<h1>Error de configuración: claves de pago no disponibles</h1>');
   }
 
-  const { orderId, amount, currency = 'COP', redirectionUrl, description } = req.query as Record<string, string>;
+  const { orderId, amount, currency = 'COP', redirectionUrl, description, titulo, etiqueta } =
+    req.query as Record<string, string>;
   if (!orderId || !amount) {
     return res.status(400).send('<h1>Parámetros faltantes</h1>');
   }
 
+  /**
+   * El importe y la referencia entran en la firma de integridad, así que tienen
+   * que ser exactamente lo que se le va a cobrar. Un importe que no sea un
+   * número entero positivo no se firma: se rechaza. Antes un `amount=abc`
+   * producía `NaN`, se firmaba y la pasarela recibía una página de pago sin
+   * importe.
+   */
   const amountInt = Math.round(Number(amount));
+  if (!Number.isFinite(amountInt) || amountInt <= 0) {
+    return res.status(400).send('<h1>Importe no válido</h1>');
+  }
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(orderId)) {
+    return res.status(400).send('<h1>Referencia no válida</h1>');
+  }
+  const moneda = /^[A-Z]{3}$/.test(String(currency)) ? String(currency) : 'COP';
 
   // Compute BOLD integrity hash
-  const integrityMsg = `${orderId}${amountInt}${currency}${BOLD_SECRET_KEY}`;
+  const integrityMsg = `${orderId}${amountInt}${moneda}${BOLD_SECRET_KEY}`;
   const integrity = createHash('sha256').update(integrityMsg).digest('hex');
 
-  const safeRedirect = redirectionUrl || `${req.protocol}://${req.get('host')}/?bold_status=success`;
+  /**
+   * A dónde vuelve el cliente después de pagar. Lo decide la pasarela, así que
+   * un valor libre aquí convierte esta ruta —que es PÚBLICA— en un redirector
+   * hacia cualquier sitio, con la credibilidad del dominio de la tienda detrás.
+   * Sólo se acepta volver a este mismo backend o a un origen de la lista.
+   */
+  const vueltaPorDefecto = `${BASE_PUBLICA}/?bold_status=success`;
+  const safeRedirect = (() => {
+    if (!redirectionUrl) return vueltaPorDefecto;
+    try {
+      const destino = new URL(redirectionUrl);
+      const propio = new URL(BASE_PUBLICA);
+      if (destino.origin === propio.origin) return destino.toString();
+      if (ORIGENES_PERMITIDOS.has(destino.origin)) return destino.toString();
+      console.warn(`[bold-checkout] URL de vuelta no permitida: ${destino.origin}. Se usa la de siempre.`);
+    } catch {
+      console.warn('[bold-checkout] URL de vuelta ilegible. Se usa la de siempre.');
+    }
+    return vueltaPorDefecto;
+  })();
+
   const desc = description || `Pedido Xiaomi Cartagena ${orderId}`;
+
+  /**
+   * Todo lo de abajo va dentro de atributos HTML. Sin escapar, un `orderId` o un
+   * `description` con una comilla cierra el atributo y escribe etiquetas nuevas
+   * en una página pública: es una inyección de HTML servida desde el dominio de
+   * la tienda, justo en la pantalla donde el cliente va a teclear una tarjeta.
+   */
+  const esc = (valor: unknown) =>
+    String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  // El mismo botón sirve para un pedido de la tienda y para una cuota del
+  // financiamiento, y "Resumen de tu pedido" sobre una cuota desconcierta.
+  const tituloPagina = titulo ? String(titulo).slice(0, 80) : 'Resumen de tu pedido';
+  const etiquetaRef = etiqueta ? String(etiqueta).slice(0, 30) : 'Pedido';
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -2014,24 +2706,24 @@ app.get('/api/bold-checkout', async (req, res) => {
 <body>
   <div class="wrap">
     <div class="brand">XIAOMI <span>Cartagena</span></div>
-    <p class="title">Resumen de tu pedido</p>
+    <p class="title">${esc(tituloPagina)}</p>
     <p class="sub">Haz clic en el bot&oacute;n de abajo para pagar de forma segura</p>
     <div class="info">
       <div class="label">Total a pagar</div>
-      <div class="val">$${amountInt.toLocaleString('es-CO')} COP</div>
-      <div class="oid">Pedido ${orderId}</div>
+      <div class="val">$${amountInt.toLocaleString('es-CO')} ${esc(moneda)}</div>
+      <div class="oid">${esc(etiquetaRef)} ${esc(orderId)}</div>
     </div>
     <div id="bold-btn-wrap">
       <script
         src="https://checkout.bold.co/library/boldPaymentButton.js"
         data-bold-button="dark-L"
-        data-order-id="${orderId}"
+        data-order-id="${esc(orderId)}"
         data-amount="${amountInt}"
-        data-currency="${currency}"
-        data-api-key="${BOLD_API_KEY}"
-        data-integrity-signature="${integrity}"
-        data-redirection-url="${safeRedirect}"
-        data-description="${desc}"
+        data-currency="${esc(moneda)}"
+        data-api-key="${esc(BOLD_API_KEY)}"
+        data-integrity-signature="${esc(integrity)}"
+        data-redirection-url="${esc(safeRedirect)}"
+        data-description="${esc(desc)}"
       ></script>
     </div>
     <a href="/" class="back">&larr; Volver a la tienda</a>
@@ -2089,7 +2781,17 @@ async function transitionOrderAndNotify(order: any, newStatus: string, metodoPag
 app.post('/api/bold/webhook', async (req, res) => {
   try {
     const payload = req.body;
-    console.log('[bold-webhook] Payload recibido:', JSON.stringify(payload));
+
+    // No se vuelca el payload entero: el objeto `data` de Bold trae datos de
+    // la tarjeta y del comprador, y esto se registra ANTES de validar la firma,
+    // así que cualquiera que conozca la URL podría llenar los logs de Railway
+    // con lo que quisiera. Se dejan sólo los campos necesarios para depurar.
+    console.log('[bold-webhook] Evento recibido:', JSON.stringify({
+      id: payload?.id,
+      type: payload?.type,
+      subject: payload?.subject,
+      referencia: payload?.data?.metadata?.reference || payload?.data?.reference || payload?.subject,
+    }));
 
     // Aceptar la recepción de inmediato como exige Bold
     res.status(200).send('OK');
@@ -2097,30 +2799,80 @@ app.post('/api/bold/webhook', async (req, res) => {
     const signature = req.headers['x-bold-signature'];
     const secret = process.env.BOLD_SECRET_KEY;
 
-    // Validación de firma HMAC si está configurada y se recibe
-    if (signature && secret && req.rawBody) {
-      const computedSignature = createHmac('sha256', secret)
-        .update(req.rawBody)
-        .digest('hex');
-      
-      let isSignatureValid = false;
+    // La firma es OBLIGATORIA. Antes se validaba sólo "si venía": al no
+    // mandar la cabecera x-bold-signature se saltaba el bloque entero y el
+    // evento se procesaba como auténtico, así que cualquiera que conociera
+    // la URL podía hacer un POST con type SALE_APPROVED y marcar pagado un
+    // pedido que nunca se cobró. Ahora, si falta la firma, el secreto o el
+    // cuerpo crudo, no se procesa nada.
+    if (!secret) {
+      console.error('[bold-webhook] BOLD_SECRET_KEY no está configurada: se descarta el evento por seguridad.');
+      return;
+    }
+    if (!signature || typeof signature !== 'string') {
+      console.error('[bold-webhook] Evento sin cabecera x-bold-signature: se descarta.');
+      return;
+    }
+    if (!req.rawBody) {
+      console.error('[bold-webhook] No se conservó el cuerpo crudo de la petición: no se puede verificar la firma, se descarta.');
+      return;
+    }
+
+    // El formato documentado por Bold (developers.bold.co/webhook) es
+    //   x-bold-signature = hex( HMAC-SHA256( llave secreta, base64(cuerpo crudo) ) )
+    // que es el primer candidato de la lista. Los otros tres (hex/base64 sobre
+    // el cuerpo crudo o sobre su base64) se mantienen como red de seguridad:
+    // la firma es obligatoria, así que si Bold cambiase la codificación sin
+    // avisar, sin estas variantes dejaríamos de confirmar pagos reales.
+    const rawBodyBase64 = req.rawBody.toString('base64');
+
+    // El ejemplo de Bold calcula el base64 sobre JSON.stringify(body), o sea
+    // sobre el cuerpo RE-serializado, no sobre los bytes recibidos. Normalmente
+    // coinciden, pero si Bold enviase el JSON con otro espaciado u otro orden
+    // de claves dejarían de coincidir y, al ser la firma obligatoria, se
+    // caerían los pagos reales. Se incluye también esa variante.
+    let cuerpoReserializadoBase64 = '';
+    try {
+      cuerpoReserializadoBase64 = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
+    } catch {
+      /* si no se puede re-serializar, basta con las variantes del cuerpo crudo */
+    }
+
+    const candidatos = [
+      createHmac('sha256', secret).update(rawBodyBase64).digest('hex'),
+      createHmac('sha256', secret).update(rawBodyBase64).digest('base64'),
+      createHmac('sha256', secret).update(req.rawBody).digest('hex'),
+      createHmac('sha256', secret).update(req.rawBody).digest('base64'),
+      ...(cuerpoReserializadoBase64 && cuerpoReserializadoBase64 !== rawBodyBase64
+        ? [
+            createHmac('sha256', secret).update(cuerpoReserializadoBase64).digest('hex'),
+            createHmac('sha256', secret).update(cuerpoReserializadoBase64).digest('base64'),
+          ]
+        : []),
+    ];
+
+    const firmaRecibida = Buffer.from(signature.trim(), 'utf8');
+    let isSignatureValid = false;
+    for (const candidato of candidatos) {
       try {
-        const bufferSignature = Buffer.from(signature as string, 'utf8');
-        const bufferComputed = Buffer.from(computedSignature, 'utf8');
-        if (bufferSignature.length === bufferComputed.length) {
-          isSignatureValid = timingSafeEqual(bufferSignature, bufferComputed);
+        const esperada = Buffer.from(candidato, 'utf8');
+        // timingSafeEqual exige la misma longitud; distinta longitud ya es un fallo.
+        if (esperada.length === firmaRecibida.length && timingSafeEqual(esperada, firmaRecibida)) {
+          isSignatureValid = true;
+          break;
         }
       } catch (err) {
         console.error('[bold-webhook] Error verificando firma:', err);
       }
-
-      if (!isSignatureValid) {
-        console.error(`[bold-webhook] Firma de seguridad inválida. Recibida: ${signature}, Calculada: ${computedSignature}`);
-        // No procesamos la orden si la firma es inválida
-        return;
-      }
-      console.log('[bold-webhook] Firma de seguridad validada con éxito.');
     }
+
+    if (!isSignatureValid) {
+      // No se registra la firma calculada: dársela a quien la falla es
+      // regalarle la respuesta correcta.
+      console.error('[bold-webhook] Firma de seguridad inválida: se descarta el evento.');
+      return;
+    }
+    console.log('[bold-webhook] Firma de seguridad validada con éxito.');
 
     const { type, data } = payload;
     if (type !== 'SALE_APPROVED') {
@@ -2129,6 +2881,15 @@ app.post('/api/bold/webhook', async (req, res) => {
       // Si la venta es rechazada, podemos actualizar a cancelada para informar al admin
       if (type === 'SALE_REJECTED') {
         const orderNumber = data?.metadata?.reference || data?.reference || payload.subject;
+        // Las cuotas del financiamiento comparten webhook con las ventas de la
+        // tienda y se distinguen por el prefijo de la referencia. Un rechazo no
+        // toca ninguna cuota —nunca se marcó nada— pero sí cierra la intención,
+        // para que el portal pueda decir "no se pudo cobrar" en vez de dejar al
+        // cliente mirando un "estamos confirmando" que no va a cambiar nunca.
+        if (esReferenciaDeCuota(orderNumber)) {
+          await rechazarPagoDeCuotas(depsPortal, String(orderNumber));
+          return;
+        }
         if (orderNumber) {
           const order = await db.collection('orders').findOne({ orderNumber });
           if (order && order.status === 'pending_bold') {
@@ -2152,6 +2913,23 @@ app.post('/api/bold/webhook', async (req, res) => {
 
     if (!orderNumber) {
       console.error('[bold-webhook] No se encontró ninguna referencia de pedido en el payload.');
+      return;
+    }
+
+    /**
+     * Pago de una cuota de financiamiento, no de un pedido de la tienda.
+     *
+     * Se bifurca por el prefijo de la referencia y no buscando en las dos
+     * colecciones: la referencia la escribió este servidor al crear la intención
+     * de pago, así que es un dato propio, mientras que lo que trae el payload es
+     * de un tercero. Con el prefijo, un número de pedido no puede acabar
+     * marcando cuotas pagadas ni al contrario.
+     */
+    if (esReferenciaDeCuota(orderNumber)) {
+      await confirmarPagoDeCuotas(depsPortal, String(orderNumber), {
+        paymentId: data?.payment_id || data?.paymentId || payload?.id,
+        metodo: data?.payment_method || data?.paymentMethod || data?.method,
+      });
       return;
     }
 
@@ -2185,7 +2963,7 @@ app.post('/api/bold/webhook', async (req, res) => {
 });
 
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', limitarEscrituraPublica, async (req, res) => {
   try {
     const { action, order: invoiceOrder } = req.body;
     
@@ -2628,37 +3406,54 @@ app.put('/api/ticket-config', async (req, res) => {
 // WHATSAPP ENDPOINTS
 // ====================================================================
 
-app.get('/api/whatsapp/status', (_req, res) => {
-  const status = whatsappService.getStatus();
-  const result: Record<string, any> = { status };
-  if (status === 'qr_ready') result.qr = whatsappService.getQRDataUrl();
-  res.json(result);
-});
+/**
+ * Registra status/connect/disconnect para una sesión de WhatsApp.
+ *
+ * Es una fábrica y no tres rutas copiadas porque hay dos sesiones (tienda y
+ * CREDILOCK) y duplicar el bloque garantizaba que cualquier arreglo futuro se
+ * aplicara a una y se olvidara en la otra.
+ *
+ * El contrato de la respuesta se mantiene igual que antes ({ status, qr }) para no
+ * romper el WhatsAppPanel que ya existe; `numero` es un campo nuevo añadido.
+ */
+function registrarRutasWhatsApp(base: string, servicio: WhatsAppService) {
+  const tag = servicio.getConfig().tagLog;
 
-app.post('/api/whatsapp/connect', async (_req, res) => {
-  if (!db) return res.status(503).json({ error: 'Base de datos no disponible' });
-  try {
-    await whatsappService.init(db, io);
-    // Devolver el estado actual; si hay QR disponible, incluirlo
-    const status = whatsappService.getStatus();
-    const result: Record<string, any> = { success: true, status };
-    if (status === 'qr_ready') result.qr = whatsappService.getQRDataUrl();
+  app.get(`${base}/status`, (_req, res) => {
+    const status = servicio.getStatus();
+    const result: Record<string, any> = { status, numero: servicio.getNumero() };
+    if (status === 'qr_ready') result.qr = servicio.getQRDataUrl();
     res.json(result);
-  } catch (err) {
-    console.error('[WA] Error al conectar:', err);
-    res.status(500).json({ error: 'Error al inicializar WhatsApp' });
-  }
-});
+  });
 
-app.post('/api/whatsapp/disconnect', async (_req, res) => {
-  try {
-    await whatsappService.disconnect();
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[WA] Error al desconectar:', err);
-    res.status(500).json({ error: 'Error al desconectar WhatsApp' });
-  }
-});
+  app.post(`${base}/connect`, async (_req, res) => {
+    if (!db) return res.status(503).json({ error: 'Base de datos no disponible' });
+    try {
+      await servicio.init(db, io);
+      // Devolver el estado actual; si hay QR disponible, incluirlo
+      const status = servicio.getStatus();
+      const result: Record<string, any> = { success: true, status, numero: servicio.getNumero() };
+      if (status === 'qr_ready') result.qr = servicio.getQRDataUrl();
+      res.json(result);
+    } catch (err) {
+      console.error(tag, 'Error al conectar:', err);
+      res.status(500).json({ error: 'Error al inicializar WhatsApp' });
+    }
+  });
+
+  app.post(`${base}/disconnect`, async (_req, res) => {
+    try {
+      await servicio.disconnect();
+      res.json({ success: true });
+    } catch (err) {
+      console.error(tag, 'Error al desconectar:', err);
+      res.status(500).json({ error: 'Error al desconectar WhatsApp' });
+    }
+  });
+}
+
+registrarRutasWhatsApp('/api/whatsapp', whatsappService);
+registrarRutasWhatsApp('/api/credilock', credilockService);
 
 app.get('/api/whatsapp/templates', async (_req, res) => {
   try {
@@ -2886,14 +3681,33 @@ app.get('/api/products/:id/reviews', async (req, res) => {
   }
 });
 
-app.post('/api/products/:id/reviews', async (req, res) => {
+app.post('/api/products/:id/reviews', limitarEscrituraPublica, async (req, res) => {
   try {
-    const { author, rating, comment } = req.body;
+    const { author, rating, comment } = req.body || {};
+
+    // Esta ruta es pública y escribe en Mongo, así que valida de verdad.
+    // Antes insertaba lo que llegara: un POST con el cuerpo vacío creaba una
+    // reseña con autor, nota y comentario a null.
+    const autorLimpio = String(author ?? '').trim();
+    const comentarioLimpio = String(comment ?? '').trim();
+    const notaNumero = Number(rating);
+
+    if (!autorLimpio || !comentarioLimpio) {
+      return res.status(400).json({ error: 'El nombre y el comentario son obligatorios' });
+    }
+    if (!Number.isInteger(notaNumero) || notaNumero < 1 || notaNumero > 5) {
+      return res.status(400).json({ error: 'La valoración debe ser un número entero del 1 al 5' });
+    }
+    // Topes de longitud para que nadie use el campo como almacén de texto.
+    if (autorLimpio.length > 60 || comentarioLimpio.length > 1000) {
+      return res.status(400).json({ error: 'El nombre o el comentario son demasiado largos' });
+    }
+
     const review = {
-      productId: req.params.id,
-      author,
-      rating: Number(rating),
-      comment,
+      productId: String(req.params.id).slice(0, 120),
+      author: autorLimpio,
+      rating: notaNumero,
+      comment: comentarioLimpio,
       status: 'pending',
       verifiedPurchase: false,
       date: new Date().toISOString(),
@@ -2963,11 +3777,53 @@ app.delete('/api/admin/reviews/:id', async (req, res) => {
 // FINANCING MODULE — Cuotas quincenales con recordatorios WhatsApp
 // ====================================================================
 
+/**
+ * Captura del pago que el cliente manda por WhatsApp. Es la prueba de que la
+ * cuota entró: sin esto, marcar "Pagada" era la palabra de quien apretó el
+ * botón contra la de un cliente al que, si se equivoca el conteo, se le bloquea
+ * el teléfono.
+ *
+ * No se guarda la imagen aquí sino su `mediaId`: el documento de financiación
+ * viaja entero en cada `GET /api/financing` (113 registros), y meterle los
+ * binarios lo volvería inmanejable.
+ */
+interface ComprobantePago {
+  mediaId: string;
+  mime: string;
+  bytes: number;
+  nombreArchivo: string;
+  subidoEn: string; // ISO
+  subidoPor: string;
+}
+
 interface FinancingInstallment {
   number: number;
-  dueDate: string; // ISO
+  dueDate: string; // ISO — la fecha PACTADA; no se toca nunca
   paidDate?: string; // ISO — cuando se marcó como pagada
   status: 'pending' | 'paid' | 'overdue';
+  comprobante?: ComprobantePago | null;
+  /**
+   * Plazo extra concedido sobre esta cuota. Ver `server/prorroga.ts`: la fecha
+   * que manda para mora, bloqueos y recordatorios es `fechaLimite(cuota)`, no
+   * `dueDate`.
+   */
+  prorroga?: Prorroga | null;
+  /**
+   * Pago hecho por el cliente desde el portal, ya confirmado por la pasarela.
+   * Lo escribe `confirmarPagoDeCuotas` (server/portal-rutas.ts) al recibir el
+   * webhook de Bold, nunca el panel.
+   *
+   * Hace el mismo papel que `comprobante`: es el respaldo de la cuota. La
+   * diferencia es que esto no es una imagen que alguien manda, es plata que
+   * entró, así que no se puede editar ni borrar desde el panel.
+   */
+  pagoEnLinea?: {
+    referencia: string;
+    monto: number;
+    metodo?: string;
+    boldPaymentId?: string;
+    aprobadoEn: string; // ISO
+  } | null;
 }
 
 interface FinancingRecord {
@@ -3013,7 +3869,11 @@ function generateInstallments(startDate: string, count: number, cuotasPagadas = 
 }
 
 /** Actualiza estados overdue en cuotas vencidas no pagadas.
- *  Solo marca overdue si ya pasó la horaBloqueo en hora Colombia (UTC-5). */
+ *  Solo marca overdue si ya pasó la horaBloqueo en hora Colombia (UTC-5).
+ *
+ *  Una cuota con prórroga vigente NO sale vencida: se mide contra la fecha del
+ *  plazo, no contra la pactada. Este estado es sólo de lectura (nunca se guarda
+ *  en Mongo), así que conceder o anular una prórroga se refleja al instante. */
 function refreshOverdueStatus(cuotas: FinancingInstallment[], horaBloqueo = '08:00'): FinancingInstallment[] {
   // Hora actual en Colombia
   const nowCO = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -3022,7 +3882,7 @@ function refreshOverdueStatus(cuotas: FinancingInstallment[], horaBloqueo = '08:
 
   return cuotas.map(c => {
     if (c.status !== 'pending') return c;
-    const dueDateStr = c.dueDate.slice(0, 10); // yyyy-mm-dd
+    const dueDateStr = fechaLimite(c); // yyyy-mm-dd, con la prórroga ya aplicada
 
     if (dueDateStr < todayStr) {
       // Día ya pasó → overdue
@@ -3162,16 +4022,49 @@ app.put('/api/financing/:id', async (req, res) => {
           ? paidCuotas[paidCuotas.length - 1].number + 1
           : previas + 1;
 
+        /**
+         * Las capturas de pago sobreviven a la regeneración. Antes se perdían
+         * sin aviso: editar el número de cuotas o la fecha de inicio borraba el
+         * array de pendientes entero, y con él el comprobante que alguien ya
+         * había subido. Es prueba de un pago, no un adorno.
+         *
+         * Las prórrogas NO se conservan, y es a propósito: una prórroga dice
+         * "sobre la cuota que vencía el 10, te doy hasta el 20". Si la fecha de
+         * esa cuota se acaba de mover, el plazo ya no se refiere a nada y
+         * mantenerlo sólo serviría para despistar al automatismo.
+         */
+        const comprobantesPorNumero = new Map(
+          (oldCuotas as FinancingInstallment[])
+            .filter(c => c.comprobante?.mediaId)
+            .map(c => [c.number, c.comprobante!])
+        );
+        const prorrogasDescartadas = (oldCuotas as FinancingInstallment[]).filter(
+          c => c.status !== 'paid' && c.prorroga?.hasta
+        ).length;
+
         const unpaidCuotas: FinancingInstallment[] = [];
         const start = new Date(newFechaInicio);
         for (let i = 0; i < unpaidCount; i++) {
           const d = new Date(start);
           d.setUTCDate(d.getUTCDate() + i * 15);
+          const numero = nextNumber + i;
+          const comprobante = comprobantesPorNumero.get(numero);
+          comprobantesPorNumero.delete(numero);
           unpaidCuotas.push({
-            number: nextNumber + i,
+            number: numero,
             dueDate: d.toISOString(),
             status: 'pending',
+            ...(comprobante ? { comprobante } : {}),
           });
+        }
+
+        // Lo que no encontró hueco (porque bajó el número de cuotas) se borra de
+        // verdad, en vez de quedar como binario huérfano en `media`.
+        for (const sobrante of comprobantesPorNumero.values()) {
+          await borrarMediaComprobante(sobrante);
+        }
+        if (prorrogasDescartadas > 0) {
+          console.log(`[financing] ${existing.nombre}: se descartaron ${prorrogasDescartadas} prórroga(s) al regenerar las cuotas.`);
         }
 
         // Cuotas pagadas intactas + nuevas pendientes desde fechaInicio
@@ -3259,6 +4152,291 @@ app.delete('/api/financing/:id', async (req, res) => {
 });
 
 // --- Marcar cuota como pagada (con fecha de próximo pago opcional) ---
+/* ────────────────────  Comprobantes de pago  ──────────────────── */
+
+/** Tope por comprobante. El servidor guarda hasta MAX_STORED_IMAGE_BYTES. */
+const MAX_COMPROBANTE_BYTES = 700 * 1024;
+
+/**
+ * Localiza la cuota dentro de la financiación. Las tres rutas de comprobante
+ * empiezan igual, y repetir la búsqueda en cada una era la vía rápida a que
+ * sólo dos de las tres validaran el índice.
+ */
+async function buscarCuota(id: string, numero: string) {
+  const record = await db.collection('financing').findOne({ id });
+  if (!record) return { error: 'Financiamiento no encontrado' as const, status: 404 };
+
+  const cuotas: FinancingInstallment[] = record.cuotas || [];
+  const idx = cuotas.findIndex(c => c.number === Number(numero));
+  if (idx === -1) return { error: 'Cuota no encontrada' as const, status: 404 };
+
+  return { record, cuotas, idx };
+}
+
+/**
+ * Borra el binario de un comprobante. Se llama al reemplazar y al eliminar: sin
+ * esto, cambiar una captura dejaba la anterior ocupando espacio en Mongo para
+ * siempre, sin nada que la referenciara.
+ */
+async function borrarMediaComprobante(comprobante?: ComprobantePago | null) {
+  if (!comprobante?.mediaId) return;
+  await db.collection('media').deleteOne({ mediaId: comprobante.mediaId }).catch(() => {});
+}
+
+/** Sube (o reemplaza) la captura del pago de una cuota. */
+app.post('/api/financing/:id/comprobante/:cuotaNumber', async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ('error' in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { cuotas, idx } = encontrado;
+
+    const { image, filename } = req.body || {};
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({ error: 'Falta la imagen del comprobante' });
+    }
+
+    const parsed = parseBase64Image(image);
+    if (!parsed) return res.status(400).json({ error: 'La imagen no es válida' });
+    if (parsed.buffer.length > MAX_COMPROBANTE_BYTES) {
+      return res.status(413).json({
+        error: `El comprobante pesa ${Math.round(parsed.buffer.length / 1024)}KB y el máximo son ${Math.round(
+          MAX_COMPROBANTE_BYTES / 1024
+        )}KB.`,
+      });
+    }
+
+    /**
+     * Identificador aleatorio, no correlativo. Aunque la imagen sólo se sirve
+     * con sesión de administrador, un id predecible como `financiacion-3-cuota-7`
+     * convertiría cualquier fuga futura de la ruta en "descarga todas las
+     * capturas bancarias de la cartera".
+     */
+    const mediaId = `comprobante-${randomBytes(16).toString('hex')}`;
+    await db.collection('media').insertOne({
+      mediaId,
+      mime: parsed.mime,
+      data: parsed.buffer,
+      folder: 'comprobantes',
+      createdAt: new Date().toISOString(),
+    });
+
+    // El binario nuevo ya está guardado, así que si el borrado del viejo falla
+    // se pierde espacio, no la prueba.
+    await borrarMediaComprobante(cuotas[idx].comprobante);
+
+    cuotas[idx].comprobante = {
+      mediaId,
+      mime: parsed.mime,
+      bytes: parsed.buffer.length,
+      nombreArchivo: String(filename || 'comprobante.jpg').slice(0, 120),
+      subidoEn: new Date().toISOString(),
+      subidoPor: (req as any).sesion?.usuario || 'admin',
+    };
+
+    await db.collection('financing').updateOne({ id: req.params.id }, { $set: { cuotas } });
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    return res.json(updated);
+  } catch (error) {
+    console.error('[financing] Error subiendo comprobante:', error);
+    return res.status(500).json({ error: 'No se pudo guardar el comprobante' });
+  }
+});
+
+/**
+ * Devuelve la imagen. Va por aquí y no por /api/media/:id —que es público para
+ * las fotos del catálogo— porque un comprobante es una captura bancaria de un
+ * cliente: nombre, banco y a veces el número de cuenta. Esta ruta cuelga de
+ * /api/financing, así que hereda la exigencia de sesión de administrador.
+ */
+app.get('/api/financing/:id/comprobante/:cuotaNumber/imagen', async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ('error' in encontrado) return res.status(encontrado.status).end();
+
+    const comprobante = encontrado.cuotas[encontrado.idx].comprobante;
+    if (!comprobante?.mediaId) return res.status(404).end();
+
+    const doc = await db.collection('media').findOne({ mediaId: comprobante.mediaId });
+    if (!doc) return res.status(404).end();
+
+    res.setHeader('Content-Type', doc.mime || comprobante.mime || 'image/jpeg');
+    // Privado: que no quede en la caché de un proxy compartido.
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+
+    if (Buffer.isBuffer(doc.data)) return res.send(doc.data);
+    if (doc.data?.buffer) return res.send(Buffer.from(doc.data.buffer));
+    return res.send(Buffer.from(doc.data));
+  } catch (error) {
+    console.error('[financing] Error sirviendo comprobante:', error);
+    return res.status(500).end();
+  }
+});
+
+/** Elimina la captura. Reemplazar es un POST; esto es quitarla del todo. */
+app.delete('/api/financing/:id/comprobante/:cuotaNumber', async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ('error' in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { cuotas, idx } = encontrado;
+
+    /**
+     * Una cuota pagada no se queda sin prueba. Si se permitiera, bastaría un
+     * clic de más para tener un pago registrado que nadie puede justificar
+     * cuando el cliente reclame. Para corregir una captura equivocada está el
+     * reemplazo, que sí funciona con la cuota pagada.
+     */
+    if (cuotas[idx].status === 'paid') {
+      return res.status(409).json({
+        error: 'La cuota está pagada y el comprobante es su respaldo. Desmárcala primero, o sube otra captura para reemplazarla.',
+      });
+    }
+
+    await borrarMediaComprobante(cuotas[idx].comprobante);
+    cuotas[idx].comprobante = null;
+
+    await db.collection('financing').updateOne({ id: req.params.id }, { $set: { cuotas } });
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    return res.json(updated);
+  } catch (error) {
+    console.error('[financing] Error eliminando comprobante:', error);
+    return res.status(500).json({ error: 'No se pudo eliminar el comprobante' });
+  }
+});
+
+/* ─── Prórrogas ─────────────────────────────────────────────────────────────
+ *
+ * Dar plazo sin perder la fecha pactada. Ver `server/prorroga.ts` para el
+ * porqué del modelo; aquí sólo se valida, se guarda y —lo importante— se suelta
+ * el teléfono si estaba bloqueado por esta misma cuota.
+ */
+
+/** Concede o amplía el plazo de una cuota. */
+app.post('/api/financing/:id/prorroga/:cuotaNumber', async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ('error' in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { record, cuotas, idx } = encontrado;
+
+    const hoy = getColombiaDate().dateStr;
+    const revision = validarProrroga(req.body?.hasta, cuotas[idx], hoy);
+    if ('error' in revision) return res.status(400).json({ error: revision.error });
+
+    const anterior = cuotas[idx].prorroga || null;
+    const motivo = String(req.body?.motivo || '').trim().slice(0, 300);
+
+    cuotas[idx].prorroga = {
+      hasta: revision.hasta,
+      otorgadaEn: new Date().toISOString(),
+      otorgadaPor: (req as any).sesion?.usuario || 'admin',
+      fechaOriginal: String(cuotas[idx].dueDate).slice(0, 10),
+      ...(motivo ? { motivo } : {}),
+    };
+
+    /**
+     * Contador que sólo sube, incluso al anular. Es la señal que el dueño
+     * necesita para decidir si sigue dando plazos a alguien: si se llevara
+     * contando las prórrogas vivas, el cliente que pide una cada quincena se
+     * vería siempre como si fuera la primera vez.
+     */
+    const vecesPedidas = Number(record.prorrogasOtorgadas || 0) + 1;
+
+    await db.collection('financing').updateOne(
+      { id: req.params.id },
+      { $set: { cuotas, prorrogasOtorgadas: vecesPedidas } }
+    );
+
+    // Se guarda ANTES de tocar el teléfono: si la orden al proveedor falla, el
+    // plazo ya quedó registrado y el automatismo respeta la prórroga en su
+    // siguiente vuelta. Al revés habríamos soltado un equipo sin constancia.
+    const equipo = await alOtorgarProrroga(
+      depsBloqueo,
+      req.params.id,
+      revision.hasta,
+      cuotas[idx].number
+    );
+
+    /**
+     * Si el cliente había pedido este plazo desde el portal, su solicitud queda
+     * cerrada aquí. Conceder sigue siendo UNA sola operación: no hay un botón
+     * "aprobar solicitud" aparte que otorgue prórrogas por su cuenta, porque
+     * entonces habría dos caminos que soltar el equipo y un día uno de los dos
+     * se quedaría sin el arreglo. El dueño concede como siempre y la solicitud
+     * se da por atendida sola.
+     */
+    await cerrarSolicitudAlConceder(
+      depsPortal,
+      record,
+      cuotas[idx].number,
+      (req as any).sesion?.usuario || 'admin'
+    );
+
+    console.log(
+      `[financing] Prórroga para ${record.nombre} cuota #${cuotas[idx].number}: ` +
+      `${cuotas[idx].dueDate.slice(0, 10)} → ${revision.hasta}` +
+      `${anterior ? ` (ampliaba la de ${anterior.hasta})` : ''}. ` +
+      `Equipo: ${equipo.liberado ? 'desbloqueado' : equipo.detalle || 'sin cambios'}`
+    );
+
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    return res.json({
+      record: updated,
+      prorroga: cuotas[idx].prorroga,
+      equipoLiberado: equipo.liberado,
+      detalleEquipo: equipo.detalle,
+      vecesPedidas,
+      /** Para que el panel avise si el plazo se pasa de la cuota siguiente. */
+      pisaCuotaSiguiente: cuotas.some(
+        c => c.number > cuotas[idx].number && c.status !== 'paid' && fechaLimite(c) < revision.hasta
+      ),
+    });
+  } catch (error) {
+    console.error('[financing] Error otorgando prórroga:', error);
+    return res.status(500).json({ error: 'No se pudo registrar la prórroga' });
+  }
+});
+
+/** Anula el plazo y devuelve la cuota a su fecha pactada. */
+app.delete('/api/financing/:id/prorroga/:cuotaNumber', async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ('error' in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { record, cuotas, idx } = encontrado;
+
+    if (!cuotas[idx].prorroga) {
+      return res.status(409).json({ error: 'Esta cuota no tiene ninguna prórroga.' });
+    }
+
+    /**
+     * Anular devuelve la cuota a su fecha pactada, y si esa fecha ya pasó el
+     * cliente vuelve a estar en mora en el acto — el automatismo puede
+     * bloquearle el equipo en su siguiente vuelta. No se bloquea desde aquí: no
+     * es una acción que el dueño haya pedido, y encadenar un bloqueo a un
+     * "anular" sorprendería a quien sólo quería corregir una fecha mal tecleada.
+     */
+    const volveriaAMora = fechaLimite({ dueDate: cuotas[idx].dueDate }) < getColombiaDate().dateStr;
+    const anulada = cuotas[idx].prorroga;
+    cuotas[idx].prorroga = null;
+
+    await db.collection('financing').updateOne({ id: req.params.id }, { $set: { cuotas } });
+
+    // Borra el plazo que el panel de bloqueo tenía copiado. Si se dejara para la
+    // vuelta de media hora, esa pestaña seguiría anunciando un plazo que acaba
+    // de dejar de existir, que es lo contrario de lo que se quiso al anularlo.
+    await alAnularProrroga(depsBloqueo, req.params.id);
+
+    console.log(
+      `[financing] Prórroga anulada para ${record.nombre} cuota #${cuotas[idx].number} ` +
+      `(era hasta ${anulada!.hasta}). Vuelve a mora: ${volveriaAMora}`
+    );
+
+    const updated = await db.collection('financing').findOne({ id: req.params.id });
+    return res.json({ record: updated, volveriaAMora });
+  } catch (error) {
+    console.error('[financing] Error anulando prórroga:', error);
+    return res.status(500).json({ error: 'No se pudo anular la prórroga' });
+  }
+});
+
 app.post('/api/financing/:id/pay/:cuotaNumber', async (req, res) => {
   try {
     const record = await db.collection('financing').findOne({ id: req.params.id });
@@ -3268,6 +4446,28 @@ app.post('/api/financing/:id/pay/:cuotaNumber', async (req, res) => {
     const cuotas: FinancingInstallment[] = record.cuotas || [];
     const idx = cuotas.findIndex(c => c.number === cuotaNum);
     if (idx === -1) return res.status(404).json({ error: 'Cuota no encontrada' });
+
+    /**
+     * Sin comprobante no se marca pagada. La regla se aplica aquí y no sólo en
+     * el botón del panel porque un pago registrado dispara el desbloqueo del
+     * teléfono y mueve la contabilidad: si viviera únicamente en la interfaz,
+     * cualquier recarga a medias o una llamada suelta la saltaría.
+     *
+     * Sólo afecta a lo que se marque de ahora en adelante; las cuotas que ya
+     * estaban pagadas antes de existir esta columna se quedan como están.
+     *
+     * Un pago en línea confirmado por la pasarela también vale como respaldo, y
+     * de hecho vale MÁS que una captura: la captura es una imagen que alguien
+     * manda, el pago en línea es dinero que entró y que Bold firmó. Exigir
+     * además la foto sería pedirle al cliente que demuestre con una pantalla
+     * algo que ya está cobrado.
+     */
+    if (!cuotas[idx].comprobante?.mediaId && !cuotas[idx].pagoEnLinea?.referencia) {
+      return res.status(409).json({
+        error: 'Sube primero la captura del pago. Es el respaldo de la cuota.',
+        faltaComprobante: true,
+      });
+    }
 
     // Marcar como pagada
     cuotas[idx].status = 'paid';
@@ -3299,6 +4499,12 @@ app.post('/api/financing/:id/pay/:cuotaNumber', async (req, res) => {
 
     const updated = await db.collection('financing').findOne({ id: req.params.id });
     res.json(updated);
+
+    // Desbloqueo automático, DESPUÉS de responder: el cliente suele estar en el
+    // mostrador y la respuesta no tiene por qué esperar a que Trustonic
+    // conteste. Si falla, queda en el historial y el cron de política lo vuelve
+    // a intentar; no se arrastra el error hasta el recibo del pago.
+    void alRegistrarPago(depsBloqueo, req.params.id);
   } catch (error) {
     console.error('[financing] Error paying:', error);
     res.status(500).json({ error: 'Error al registrar pago' });
@@ -3332,14 +4538,54 @@ app.post('/api/financing/:id/unpay/:cuotaNumber', async (req, res) => {
   }
 });
 
+/** La firma con la que terminan TODOS los avisos de cartera. */
+const FIRMA_CREDILOCK = '_CREDILOCK — Sistema de financiamiento_';
+
+/**
+ * Le mete el link del portal a un aviso de cartera, justo encima de la firma.
+ *
+ * Va aquí y no dentro de cada plantilla por una razón práctica: hay 8 variantes
+ * de mensaje entre el cron y el botón manual, y si el link se escribe a mano en
+ * cada una, la novena que alguien añada saldrá sin él y nadie se dará cuenta
+ * hasta que un cliente llame a preguntar cuánto debe. Esto lo pone en el único
+ * sitio por el que pasan todas: el envío.
+ *
+ * Si todavía no hay secreto —arranque en frío, Mongo caído— `linkPortal`
+ * devuelve `null` y el mensaje sale tal cual. Un aviso sin link sirve; un aviso
+ * con un link que da error de firma hace que el cliente desconfíe del resto.
+ */
+function conLinkDelPortal(msg: string, record: any): string {
+  const link = linkPortal(BASE_PUBLICA, secretoPortal, record);
+  if (!link) return msg;
+
+  const bloque =
+    `👉 *Mira tus cuotas y paga en línea:*\n${link}\n\n` +
+    // Los métodos nombrados aquí son los mismos que permite METODOS_CUOTA en
+    // bold-link.ts. Si allí cambian, este texto cambia: prometerle al cliente un
+    // medio de pago que el checkout no le va a ofrecer es una llamada al local.
+    `Ahí ves cuánto debes, tu próxima fecha, puedes pagar con Nequi, PSE o el botón ` +
+    `de Bancolombia, subir el comprobante o pedir un plazo. Es tu link privado, no lo compartas.`;
+
+  // Se inserta ANTES de la firma para que el mensaje no termine en una URL:
+  // WhatsApp recorta la vista previa y el link suelto al final se lee como
+  // publicidad pegada. Si la firma no apareciera, se añade al final y listo.
+  return msg.includes(FIRMA_CREDILOCK)
+    ? msg.replace(FIRMA_CREDILOCK, `${bloque}\n\n${FIRMA_CREDILOCK}`)
+    : `${msg}\n\n${bloque}`;
+}
+
 // --- Enviar recordatorio WhatsApp manual ---
 app.post('/api/financing/:id/remind', async (req, res) => {
   try {
     const record = await db.collection('financing').findOne({ id: req.params.id });
     if (!record) return res.status(404).json({ error: 'No encontrado' });
 
-    if (whatsappService.getStatus() !== 'connected') {
-      return res.status(400).json({ error: 'WhatsApp no está conectado' });
+    // Los avisos de cobro salen SIEMPRE por el número de CREDILOCK, nunca por el
+    // de la tienda. No hay fallback a propósito: si CREDILOCK está caído el dueño
+    // tiene que verlo y volver a emparejar, no que los cobros se cuelen por el
+    // número comercial sin que nadie se entere.
+    if (credilockService.getStatus() !== 'connected') {
+      return res.status(400).json({ error: 'El WhatsApp de CREDILOCK no está conectado. Escanea el QR en Financiamiento.' });
     }
 
     // Encontrar próxima cuota pendiente
@@ -3350,8 +4596,11 @@ app.post('/api/financing/:id/remind', async (req, res) => {
       return res.status(400).json({ error: 'No hay cuotas pendientes' });
     }
 
-    const dueDate = new Date(nextPending.dueDate);
-    const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' });
+    // Misma fecha efectiva que usa la política de bloqueo: con la prórroga
+    // aplicada y leída en UTC, no en UTC-5 (ver `fechaLimite`).
+    const hoy = getColombiaDate().dateStr;
+    const fechaStr = fechaLarga(fechaLimite(nextPending));
+    const prorroga = prorrogaVigente(nextPending, hoy);
     const isOverdue = nextPending.status === 'overdue';
 
     const valorStr = record.valorCuota.toLocaleString('es-CO');
@@ -3359,11 +4608,21 @@ app.post('/api/financing/:id/remind', async (req, res) => {
     const paidCountStr = previas + cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
     const hora = record.horaBloqueo || '08:00';
 
-    const msg = isOverdue
-      ? `🔒 *CREDILOCK — Pago Vencido*\n\nHola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venció el *${fechaStr}*.\n\n⚠️ *Tu equipo será bloqueado a las ${hora} si no realizas el pago.*\n\nEvita el bloqueo realizando tu pago lo antes posible.\n\n📱 IMEI: ${record.imei}\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
-      : `📅 *CREDILOCK — Recordatorio de Pago*\n\nHola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+    let msg: string;
+    if (prorroga) {
+      // Tiene plazo abierto: no se le puede decir "venció" ni "vence el", porque
+      // su fecha pactada ya pasó y lo que corre es el acuerdo.
+      msg = `⏳ *CREDILOCK — Tienes plazo*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tienes plazo hasta el *${fechaStr}* para pagar tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+    } else if (isOverdue) {
+      const queVencio = tieneProrroga(nextPending)
+        ? `el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* se cumplió el *${fechaStr}*`
+        : `tu cuota #${nextPending.number} de *$${valorStr} COP* venció el *${fechaStr}*`;
+      msg = `🔒 *CREDILOCK — Pago Vencido*\n\nHola *${nombreBonito(record.nombre)}*, ${queVencio}.\n\n⚠️ *Tu equipo será bloqueado a las ${hora} si no realizas el pago.*\n\nEvita el bloqueo realizando tu pago lo antes posible.\n\n📱 IMEI: ${record.imei}\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+    } else {
+      msg = `📅 *CREDILOCK — Recordatorio de Pago*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+    }
 
-    const success = await whatsappService.sendMessage(record.telefono, msg);
+    const success = await credilockService.sendMessage(record.telefono, conLinkDelPortal(msg, record));
     if (success) {
       const colombia = getColombiaDate();
       await db.collection('financing').updateOne(
@@ -3393,111 +4652,386 @@ function getColombiaDate(): { dateStr: string; hour: number } {
   return { dateStr, hour };
 }
 
+/**
+ * Candado de reentrada, igual que en los mensajes programados. Con 109 clientes
+ * activos y 3 s de espera entre mensajes, una vuelta normal tarda ~5 min; pero si
+ * los envíos se cuelgan (pasa, lo vimos el 2026-09-30) la vuelta puede superar la
+ * hora y arrancaría otra encima, duplicando avisos de bloqueo a clientes reales.
+ */
+let financingReminderRunning = false;
+
+/** Días de calendario entre dos fechas 'YYYY-MM-DD'. Negativo si `hasta` es anterior. */
+function diasEntreFechas(desdeStr: string, hastaStr: string): number {
+  const a = Date.parse(desdeStr + 'T00:00:00Z');
+  const b = Date.parse(hastaStr + 'T00:00:00Z');
+  if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
+  return Math.round((b - a) / 86400000);
+}
+
+/**
+ * AVISO DE MORA (añadido 2026-09-30, a petición del dueño).
+ *
+ * Antes solo se avisaba el día antes del vencimiento y el mismo día. Quien se
+ * pasaba de la fecha no volvía a recibir nada nunca: había 41 clientes vencidos
+ * sin un solo mensaje. Ahora se les avisa, pero con tres frenos:
+ *
+ *  - CADA_CUANTOS_DIAS_MORA: como mínimo 3 días entre avisos. Se lleva en un campo
+ *    aparte (lastOverdueReminderSent) para no chocar con el candado diario de
+ *    lastReminderSent, que sigue valiendo para los avisos de vencimiento normal.
+ *  - MAX_DIAS_MORA_AVISO: a partir de 60 días de atraso dejamos de escribir. Un
+ *    cliente con dos meses de mora ya no es un olvido, y hay registros viejos que
+ *    posiblemente se arreglaron en tienda sin actualizar aquí; seguir mandándoles
+ *    mensajes automáticos es contraproducente. Esos salen por log para que los
+ *    revise una persona.
+ *  - El mensaje es distinto y más suave: sin 🔒, sin amenaza de bloqueo y sin hora
+ *    límite. Da por hecho que puede ser un olvido o que ya pagaron.
+ */
+const CADA_CUANTOS_DIAS_MORA = 3;
+const MAX_DIAS_MORA_AVISO = 60;
+
+/**
+ * Tope de avisos de mora por vuelta. La primera vez que esto corra hay ~41 clientes
+ * vencidos esperando, y soltar 41 mensajes seguidos desde un número que hace nada
+ * mandó 131 duplicados es justo el patrón por el que WhatsApp banea cuentas. Con 12
+ * por vuelta y tres vueltas en la ventana de mediodía, la primera tanda se reparte
+ * en el día en vez de salir toda de golpe. Los avisos normales de vencimiento NO
+ * cuentan contra este tope: esos son pocos y no pueden esperar.
+ */
+const MAX_AVISOS_MORA_POR_CICLO = 12;
+
+/**
+ * Los nombres están guardados como los tecleó quien creó el registro: casi todos en
+ * minúsculas y algunos con espacios dobles ("cristian  david mestre payares"). Un
+ * "Hola *jhon luis otero chiquillo*" se lee descuidado, así que lo presentamos
+ * capitalizado. Solo afecta al mensaje; en la base no se toca nada.
+ */
+function nombreBonito(nombre: unknown): string {
+  return String(nombre ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/(^|\s)(\p{Ll})/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase('es-CO'));
+}
+
+/**
+ * Última vez que avisamos por log de que CREDILOCK está desconectado, para no
+ * escribir la misma línea en cada vuelta del cron.
+ */
+let ultimoAvisoCredilockCaido = 0;
+
 async function checkFinancingReminders() {
-  if (!db || whatsappService.getStatus() !== 'connected') return;
+  if (!db) return;
 
   // Solo enviar recordatorios entre 11:30 AM y 12:30 PM Colombia (ventana del mediodía)
   const colombia = getColombiaDate();
   if (colombia.hour < 11 || colombia.hour > 13) return;
 
+  // Los recordatorios salen por el número de CREDILOCK, no por el de la tienda.
+  //
+  // Antes esto era un `return` mudo: la sesión se cayó el 2026-07-26 y los avisos
+  // dejaron de salir DOS MESES sin que nadie lo notase. Ahora grita en los logs
+  // (una vez por hora, no en cada vuelta) y además se refleja en /api/health y en
+  // el panel de financiamiento.
+  if (credilockService.getStatus() !== 'connected') {
+    if (Date.now() - ultimoAvisoCredilockCaido > 3600000) {
+      ultimoAvisoCredilockCaido = Date.now();
+      console.error('[financing] ⛔ RECORDATORIOS PAUSADOS: el WhatsApp de CREDILOCK no está conectado ' +
+        `(estado: ${credilockService.getStatus()}). Hay que escanear el QR en Admin → Financiamiento.`);
+    }
+    return;
+  }
+
+  if (financingReminderRunning) {
+    console.log('[financing] La vuelta anterior sigue en curso; se omite este turno.');
+    return;
+  }
+  financingReminderRunning = true;
+
   try {
     const records = await db.collection('financing').find({ status: 'active' }).toArray();
     const todayStr = colombia.dateStr;
+    let avisosMoraEnviados = 0;
 
     for (const record of records) {
       const cuotas: FinancingInstallment[] = record.cuotas || [];
       const nextPending = cuotas.find((c: FinancingInstallment) => c.status === 'pending' || c.status === 'overdue');
       if (!nextPending) continue;
 
-      const dueDate = new Date(nextPending.dueDate);
-      const dueDateStr = dueDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      /**
+       * La fecha que manda, con la prórroga ya aplicada.
+       *
+       * Antes esto era `new Date(dueDate).toLocaleDateString('en-CA', { timeZone:
+       * 'America/Bogota' })`, y estaba un día desfasado: las cuotas se guardan a
+       * medianoche UTC, así que pasarlas a UTC-5 las corría al día anterior. El
+       * cliente recibía el "hoy vence tu cuota" la víspera y los avisos de mora
+       * empezaban un día antes de que el automatismo —que sí lee la fecha en
+       * UTC— considerara que debía algo. `fechaLimite` es ahora la única
+       * definición, compartida con la política de bloqueo.
+       */
+      const dueDateStr = fechaLimite(nextPending);
+      const prorroga = prorrogaVigente(nextPending, todayStr);
 
-      // Calcular día anterior
-      const dayBefore = new Date(dueDate);
-      dayBefore.setDate(dayBefore.getDate() - 1);
-      const dayBeforeStr = dayBefore.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      // Días transcurridos desde el vencimiento: -1 = vence mañana, 0 = vence hoy,
+      // 1 o más = ya está en mora.
+      const diasVencido = diasEntreFechas(dueDateStr, todayStr);
+      if (Number.isNaN(diasVencido)) {
+        console.warn(`[financing] Fecha ilegible en ${record.nombre} (${record.id}); se omite.`);
+        continue;
+      }
 
-      // Solo enviar si hoy es el día antes o el día del pago
-      const shouldRemind = todayStr === dayBeforeStr || todayStr === dueDateStr;
-      if (!shouldRemind) continue;
+      // Los motivos posibles para escribir viven en `recordatorios.ts`, que es
+      // una función pura y con tests: es la única parte de este cron que se
+      // puede probar sin levantar el servidor contra la base de producción.
+      const tipoAviso = tipoDeAviso(diasVencido);
+      if (!tipoAviso) continue;
+      const faltan = diasQueFaltan(diasVencido);
 
-      // Evitar enviar dos veces el mismo día
+      // Evitar enviar dos veces el mismo día (vale para cualquier tipo de aviso).
       const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : '';
       if (lastSent === todayStr) continue;
 
-      const fechaStr = dueDate.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' });
-      const isToday = todayStr === dueDateStr;
+      if (tipoAviso === 'mora') {
+        // Los que no quepan hoy salen en la vuelta siguiente (ver el tope arriba).
+        if (avisosMoraEnviados >= MAX_AVISOS_MORA_POR_CICLO) continue;
+        // Pasados MAX_DIAS_MORA_AVISO esto deja de ser un recordatorio útil.
+        // Lo sacamos por log para que lo mire una persona y no le insistimos más.
+        if (diasVencido > MAX_DIAS_MORA_AVISO) {
+          console.log(`[financing] ${record.nombre} lleva ${diasVencido} días de mora (> ${MAX_DIAS_MORA_AVISO}); requiere gestión manual, no se envía aviso automático.`);
+          continue;
+        }
+        // Tope de frecuencia: un aviso de mora cada CADA_CUANTOS_DIAS_MORA días.
+        const ultimoMora = record.lastOverdueReminderSent ? String(record.lastOverdueReminderSent).slice(0, 10) : '';
+        if (ultimoMora) {
+          const desdeUltimo = diasEntreFechas(ultimoMora, todayStr);
+          if (!Number.isNaN(desdeUltimo) && desdeUltimo < CADA_CUANTOS_DIAS_MORA) continue;
+        }
+      }
+
+      // Un teléfono inservible colgaría el envío hasta el timeout y retrasaría a
+      // todos los que vienen detrás. Mejor saltarlo y dejar constancia.
+      const telefonoOk = normalizarTelefonoCo(record.telefono);
+      if (!telefonoOk) {
+        console.warn(`[financing] Teléfono inutilizable en ${record.nombre} (${record.id}): "${record.telefono}". Se omite; corregir a mano.`);
+        continue;
+      }
+
+      const fechaStr = fechaLarga(dueDateStr);
       const hora = record.horaBloqueo || '08:00';
       const previas = record.cuotasPrevias || 0;
       const paidCount = previas + cuotas.filter((c: FinancingInstallment) => c.status === 'paid').length;
       const valorStr = record.valorCuota.toLocaleString('es-CO');
 
-      const msg = isToday
-        ? `🔒 *CREDILOCK — ¡Hoy vence tu cuota!*\n\nHola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, tu equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
-        : `🔔 *CREDILOCK — Recordatorio de Pago*\n\nHola *${record.nombre}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      let msg: string;
+      if (prorroga) {
+        /**
+         * Tiene plazo. El mensaje lo nombra en vez de hablar de "tu cuota":
+         * este cliente YA sabe que su fecha pasó y que habló con la tienda, así
+         * que un recordatorio que ignore el acuerdo le dice que no se lo
+         * registraron — y la llamada siguiente es para quejarse.
+         *
+         * Sólo llega aquí con el plazo abierto; si se venció, `prorrogaVigente`
+         * devuelve null y cae en los avisos normales de mora.
+         */
+        msg = tipoAviso === 'hoy'
+          ? `⏳ *CREDILOCK — Hoy vence tu plazo*\n\nHola *${nombreBonito(record.nombre)}*, hoy *${fechaStr}* se cumple el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, el equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
+          : tipoAviso === 'previo'
+          ? `⏳ *CREDILOCK — Tienes plazo hasta mañana*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tienes plazo hasta mañana *${fechaStr}* para tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
+          // Anticipo con plazo acordado. No nombra bloqueo: a este cliente ya se
+          // le dio una fecha nueva y todavía faltan días para ella; amenazarlo
+          // dentro del acuerdo que él mismo pidió es la forma más rápida de que
+          // no vuelva a avisar cuando tenga un problema.
+          : `⏳ *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} días.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      } else if (tipoAviso === 'anticipo') {
+        /**
+         * Aviso de cortesía, varios días antes de que venza. A propósito NO
+         * menciona el bloqueo, por tres razones que se sostienen solas:
+         *
+         *  1. A 7 o 3 días el cliente no debe nada todavía. Amenazar a alguien
+         *     que está al día es como un número de cobro termina reportado.
+         *  2. Parte de la cartera no está enrolada en el proveedor, así que para
+         *     esos equipos la amenaza no se podría cumplir aunque quisiéramos.
+         *  3. El automatismo de bloqueo está en simulación; hoy no bloquea nadie.
+         *
+         * Los avisos de la víspera y del día sí lo nombran, y ahí sí corresponde:
+         * la fecha está encima y el dueño bloquea a mano.
+         */
+        msg = `💚 *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, te contamos con tiempo: tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} días.\n\nSi ya la tienes lista puedes pagarla desde ahora y queda registrada al instante.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      } else if (tipoAviso === 'hoy') {
+        msg = `🔒 *CREDILOCK — ¡Hoy vence tu cuota!*\n\nHola *${nombreBonito(record.nombre)}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, tu equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      } else if (tipoAviso === 'previo') {
+        msg = `🔔 *CREDILOCK — Recordatorio de Pago*\n\nHola *${nombreBonito(record.nombre)}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      } else {
+        // AVISO DE MORA. A propósito no lleva 🔒 ni amenaza de bloqueo ni hora
+        // límite: quien está vencido normalmente ya fue bloqueado o ya habló con la
+        // tienda, y repetirle la amenaza cada 3 días solo consigue que bloquee el
+        // número. Damos por hecho que puede ser un olvido o que ya pagó.
+        const vencidas = cuotas.filter((c: FinancingInstallment) => {
+          if (c.status !== 'pending' && c.status !== 'overdue') return false;
+          return diasEntreFechas(fechaLimite(c), todayStr) >= 1;
+        }).length;
 
-      const success = await whatsappService.sendMessage(record.telefono, msg);
-      if (success) {
-        await db.collection('financing').updateOne(
-          { id: record.id },
-          { $set: { lastReminderSent: todayStr } }
-        );
-        console.log(`[financing] Recordatorio enviado a ${record.nombre} (${record.telefono})`);
+        const cuantoHace = diasVencido === 1 ? 'ayer' : `hace ${diasVencido} días`;
+        /**
+         * Si la fecha que se le pasó era la de una prórroga hay que decirlo así.
+         * "Tu cuota venció hace 2 días" sobre alguien a quien se le dio plazo
+         * suena a que no le contaron el acuerdo; "se cumplió el plazo" es lo que
+         * de verdad pasó, y además le recuerda que ya se le dio una oportunidad.
+         */
+        const seVencioElPlazo = tieneProrroga(nextPending);
+        const detalle = vencidas > 1
+          ? `tienes *${vencidas} cuotas* pendientes por un total de *$${(record.valorCuota * vencidas).toLocaleString('es-CO')} COP*. La más antigua es la #${nextPending.number}, que venció ${cuantoHace}`
+          : seVencioElPlazo
+            ? `tienes pendiente la cuota #${nextPending.number} de *$${valorStr} COP*. El plazo que acordamos se cumplió ${cuantoHace} (${fechaStr})`
+            : `tienes pendiente la cuota #${nextPending.number} de *$${valorStr} COP*, que venció ${cuantoHace} (${fechaStr})`;
+
+        msg = `👋 *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, según nuestros registros ${detalle}.\n\n✅ Si ya realizaste el pago, avísanos y lo verificamos de inmediato.\n🤝 Si aún no has podido, escríbenos y buscamos una solución juntos.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
       }
+
+      let success = false;
+      try {
+        success = await Promise.race([
+          credilockService.sendMessage(record.telefono, conLinkDelPortal(msg, record)),
+          new Promise<boolean>(r => setTimeout(() => r(false), 20000)),
+        ]);
+      } catch (e) {
+        console.error(`[financing] Error enviando a ${record.nombre}:`, e);
+      }
+
+      // OJO: marcamos el día SIEMPRE, se confirme o no el envío.
+      // Antes solo se marcaba con success=true, y como un envío colgado devuelve
+      // false, el mismo cliente volvía a recibir el aviso en el tick siguiente
+      // (la ventana abarca las 11, 12 y 13 h → hasta 3 copias del mismo mensaje).
+      // Baileys suele entregarlo igual, así que preferimos no repetir: este mensaje
+      // dice "tu equipo será bloqueado" y recibirlo varias veces alarma al cliente.
+      await db.collection('financing').updateOne(
+        { id: record.id },
+        {
+          $set: {
+            lastReminderSent: todayStr,
+            // Campo aparte para el tope de 3 días: si reusáramos lastReminderSent
+            // no podríamos distinguir "ya le escribí hoy" de "ya le insistí por mora".
+            ...(tipoAviso === 'mora' ? { lastOverdueReminderSent: todayStr } : {}),
+            ...(success ? {} : { ultimoAvisoSinConfirmar: true }),
+          },
+        }
+      );
+      if (tipoAviso === 'mora') avisosMoraEnviados++;
+      console.log(`[financing] Aviso (${tipoAviso}) ${success ? 'enviado' : 'despachado SIN confirmar'} a ${record.nombre} (${record.telefono})`);
 
       // Delay entre mensajes para no ser bloqueado
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
   } catch (err) {
     console.error('[financing] Error en cron de recordatorios:', err);
+  } finally {
+    financingReminderRunning = false;
   }
 }
 
 let scheduledNotificationsInterval: NodeJS.Timeout | null = null;
 
+/**
+ * Candado de reentrada. SIN ESTO PASÓ ESTO (incidente 2026-09-30):
+ * el cron corre cada 60 s, pero cada vuelta esperaba 3 s de cortesía por mensaje y,
+ * si un envío se quedaba colgado, no terminaba nunca. Al minuto arrancaba otra vuelta
+ * ENCIMA de la anterior, leía los mismos documentos (que seguían en 'pending' porque
+ * la vuelta anterior aún no los había marcado) y los volvía a enviar. Resultado real
+ * en producción: un cliente recibió el mismo mensaje 42 veces, y las vueltas solapadas
+ * saturaron el socket de Baileys, dejando las notificaciones de pedido nuevo
+ * encoladas unos 15 minutos.
+ */
+let scheduledNotificationsRunning = false;
+
+/** Un envío colgado no puede bloquear la cola entera. */
+const ENVIO_PROGRAMADO_TIMEOUT_MS = 20000;
+/** Máximo de mensajes por vuelta, para que un ciclo no se eternice. */
+const MAX_PROGRAMADOS_POR_CICLO = 25;
+/** Si el proceso muere a mitad de un envío la fila queda en 'processing'; la rescatamos. */
+const RECLAMO_PROGRAMADOS_MS = 5 * 60 * 1000;
+
 async function checkScheduledNotifications() {
+  if (scheduledNotificationsRunning) {
+    console.log('[Scheduled-WA] La vuelta anterior sigue en curso; se omite este turno.');
+    return;
+  }
+  scheduledNotificationsRunning = true;
+
   try {
-    const now = new Date().toISOString();
-    const pending = await db.collection('scheduled_notifications')
-      .find({ status: 'pending', sendAt: { $lte: now } })
-      .toArray();
+    // Rescatar lo que quedó atascado en 'processing' por un reinicio del servidor.
+    const limite = new Date(Date.now() - RECLAMO_PROGRAMADOS_MS).toISOString();
+    const rescatados = await db.collection('scheduled_notifications').updateMany(
+      { status: 'processing', claimedAt: { $lt: limite } },
+      { $set: { status: 'pending' }, $unset: { claimedAt: '' } }
+    );
+    if (rescatados.modifiedCount > 0) {
+      console.log(`[Scheduled-WA] ${rescatados.modifiedCount} mensajes atascados devueltos a la cola.`);
+    }
 
-    if (pending.length === 0) return;
+    if (whatsappService.getStatus() !== 'connected') return;
 
-    console.log(`[Scheduled-WA] Procesando ${pending.length} mensajes de WhatsApp programados...`);
+    let procesados = 0;
+    while (procesados < MAX_PROGRAMADOS_POR_CICLO) {
+      const ahora = new Date().toISOString();
 
-    for (const notif of pending) {
-      try {
-        if (whatsappService.getStatus() === 'connected') {
-          const success = await whatsappService.sendMessage(notif.phone, notif.message);
-          if (success) {
-            await db.collection('scheduled_notifications').updateOne(
-              { _id: notif._id },
-              { $set: { status: 'sent', sentAt: new Date().toISOString() } }
-            );
-            console.log(`[Scheduled-WA] Mensaje enviado a ${notif.phone}`);
-          } else {
-            console.warn(`[Scheduled-WA] Falló el envío del mensaje a ${notif.phone}`);
-            await db.collection('scheduled_notifications').updateOne(
-              { _id: notif._id },
-              { $set: { status: 'failed', lastError: 'Envío fallido (retorno false)', updatedAt: new Date().toISOString() } }
-            );
-          }
-        } else {
-          console.log(`[Scheduled-WA] WhatsApp no conectado. Reintento en el próximo ciclo.`);
-        }
-      } catch (err) {
-        console.error(`[Scheduled-WA] Error al enviar a ${notif.phone}:`, err);
+      // Tomamos los mensajes DE UNO EN UNO y de forma atómica: findOneAndUpdate marca
+      // la fila como 'processing' en la misma operación en que la lee, así que ni
+      // aunque se solaparan dos vueltas podrían coger el mismo mensaje las dos.
+      const tomado = await db.collection('scheduled_notifications').findOneAndUpdate(
+        { status: 'pending', sendAt: { $lte: ahora } },
+        { $set: { status: 'processing', claimedAt: ahora } },
+        { returnDocument: 'after' }
+      );
+      // El driver 6/7 devuelve el documento directo; el 5 lo envolvía en .value.
+      const notif: any = (tomado && (tomado as any).value !== undefined) ? (tomado as any).value : tomado;
+      if (!notif || !notif._id) break;
+
+      if (whatsappService.getStatus() !== 'connected') {
         await db.collection('scheduled_notifications').updateOne(
           { _id: notif._id },
-          { $set: { status: 'failed', lastError: String(err), updatedAt: new Date().toISOString() } }
+          { $set: { status: 'pending' }, $unset: { claimedAt: '' } }
         );
+        console.log('[Scheduled-WA] WhatsApp se desconectó; se reanuda en el próximo ciclo.');
+        break;
       }
-      // Pequeño delay de cortesía
+
+      let enviado = false;
+      try {
+        enviado = await Promise.race([
+          whatsappService.sendMessage(notif.phone, notif.message),
+          new Promise<boolean>(r => setTimeout(() => r(false), ENVIO_PROGRAMADO_TIMEOUT_MS)),
+        ]);
+      } catch (err) {
+        console.error(`[Scheduled-WA] Error al enviar a ${notif.phone}:`, err);
+      }
+
+      // OJO: aunque no llegue confirmación lo damos por consumido y NO lo reintentamos.
+      // Baileys suele entregarlo igual unos minutos después; si lo devolviéramos a
+      // 'pending' el cliente recibiría el mensaje dos veces. Preferimos un mensaje
+      // sin confirmar antes que repetir spam.
+      await db.collection('scheduled_notifications').updateOne(
+        { _id: notif._id },
+        {
+          $set: {
+            status: 'sent',
+            sentAt: new Date().toISOString(),
+            ...(enviado ? {} : { sinConfirmar: true, lastError: 'Sin confirmación dentro del timeout' }),
+          },
+          $unset: { claimedAt: '' },
+        }
+      );
+      console.log(`[Scheduled-WA] Mensaje ${enviado ? 'enviado' : 'despachado SIN confirmar'} a ${notif.phone}`);
+
+      procesados++;
+      // Pequeño delay de cortesía para no parecer spam ante WhatsApp.
       await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+    if (procesados > 0) {
+      console.log(`[Scheduled-WA] Vuelta terminada: ${procesados} mensajes procesados.`);
     }
   } catch (error) {
     console.error('[Scheduled-WA] Error en cron de mensajes programados:', error);
+  } finally {
+    scheduledNotificationsRunning = false;
   }
 }
 
@@ -4791,6 +6325,179 @@ io.on('connection', (socket) => {
     console.log('Client disconnected:', socket.id);
   });
 });
+
+// ====================================================================
+// 🔒  CREDILOCK — bloqueo remoto de equipos financiados
+// ====================================================================
+//
+// `db` se reasigna cada vez que se reconecta a Mongo, así que el módulo recibe
+// un getter y no el valor: pasarlo por valor le dejaría una referencia muerta
+// tras la primera reconexión.
+const depsBloqueo: DepsBloqueo = {
+  getDb: () => db,
+  // Los avisos de cobro salen SIEMPRE por el número de CREDILOCK, nunca por el
+  // comercial, igual que los recordatorios de financiamiento.
+  enviarWhatsApp: (telefono, texto) => credilockService.sendMessage(telefono, texto),
+  whatsappListo: () => credilockService.getStatus() === 'connected',
+  nombreBonito,
+  // Para que el aviso de bloqueo traiga el botón de pagar: el cliente al que se
+  // le acaba de apagar el teléfono es el que más necesita poder resolverlo solo,
+  // y pasa a la madrugada o un domingo, cuando no hay nadie en la tienda.
+  linkPortal: (registro) => linkPortal(BASE_PUBLICA, secretoPortal, registro),
+  // El de la pantalla de bloqueo. Asigna el código la primera vez que a ese
+  // cliente se le bloquea el equipo, y a partir de ahí es siempre el mismo:
+  // puede leerlo hoy, apuntarlo, y volver a usarlo en el siguiente bloqueo.
+  linkCortoPortal: async (registro) => {
+    const codigo = await asegurarCodigoCorto(db, String(registro?.id || ''));
+    return codigo ? `${PORTAL_DOMINIO_CORTO}/p/${codigo}` : null;
+  },
+};
+registrarBloqueo(app, depsBloqueo);
+
+// ====================================================================
+// 🔗  PORTAL DEL CLIENTE — ver cuotas, pagar en línea, pedir plazo
+// ====================================================================
+
+/**
+ * Freno por IP para las acciones del portal.
+ *
+ * Es más holgado que `escritura-publica` (20/10min) porque aquí un mismo
+ * cliente hace varias cosas seguidas de forma legítima: abre el link, mira el
+ * resumen, intenta subir un comprobante que pesa demasiado, lo reintenta
+ * reducido, y después le da a pagar. Con 20 se quedaba fuera a mitad de camino.
+ *
+ * Y va por IP y no por token a propósito: el token es público —está en el
+ * WhatsApp del cliente— así que limitarlo por token dejaría que cualquiera que
+ * lo vea agote la cuota del dueño del link y lo deje sin poder pagar.
+ */
+const limitarPortal = limitadorPorIp('portal-cliente', 40, 10 * 60 * 1000);
+
+/**
+ * Le avisa al dueño de algo que tiene que decidir él (una solicitud de plazo
+ * que no entró en las reglas automáticas, un pago que llegó sin registro).
+ *
+ * El número sale de `DUENO_WHATSAPP` o, si no está, de `settings`. Cuando no
+ * hay ninguno de los dos NO se cae ni se queda callado: deja el aviso en el log
+ * y lo emite por socket, que es donde el panel lo puede mostrar. La alternativa
+ * —tirar el aviso a la basura— significaría solicitudes que nadie ve nunca.
+ */
+async function avisarAlDueno(texto: string): Promise<void> {
+  const mensaje = String(texto || '').trim();
+  if (!mensaje) return;
+
+  // Siempre al log y al panel, haya WhatsApp o no. Es el rastro que queda.
+  console.log('[portal][aviso-dueño]', mensaje.replace(/\n+/g, ' | '));
+  try { io.emit('portalAviso', { texto: mensaje, en: new Date().toISOString() }); } catch { /* el socket no es crítico */ }
+
+  let crudo = (process.env.DUENO_WHATSAPP || '').trim();
+  if (!crudo && db) {
+    try {
+      const doc = await db.collection('settings').findOne({ key: 'dueno_whatsapp' });
+      crudo = String(doc?.value || '').trim();
+    } catch { /* si Mongo no responde, el aviso ya quedó en el log */ }
+  }
+  if (!crudo) return;
+
+  const telefono = normalizarTelefonoCo(crudo);
+  if (!telefono) {
+    console.warn('[portal][aviso-dueño] El número configurado no es un móvil colombiano válido:', crudo);
+    return;
+  }
+  if (!depsBloqueo.whatsappListo()) return;
+
+  try {
+    await depsBloqueo.enviarWhatsApp(telefono, mensaje);
+  } catch (err) {
+    console.error('[portal][aviso-dueño] No se pudo enviar:', err);
+  }
+}
+
+// Igual que con el bloqueo: getters y no valores, porque `db` se reasigna en
+// cada reconexión y `secretoPortal` se llena después de arrancar el servidor.
+/**
+ * Config de Bold para las llamadas salientes, o `null` si no hay llave.
+ *
+ * Se lee en caliente —y no una vez al arrancar— porque las variables de entorno
+ * pueden aparecer en un redeploy sin que este código se toque.
+ */
+function configBold(): ConfigBold | null {
+  const apiKey = (process.env.BOLD_API_KEY || '').trim();
+  return apiKey ? { apiKey } : null;
+}
+
+const depsPortal: DepsPortal = {
+  getDb: () => db,
+  secreto: () => secretoPortal,
+  baseUrl: () => BASE_PUBLICA,
+  // Sin llaves de Bold el portal no muestra un botón de pago muerto: ofrece
+  // escribir por WhatsApp. Se consulta en caliente porque las variables de
+  // entorno pueden aparecer en un redeploy sin tocar este código.
+  boldConfigurado: () => Boolean(process.env.BOLD_API_KEY && process.env.BOLD_SECRET_KEY),
+  // El link lo crea la API de Link de Pagos y no el botón embebido, porque es la
+  // única de las dos que acepta `payment_methods`: aquí se cobra sin tarjeta a
+  // propósito. El motivo largo está en la cabecera de portal-rutas.ts.
+  crearLinkPago: (o) => crearLinkDePago(configBold()!, o),
+  // Todo lo de cartera sale por el número de CREDILOCK, nunca por el comercial.
+  enviarWhatsApp: (telefono, texto) => credilockService.sendMessage(telefono, texto),
+  whatsappListo: () => credilockService.getStatus() === 'connected',
+  nombreBonito,
+  hoy: () => getColombiaDate().dateStr,
+  parsearImagen: parseBase64Image,
+  maxBytesComprobante: MAX_COMPROBANTE_BYTES,
+  // Un pago o un plazo del portal sueltan el equipo por el MISMO camino que el
+  // panel. Si el portal tuviera su propia lógica de desbloqueo, un día una de
+  // las dos se quedaría sin el arreglo que se le hizo a la otra.
+  alRegistrarPago: (financingId) => alRegistrarPago(depsBloqueo, financingId),
+  alOtorgarProrroga: (financingId, hasta, cuotaNumber) =>
+    alOtorgarProrroga(depsBloqueo, financingId, hasta, cuotaNumber),
+  avisarAlDueno,
+  emitir: (evento, datos) => io.emit(evento, datos as any),
+  limitador: limitarPortal,
+};
+registrarPortal(app, depsPortal);
+
+/* ═══════════════════════  Conciliador de pagos de Bold  ════════════════════ */
+
+const depsConciliador: DepsConciliador = {
+  getDb: () => db,
+  bold: configBold,
+  // Exactamente los mismos caminos que usa el webhook. Si el conciliador
+  // tuviera los suyos, un arreglo hecho en uno dejaría el otro atrás.
+  confirmarCuotas: (referencia, extra) =>
+    confirmarPagoDeCuotas(depsPortal, referencia, extra),
+  confirmarPedido: (pedido, metodo) => transitionOrderAndNotify(pedido, 'paid', metodo),
+  avisarAlDueno,
+};
+
+/**
+ * Cada 4 minutos. Es un compromiso entre dos cosas:
+ *
+ *  - Un cliente que paga a las 2am y se queda bloqueado no debería esperar más
+ *    que un café.
+ *  - Cada vuelta son llamadas a la API de Bold, y en el caso normal —webhook
+ *    funcionando— no encuentra absolutamente nada que hacer.
+ *
+ * El `catch` de arriba es deliberado: un error aquí no puede tumbar el proceso,
+ * porque este proceso también es el que atiende la tienda.
+ */
+const MINUTOS_CONCILIACION = 4;
+let conciliacionEnCurso = false;
+
+async function vueltaDeConciliacion(): Promise<void> {
+  // Sin este cerrojo, una vuelta lenta se solaparía con la siguiente y las dos
+  // leerían las mismas intenciones pendientes.
+  if (conciliacionEnCurso || !db) return;
+  conciliacionEnCurso = true;
+  try {
+    await conciliarPagos(depsConciliador);
+  } catch (err) {
+    console.error('[conciliador] Vuelta fallida:', err);
+  } finally {
+    conciliacionEnCurso = false;
+  }
+}
+
+setInterval(vueltaDeConciliacion, MINUTOS_CONCILIACION * 60 * 1000);
 
 httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

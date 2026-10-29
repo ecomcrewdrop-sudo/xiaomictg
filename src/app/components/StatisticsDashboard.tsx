@@ -376,7 +376,7 @@ export function StatisticsDashboard() {
 
   if (orders.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center sm:p-12">
         <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <p className="text-gray-600 text-lg">Aún no hay datos para estadísticas</p>
         <p className="text-gray-400 text-sm mt-2">Las métricas aparecerán cuando existan pedidos en el sistema.</p>
@@ -387,9 +387,9 @@ export function StatisticsDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
-            <BarChart3 className="w-7 h-7 text-orange-500" />
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500 shrink-0" />
             Estadísticas y reportes
           </h2>
           <p className="text-gray-500 text-sm mt-1">
@@ -398,7 +398,7 @@ export function StatisticsDashboard() {
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
-            <SelectTrigger className="w-[220px] bg-white">
+            <SelectTrigger className="w-full sm:w-[220px] bg-white">
               <Calendar className="w-4 h-4 mr-2 text-gray-400" />
               <SelectValue />
             </SelectTrigger>
@@ -411,8 +411,10 @@ export function StatisticsDashboard() {
             </SelectContent>
           </Select>
           {period === 'custom' && (
-            <div className="flex flex-wrap items-end gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3">
-              <div>
+            <div className="flex flex-wrap items-end gap-3 bg-white border border-gray-200 rounded-lg px-3 py-3 sm:px-4">
+              {/* Los dos campos crecen a la mitad del ancho disponible: con el ancho
+                  fijo de 160px el segundo se salía de la tarjeta a 360px. */}
+              <div className="min-w-[130px] flex-1">
                 <Label htmlFor="stats-from" className="text-xs text-gray-500">
                   Desde
                 </Label>
@@ -422,10 +424,10 @@ export function StatisticsDashboard() {
                   value={customFrom}
                   max={customTo}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className="w-[160px] mt-1"
+                  className="w-full sm:w-[160px] mt-1"
                 />
               </div>
-              <div>
+              <div className="min-w-[130px] flex-1">
                 <Label htmlFor="stats-to" className="text-xs text-gray-500">
                   Hasta
                 </Label>
@@ -436,7 +438,7 @@ export function StatisticsDashboard() {
                   min={customFrom}
                   max={format(new Date(), 'yyyy-MM-dd')}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className="w-[160px] mt-1"
+                  className="w-full sm:w-[160px] mt-1"
                 />
               </div>
             </div>
@@ -445,7 +447,7 @@ export function StatisticsDashboard() {
       </div>
 
       {/* KPIs principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           icon={<DollarSign className="w-8 h-8 text-green-500" />}
           label="Ingresos (completadas)"
@@ -485,9 +487,9 @@ export function StatisticsDashboard() {
       </div>
 
       {/* Gráfica ventas diarias */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         <ChartCard title="Ingresos diarios (COP)" description="Solo órdenes completadas">
-          <ChartContainer config={salesChartConfig} className="h-[300px] w-full">
+          <ChartContainer config={salesChartConfig} className="h-56 w-full sm:h-[300px]">
             <AreaChart data={stats.dailyData} margin={{ left: 8, right: 8, top: 8 }}>
               <defs>
                 <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -522,7 +524,7 @@ export function StatisticsDashboard() {
         </ChartCard>
 
         <ChartCard title="Pedidos por día" description="Todas excepto canceladas">
-          <ChartContainer config={salesChartConfig} className="h-[300px] w-full">
+          <ChartContainer config={salesChartConfig} className="h-56 w-full sm:h-[300px]">
             <BarChart data={stats.dailyData} margin={{ left: 8, right: 8, top: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} interval="preserveStartEnd" />
@@ -534,9 +536,9 @@ export function StatisticsDashboard() {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <ChartCard title="Estado de órdenes" className="lg:col-span-1">
-          <ChartContainer config={statusChartConfig} className="h-[280px] w-full">
+          <ChartContainer config={statusChartConfig} className="h-64 w-full sm:h-[280px]">
             <PieChart>
               <ChartTooltip content={<ChartTooltipContent hideLabel />} />
               <Pie
@@ -553,13 +555,18 @@ export function StatisticsDashboard() {
                   <Cell key={entry.status} fill={entry.fill} />
                 ))}
               </Pie>
-              <ChartLegend content={<ChartLegendContent />} />
+              {/* Los cinco estados en una sola línea (la leyenda no envuelve por
+                  defecto) se salían por los lados del recuadro a 360px. */}
+              <ChartLegend content={<ChartLegendContent className="flex-wrap gap-x-3 gap-y-1 text-[11px]" />} />
             </PieChart>
           </ChartContainer>
         </ChartCard>
 
         <ChartCard title="Métodos de pago" className="lg:col-span-1">
-          <ChartContainer config={{ count: { label: 'Pedidos', color: '#8b5cf6' } }} className="h-[280px] w-full">
+          <ChartContainer
+            config={{ count: { label: 'Pedidos', color: '#8b5cf6' } }}
+            className="h-64 w-full sm:h-[280px] [&_.recharts-cartesian-axis-tick_text]:text-[9px] sm:[&_.recharts-cartesian-axis-tick_text]:text-[10px]"
+          >
             <BarChart data={stats.paymentData} layout="vertical" margin={{ left: 4, right: 16 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" allowDecimals={false} fontSize={11} />
@@ -571,65 +578,86 @@ export function StatisticsDashboard() {
         </ChartCard>
 
         <ChartCard title="Ventas por categoría (unidades)" className="lg:col-span-1">
-          <ChartContainer config={{ units: { label: 'Unidades', color: '#22c55e' } }} className="h-[280px] w-full">
-            <BarChart data={stats.categoryData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" fontSize={10} tickLine={false} interval={0} angle={-25} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} fontSize={11} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="units" fill="#22c55e" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
+          {/*
+            Siete etiquetas giradas ("Estilo de Vida", "Smartwatch"…) no caben en
+            300px: se solapaban hasta volverse ilegibles. Aquí la gráfica mantiene
+            un ancho mínimo propio y se desplaza dentro de su tarjeta, sin arrastrar
+            la página entera de lado.
+          */}
+          <div className="-mx-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-x-visible lg:px-0">
+            <div className="min-w-[380px] lg:min-w-0">
+              <ChartContainer config={{ units: { label: 'Unidades', color: '#22c55e' } }} className="h-64 w-full sm:h-[280px]">
+                <BarChart data={stats.categoryData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" fontSize={10} tickLine={false} interval={0} angle={-25} textAnchor="end" height={60} />
+                  <YAxis allowDecimals={false} fontSize={11} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="units" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          </div>
         </ChartCard>
       </div>
 
       {/* Top productos */}
       <ChartCard title="Top 10 productos por ingresos" description="Órdenes completadas en el período">
-        <ChartContainer config={productChartConfig} className="h-[320px] w-full">
-          <BarChart data={stats.topProducts} layout="vertical" margin={{ left: 8, right: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={11} />
-            <YAxis type="category" dataKey="name" width={140} fontSize={11} tickLine={false} />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  formatter={(value, _name, item) => {
-                    const payload = item?.payload as { units?: number; revenue?: number };
-                    return [
-                      `${formatCOP(Number(value))} · ${payload?.units ?? 0} uds`,
-                      'Ingresos',
-                    ];
-                  }}
+        {/*
+          El eje de nombres reserva 140px fijos y los nombres llegan a 28
+          caracteres: en 300px útiles no quedaba barra visible. Con ancho mínimo y
+          desplazamiento propio la gráfica sigue siendo legible en el móvil.
+        */}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1 md:mx-0 md:overflow-x-visible md:px-0">
+          <div className="min-w-[560px] md:min-w-0">
+            <ChartContainer config={productChartConfig} className="h-72 w-full sm:h-[320px]">
+              <BarChart data={stats.topProducts} layout="vertical" margin={{ left: 8, right: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={11} />
+                <YAxis type="category" dataKey="name" width={140} fontSize={11} tickLine={false} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value, _name, item) => {
+                        const payload = item?.payload as { units?: number; revenue?: number };
+                        return [
+                          `${formatCOP(Number(value))} · ${payload?.units ?? 0} uds`,
+                          'Ingresos',
+                        ];
+                      }}
+                    />
+                  }
                 />
-              }
-            />
-            <Bar dataKey="revenue" fill="#f97316" radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ChartContainer>
+                <Bar dataKey="revenue" fill="#f97316" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        </div>
       </ChartCard>
 
       {/* Inventario + tabla resumen diario */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 xl:col-span-1">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 xl:col-span-1">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-orange-500" />
+            <Package className="w-5 h-5 text-orange-500 shrink-0" />
             Inventario
           </h3>
+          {/* `gap-3` + `min-w-0` en el término: "Valor inventario" y su importe se
+              pegaban hasta tocarse en pantallas estrechas. */}
           <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Productos activos</dt>
+            <div className="flex justify-between gap-3">
+              <dt className="min-w-0 text-gray-500">Productos activos</dt>
               <dd className="font-semibold">{products.length}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Valor inventario</dt>
-              <dd className="font-semibold text-green-600">{formatCOP(stats.inventoryValue)}</dd>
+            <div className="flex justify-between gap-3">
+              <dt className="min-w-0 text-gray-500">Valor inventario</dt>
+              <dd className="font-semibold text-green-600 text-right">{formatCOP(stats.inventoryValue)}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Stock total (uds)</dt>
+            <div className="flex justify-between gap-3">
+              <dt className="min-w-0 text-gray-500">Stock total (uds)</dt>
               <dd className="font-semibold">{products.reduce((s, p) => s + p.stock, 0)}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Productos stock bajo</dt>
+            <div className="flex justify-between gap-3">
+              <dt className="min-w-0 text-gray-500">Productos stock bajo</dt>
               <dd className="font-semibold text-red-600">{stats.lowStock}</dd>
             </div>
           </dl>
@@ -652,12 +680,29 @@ export function StatisticsDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6 xl:col-span-2 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 xl:col-span-2 overflow-hidden">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Truck className="w-5 h-5 text-blue-500" />
+            <Truck className="w-5 h-5 text-blue-500 shrink-0" />
             Detalle diario (últimos registros del período)
           </h3>
-          <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+
+          {/* MÓVIL: lista apilada. Las tres columnas con el importe en COP
+              completo no caben en 360px y la fecha quedaba aplastada. */}
+          <ul className="max-h-[320px] divide-y divide-gray-100 overflow-y-auto md:hidden">
+            {[...stats.dailyData].reverse().slice(0, 31).map((row) => (
+              <li key={row.date} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-800">{row.label}</p>
+                  <p className="text-xs text-gray-500">{row.orders} pedidos</p>
+                </div>
+                <span className="shrink-0 text-sm font-medium text-green-700">
+                  {formatCOP(row.revenue)}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden max-h-[320px] overflow-x-auto overflow-y-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
@@ -684,7 +729,7 @@ export function StatisticsDashboard() {
 
       {/* Tendencia combinada */}
       <ChartCard title="Tendencia: ingresos vs volumen de pedidos">
-        <ChartContainer config={salesChartConfig} className="h-[300px] w-full">
+        <ChartContainer config={salesChartConfig} className="h-56 w-full sm:h-[300px]">
           <LineChart data={stats.dailyData} margin={{ left: 8, right: 8 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="label" fontSize={11} interval="preserveStartEnd" />
@@ -699,7 +744,7 @@ export function StatisticsDashboard() {
                 />
               }
             />
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLegend content={<ChartLegendContent className="flex-wrap gap-x-3 gap-y-1 text-[11px]" />} />
             <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={2} dot={false} />
             <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={2} dot={false} />
           </LineChart>
@@ -723,11 +768,12 @@ function KpiCard({
   positive?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        {/* Sin `min-w-0` el importe en COP empujaba el icono fuera de la tarjeta. */}
+        <div className="min-w-0">
           <p className="text-sm text-gray-500 mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{value}</p>
           {sub && (
             <p
               className={`text-xs mt-2 ${
@@ -738,7 +784,7 @@ function KpiCard({
             </p>
           )}
         </div>
-        {icon}
+        <span className="shrink-0">{icon}</span>
       </div>
     </div>
   );
@@ -746,7 +792,7 @@ function KpiCard({
 
 function MiniKpi({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+    <div className="bg-white rounded-lg border border-gray-200 px-3 py-3 text-center sm:px-4">
       <p className="text-xs text-gray-500 truncate">{label}</p>
       <p className={`text-xl font-bold ${color}`}>{value}</p>
     </div>
@@ -765,7 +811,7 @@ function ChartCard({
   className?: string;
 }) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 p-6 shadow-sm ${className}`}>
+    <div className={`bg-white rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm ${className}`}>
       <h3 className="font-semibold text-gray-800">{title}</h3>
       {description && <p className="text-xs text-gray-500 mt-1 mb-4">{description}</p>}
       {!description && <div className="mb-4" />}

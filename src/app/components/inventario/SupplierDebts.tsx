@@ -115,40 +115,40 @@ export function SupplierDebts() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="min-w-0 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg sm:p-5">
           <div className="flex items-center gap-2 mb-1">
-            <Users className="w-5 h-5 opacity-80" />
+            <Users className="w-5 h-5 shrink-0 opacity-80" />
             <span className="text-sm font-bold uppercase tracking-wider opacity-80">Proveedores</span>
           </div>
-          <p className="text-3xl font-black">{suppliers.length}</p>
+          <p className="text-2xl font-black sm:text-3xl">{suppliers.length}</p>
           <p className="text-xs opacity-70">Registrados</p>
         </div>
-        <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-lg">
+        <div className="min-w-0 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-4 text-white shadow-lg sm:p-5">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-5 h-5 opacity-80" />
+            <AlertTriangle className="w-5 h-5 shrink-0 opacity-80" />
             <span className="text-sm font-bold uppercase tracking-wider opacity-80">Deuda proveedores</span>
           </div>
-          <p className="text-3xl font-black">{fmt(totalDeudas)}</p>
+          <p className="text-2xl font-black break-all sm:text-3xl">{fmt(totalDeudas)}</p>
           <p className="text-xs opacity-70">{Object.keys(deudas).length} proveedores</p>
         </div>
-        <div className="bg-gradient-to-br from-amber-500 to-yellow-600 rounded-2xl p-5 text-white shadow-lg">
+        <div className="min-w-0 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-2xl p-4 text-white shadow-lg sm:p-5">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-5 h-5 opacity-80" />
+            <Clock className="w-5 h-5 shrink-0 opacity-80" />
             <span className="text-sm font-bold uppercase tracking-wider opacity-80">Dinero en el aire</span>
           </div>
-          <p className="text-3xl font-black">{fmt(totalPendiente)}</p>
+          <p className="text-2xl font-black break-all sm:text-3xl">{fmt(totalPendiente)}</p>
           <p className="text-xs opacity-70">Pagos por recibir</p>
         </div>
       </div>
 
       {/* Supplier management */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-bold text-gray-700 text-sm flex items-center gap-2">
-            <Users className="w-4 h-4" /> Gestión de proveedores
+            <Users className="w-4 h-4 shrink-0" /> Gestión de proveedores
           </h3>
           <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-violet-600 hover:bg-violet-700 text-white gap-1">
             <Plus className="w-4 h-4" /> Agregar
@@ -165,29 +165,29 @@ export function SupplierDebts() {
             {suppliers.map(s => {
               const deuda = deudas[s.nombre];
               return (
-                <div key={s.id} className="bg-white rounded-xl border p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-bold text-gray-900">{s.nombre}</p>
+                <div key={s.id} className="min-w-0 bg-white rounded-xl border p-3 hover:shadow-md transition-shadow sm:p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="break-words font-bold text-gray-900">{s.nombre}</p>
                       {s.telefono && (
                         <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                          <Phone className="w-3 h-3" /> {s.telefono}
+                          <Phone className="w-3 h-3 shrink-0" /> {s.telefono}
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-violet-600 transition-colors">
+                    <div className="flex shrink-0 gap-1">
+                      <button onClick={() => openEdit(s)} aria-label={`Editar ${s.nombre}`} className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-violet-600 sm:h-8 sm:w-8">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => handleDelete(s.id, s.nombre)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+                      <button onClick={() => handleDelete(s.id, s.nombre)} aria-label={`Eliminar ${s.nombre}`} className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 sm:h-8 sm:w-8">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                  {s.notas && <p className="text-xs text-gray-400 mb-2 flex items-center gap-1"><FileText className="w-3 h-3" /> {s.notas}</p>}
+                  {s.notas && <p className="text-xs text-gray-400 mb-2 flex items-start gap-1"><FileText className="w-3 h-3 mt-0.5 shrink-0" /> <span className="min-w-0 break-words">{s.notas}</span></p>}
                   {deuda ? (
                     <div className="bg-orange-50 rounded-lg px-3 py-2">
-                      <p className="text-lg font-black text-orange-600">{fmt(deuda.total)}</p>
+                      <p className="text-lg font-black text-orange-600 break-all">{fmt(deuda.total)}</p>
                       <p className="text-xs text-orange-400">{deuda.ventas} ventas pendientes</p>
                     </div>
                   ) : (
@@ -212,12 +212,12 @@ export function SupplierDebts() {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {Object.entries(deudas).sort((a, b) => b[1].total - a[1].total).map(([prov, data]) => (
-              <div key={prov} className="bg-white rounded-xl border p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-bold text-gray-900">{prov}</p>
-                  <span className="text-xs text-gray-400">{data.ventas} ventas</span>
+              <div key={prov} className="min-w-0 bg-white rounded-xl border p-3 hover:shadow-md transition-shadow sm:p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="min-w-0 break-words font-bold text-gray-900">{prov}</p>
+                  <span className="shrink-0 text-xs text-gray-400">{data.ventas} ventas</span>
                 </div>
-                <p className="text-2xl font-black text-orange-600">{fmt(data.total)}</p>
+                <p className="text-xl font-black text-orange-600 break-all sm:text-2xl">{fmt(data.total)}</p>
               </div>
             ))}
           </div>
@@ -240,28 +240,30 @@ export function SupplierDebts() {
               const method = methods.find(m => m.clave === clave);
               return (
                 <div key={clave} className="bg-white rounded-xl border overflow-hidden">
-                  <div className="bg-amber-50 px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-amber-800">{method?.nombre || clave}</p>
+                  <div className="bg-amber-50 px-3 py-3 flex items-center justify-between gap-2 sm:px-4">
+                    <div className="min-w-0">
+                      <p className="break-words font-bold text-amber-800">{method?.nombre || clave}</p>
                       <p className="text-xs text-amber-600">{data.items.length} pagos pendientes</p>
                     </div>
-                    <p className="text-xl font-black text-amber-700">{fmt(data.total)}</p>
+                    <p className="shrink-0 text-lg font-black text-amber-700 break-all sm:text-xl">{fmt(data.total)}</p>
                   </div>
                   <div className="divide-y">
                     {data.items.map(item => (
-                      <div key={item.id} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50/50">
-                        <div>
-                          <p className="font-medium text-gray-900">{item.cliente}</p>
+                      /* Cliente + fecha + importe + botón no caben en una línea de
+                         360px: en móvil el importe y el botón bajan a su propia fila. */
+                      <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm hover:bg-gray-50/50 sm:px-4">
+                        <div className="min-w-0">
+                          <p className="break-words font-medium text-gray-900">{item.cliente}</p>
                           <p className="text-xs text-gray-400">
                             Venta: {item.fecha}
                             {item.fechaEsperada && ` — Espera: ${new Date(item.fechaEsperada).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'UTC' })}`}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900">{fmt(item.monto)}</span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="font-bold text-gray-900 break-all">{fmt(item.monto)}</span>
                           <button
                             onClick={() => handleMarkReceived(item.id)}
-                            className="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold hover:bg-green-200 transition-colors"
+                            className="flex h-11 shrink-0 items-center rounded-lg bg-green-100 px-2 text-xs font-semibold text-green-700 transition-colors hover:bg-green-200 sm:h-auto sm:py-1"
                           >
                             Recibido
                           </button>

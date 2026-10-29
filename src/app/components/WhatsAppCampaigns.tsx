@@ -292,10 +292,10 @@ export default function WhatsAppCampaigns() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-8">
       {/* HEADER SECTION */}
-      <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-[#25D366]" />
+      <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h3 className="font-bold text-gray-800 flex items-center gap-2 text-base sm:text-lg">
+            <Sparkles className="w-5 h-5 text-[#25D366] shrink-0" />
             Campañas de WhatsApp (Modo Elite)
           </h3>
           <p className="text-xs text-gray-500 mt-1">
@@ -304,22 +304,22 @@ export default function WhatsAppCampaigns() {
         </div>
         <Button
           onClick={() => { applySegmentSelection('all'); setOpenCreate(true); }}
-          className="bg-[#25D366] hover:bg-[#128C7E] text-white font-bold rounded-xl px-5 py-2.5 h-auto transition-all shadow-md active:scale-95 duration-200"
+          className="w-full sm:w-auto bg-[#25D366] hover:bg-[#128C7E] text-white font-bold rounded-xl px-5 py-2.5 h-auto transition-all shadow-md active:scale-95 duration-200"
         >
           <Plus className="w-4 h-4 mr-2" /> Crear Campaña
         </Button>
       </div>
 
       {/* CAMPAIGNS DASHBOARD GRID */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {campaigns.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50/40 rounded-xl border border-dashed border-gray-200">
+          <div className="text-center px-4 py-12 sm:py-16 bg-gray-50/40 rounded-xl border border-dashed border-gray-200">
             <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 font-bold text-sm">No has creado campañas todavía</p>
             <p className="text-xs text-gray-400 mt-1">Haz clic en "Crear Campaña" para fidelizar a tus clientes presenciales y online.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
             {campaigns.map(c => {
               const total = c.totalRecipients || 1;
               const progress = Math.min(100, Math.round(((c.sentCount + c.failedCount) / total) * 100));
@@ -336,14 +336,14 @@ export default function WhatsAppCampaigns() {
               const badgeClass = statusBadges[c.status] || 'bg-gray-100 text-gray-700 border-gray-200';
 
               return (
-                <div key={c.id} className="bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
+                <div key={c.id} className="bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
                   <div>
                     {/* Header Card */}
                     <div className="flex justify-between items-start gap-2 mb-3.5">
-                      <span className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border ${badgeClass}`}>
+                      <span className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border shrink-0 ${badgeClass}`}>
                         {c.status === 'processing' ? 'Enviando...' : c.status === 'sent' ? 'Completado' : c.status}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-mono">
+                      <span className="text-[10px] text-gray-400 font-mono shrink-0">
                         {new Date(c.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                       </span>
                     </div>
@@ -361,7 +361,7 @@ export default function WhatsAppCampaigns() {
 
                   {/* Progress Section */}
                   <div className="mt-4 pt-4 border-t border-gray-50 space-y-2">
-                    <div className="flex justify-between text-[11px] font-bold text-gray-600">
+                    <div className="flex flex-wrap justify-between gap-x-2 text-[11px] font-bold text-gray-600">
                       <span>Progreso: {progress}%</span>
                       <span>{c.sentCount + c.failedCount} / {c.totalRecipients}</span>
                     </div>
@@ -372,7 +372,7 @@ export default function WhatsAppCampaigns() {
                     </div>
 
                     {/* Stats Counts */}
-                    <div className="flex justify-between text-[10px] text-gray-400 font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-[10px] text-gray-400 font-medium">
                       <span className="text-emerald-600">✓ {c.sentCount} enviados</span>
                       <span className="text-red-500">✗ {c.failedCount} fallidos</span>
                       <span>⏱ {c.delaySeconds}s delay</span>
@@ -380,18 +380,18 @@ export default function WhatsAppCampaigns() {
 
                     {c.scheduledAt && c.status === 'scheduled' && (
                       <div className="bg-blue-50/50 rounded-lg p-2 flex items-center gap-1.5 border border-blue-100 text-[10px] text-blue-700 font-bold mt-2">
-                        <Clock className="w-3.5 h-3.5" />
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
                         Programado: {new Date(c.scheduledAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
                       </div>
                     )}
 
                     {/* Action Panel */}
-                    <div className="flex gap-2 mt-4 pt-2">
+                    <div className="flex flex-wrap gap-2 mt-4 pt-2">
                       <Button
                         onClick={() => setOpenDetails(c)}
                         variant="outline"
                         title="Ver destinatarios"
-                        className="flex-1 py-1.5 h-auto text-xs font-bold text-gray-600 rounded-xl hover:bg-gray-50 border-gray-200"
+                        className="flex-1 min-w-[7rem] py-1.5 h-auto text-xs font-bold text-gray-600 rounded-xl hover:bg-gray-50 border-gray-200"
                       >
                         <Eye className="w-3.5 h-3.5 mr-1.5" /> Detalles
                       </Button>
@@ -400,7 +400,9 @@ export default function WhatsAppCampaigns() {
                       {c.status === 'processing' && (
                         <Button
                           onClick={() => handleUpdateStatus(c.id, 'paused')}
-                          className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 h-auto text-xs font-bold rounded-xl"
+                          aria-label={`Pausar campaña ${c.name}`}
+                          title="Pausar campaña"
+                          className="shrink-0 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 h-auto text-xs font-bold rounded-xl"
                         >
                           <Pause className="w-3.5 h-3.5" />
                         </Button>
@@ -408,7 +410,9 @@ export default function WhatsAppCampaigns() {
                       {c.status === 'paused' && (
                         <Button
                           onClick={() => handleUpdateStatus(c.id, 'active')}
-                          className="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 h-auto text-xs font-bold rounded-xl"
+                          aria-label={`Reanudar campaña ${c.name}`}
+                          title="Reanudar campaña"
+                          className="shrink-0 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 h-auto text-xs font-bold rounded-xl"
                         >
                           <Play className="w-3.5 h-3.5" />
                         </Button>
@@ -416,7 +420,8 @@ export default function WhatsAppCampaigns() {
 
                       <Button
                         onClick={() => handleDeleteCampaign(c.id)}
-                        className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 py-1.5 h-auto text-xs font-bold rounded-xl"
+                        className="shrink-0 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 py-1.5 h-auto text-xs font-bold rounded-xl"
+                        aria-label={`Eliminar campaña ${c.name}`}
                         title="Eliminar campaña"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -432,10 +437,10 @@ export default function WhatsAppCampaigns() {
 
       {/* DIALOG 1: CREATE CAMPAIGN */}
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 bg-white">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6 bg-white">
           <DialogHeader>
-            <DialogTitle className="font-extrabold text-gray-800 text-xl flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse" />
+            <DialogTitle className="font-extrabold text-gray-800 text-lg sm:text-xl flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse shrink-0" />
               Nueva Campaña de Fidelización
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -443,7 +448,7 @@ export default function WhatsAppCampaigns() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid lg:grid-cols-12 gap-6 mt-4">
+          <div className="grid lg:grid-cols-12 gap-4 sm:gap-6 mt-4">
             {/* Form Left (6 cols) */}
             <div className="lg:col-span-6 space-y-4">
               <div>
@@ -457,7 +462,7 @@ export default function WhatsAppCampaigns() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between">
+                <label className="text-xs font-bold text-gray-700 mb-1 flex flex-wrap justify-between gap-x-2">
                   <span>Mensaje de WhatsApp</span>
                   <span className="text-[10px] text-emerald-600 font-semibold">Inserta {"{{nombre}}"} para personalizar</span>
                 </label>
@@ -495,16 +500,23 @@ export default function WhatsAppCampaigns() {
                 {imageUrl && (
                   <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 p-2 rounded-xl text-xs font-semibold text-green-800">
                     <Check className="w-4 h-4 shrink-0" />
-                    <span className="truncate flex-1">{imageUrl}</span>
-                    <button onClick={() => setImageUrl('')} className="text-red-500 hover:text-red-700">
+                    {/* La URL de Cloudinary no tiene espacios: sin `min-w-0` el
+                        `truncate` no actúa y empuja la X fuera de la caja. */}
+                    <span className="min-w-0 flex-1 truncate">{imageUrl}</span>
+                    <button
+                      onClick={() => setImageUrl('')}
+                      aria-label="Quitar imagen de la campaña"
+                      className="shrink-0 text-red-500 hover:text-red-700"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Delivery and delay config */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Delivery and delay config. En dos columnas a 360px el
+                  datetime-local queda en ~140px y no se puede ni leer la fecha. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Delay entre envíos (segundos)</label>
                   <Input
@@ -530,45 +542,50 @@ export default function WhatsAppCampaigns() {
             </div>
 
             {/* Customers selection Right (6 cols) */}
-            <div className="lg:col-span-6 flex flex-col h-[520px] border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 bg-gray-50 border-b border-gray-100 space-y-3">
-                <div className="flex justify-between items-center">
+            <div className="lg:col-span-6 flex flex-col h-[24rem] sm:h-[520px] border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-100 space-y-3">
+                <div className="flex flex-wrap justify-between items-center gap-2">
                   <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-emerald-600" />
+                    <Users className="w-4 h-4 text-emerald-600 shrink-0" />
                     Destinatarios ({selectedPhones.size} seleccionados)
                   </span>
+                  {/* Sin relleno este botón medía 16px de alto: es solo texto.
+                      En el móvil se le da la altura táctil completa. */}
                   <button
                     onClick={handleToggleSelectAll}
-                    className="text-xs text-emerald-600 hover:text-emerald-800 font-bold"
+                    className="inline-flex min-h-11 items-center text-xs font-bold text-emerald-600 hover:text-emerald-800 sm:min-h-0"
                   >
                     {getFilteredCustomers().every(c => selectedPhones.has(c.phone)) ? 'Deseleccionar todos' : 'Seleccionar filtrados'}
                   </button>
                 </div>
 
-                {/* Filter segments tabs */}
-                <div className="flex flex-wrap gap-1 bg-white p-1 rounded-lg border border-gray-200 text-[10px] font-bold">
+                {/* Filter segments tabs. Los cuatro segmentos repartidos a lo ancho
+                    dejaban 70px por botón y "Inactivos +3m" se cortaba; en el móvil
+                    van en rejilla de dos. Y con `py-1` sobre un texto de 10px medían
+                    26px de alto, imposibles de acertar con el dedo: 44px en móvil. */}
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1 bg-white p-1 rounded-lg border border-gray-200 text-[10px] font-bold">
                   <button
                     onClick={() => applySegmentSelection('all')}
-                    className={`flex-1 py-1 px-1.5 rounded transition-all ${activeSegment === 'all' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                    className={`flex min-h-11 flex-1 items-center justify-center rounded px-1.5 text-center transition-all sm:min-h-0 sm:py-1 ${activeSegment === 'all' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
                   >
                     Todos
                   </button>
                   <button
                     onClick={() => applySegmentSelection('recent')}
-                    className={`flex-1 py-1 px-1.5 rounded transition-all ${activeSegment === 'recent' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                    className={`flex min-h-11 flex-1 items-center justify-center rounded px-1.5 text-center transition-all sm:min-h-0 sm:py-1 ${activeSegment === 'recent' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
                   >
                     Último mes
                   </button>
                   <button
                     onClick={() => applySegmentSelection('inactive3m')}
-                    className={`flex-1 py-1 px-1.5 rounded transition-all ${activeSegment === 'inactive3m' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                    className={`flex min-h-11 flex-1 items-center justify-center rounded px-1.5 text-center transition-all sm:min-h-0 sm:py-1 ${activeSegment === 'inactive3m' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
                     title="Inactivos > 3 meses"
                   >
                     Inactivos +3m
                   </button>
                   <button
                     onClick={() => applySegmentSelection('inactive6m')}
-                    className={`flex-1 py-1 px-1.5 rounded transition-all ${activeSegment === 'inactive6m' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                    className={`flex min-h-11 flex-1 items-center justify-center rounded px-1.5 text-center transition-all sm:min-h-0 sm:py-1 ${activeSegment === 'inactive6m' ? 'bg-[#25D366] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
                     title="Inactivos > 6 meses"
                   >
                     Inactivos +6m
@@ -588,7 +605,7 @@ export default function WhatsAppCampaigns() {
               </div>
 
               {/* Customers list content */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
                 {getFilteredCustomers().map(c => {
                   const isChecked = selectedPhones.has(c.phone);
                   return (
@@ -606,8 +623,8 @@ export default function WhatsAppCampaigns() {
                         className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 mt-1 h-3.5 w-3.5"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                          <h5 className="text-xs font-bold text-gray-800 truncate">{c.name}</h5>
+                        <div className="flex justify-between items-baseline gap-2">
+                          <h5 className="min-w-0 text-xs font-bold text-gray-800 truncate">{c.name}</h5>
                           <span className="text-[9px] text-gray-400 shrink-0 font-mono">
                             Compra: {new Date(c.lastPurchaseDate).toLocaleDateString('es-CO')}
                           </span>
@@ -630,7 +647,7 @@ export default function WhatsAppCampaigns() {
           </div>
 
           {/* Submits buttons */}
-          <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
+          <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
               onClick={() => setOpenCreate(false)}
               variant="outline"
@@ -652,11 +669,11 @@ export default function WhatsAppCampaigns() {
       {/* DIALOG 2: DETAILS CAMPAIGN PROGRESS */}
       <Dialog open={openDetails !== null} onOpenChange={open => !open && setOpenDetails(null)}>
         {openDetails && (
-          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl p-6 bg-white">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl p-4 sm:p-6 bg-white">
             <DialogHeader>
-              <DialogTitle className="font-extrabold text-gray-800 text-lg flex items-center justify-between">
-                <span>Campaña: {openDetails.name}</span>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border bg-gray-50">
+              <DialogTitle className="font-extrabold text-gray-800 text-base sm:text-lg flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate">Campaña: {openDetails.name}</span>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border bg-gray-50 shrink-0">
                   {openDetails.status}
                 </span>
               </DialogTitle>
@@ -667,7 +684,7 @@ export default function WhatsAppCampaigns() {
 
             <div className="space-y-4 mt-4">
               {/* Resumen */}
-              <div className="grid grid-cols-3 gap-3 bg-gray-50 p-4 rounded-xl text-center border border-gray-100">
+              <div className="grid grid-cols-3 gap-2 bg-gray-50 p-3 sm:p-4 sm:gap-3 rounded-xl text-center border border-gray-100">
                 <div>
                   <div className="text-[10px] text-gray-400 font-bold uppercase">Destinatarios</div>
                   <div className="text-xl font-extrabold text-gray-700">{openDetails.totalRecipients}</div>
@@ -684,7 +701,49 @@ export default function WhatsAppCampaigns() {
 
               {/* List */}
               <div className="border border-gray-100 rounded-xl overflow-hidden">
-                <div className="max-h-[300px] overflow-y-auto">
+                {/*
+                  MÓVIL: tarjetas. Las cuatro columnas (nombre, teléfono, estado y
+                  error) no caben en 360px: el teléfono y el motivo del fallo —que
+                  es justo lo que se consulta aquí— quedaban fuera de la vista.
+                */}
+                <ul className="max-h-[300px] divide-y divide-gray-100 overflow-y-auto md:hidden">
+                  {openDetails.recipients.map((r, idx) => {
+                    const statusColor = {
+                      pending: 'text-gray-500 bg-gray-100',
+                      sent: 'text-green-700 bg-green-50 border-green-200',
+                      failed: 'text-red-700 bg-red-50 border-red-200',
+                    };
+                    const colorClass = statusColor[r.status] || 'text-gray-500 bg-gray-100';
+
+                    return (
+                      <li key={idx} className="p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-800 truncate">{r.name}</p>
+                            <p className="text-[11px] text-gray-500 font-mono">+{r.phone}</p>
+                          </div>
+                          <span className={`shrink-0 px-2 py-0.5 rounded text-[9px] uppercase font-bold border ${colorClass}`}>
+                            {r.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[10px] text-gray-400 break-words">
+                          {r.status === 'failed' ? (
+                            <span className="text-red-500 inline-flex items-start gap-1">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {r.error || 'Fallo'}
+                            </span>
+                          ) : r.processedAt ? (
+                            new Date(r.processedAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                          ) : (
+                            'Esperando...'
+                          )}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="hidden max-h-[300px] overflow-y-auto md:block">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-gray-50 text-gray-600 font-bold sticky top-0 border-b border-gray-100">
                       <tr>
@@ -733,8 +792,8 @@ export default function WhatsAppCampaigns() {
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-              <Button onClick={() => setOpenDetails(null)} className="rounded-xl px-5">
+            <div className="mt-6 pt-4 border-t border-gray-100 flex sm:justify-end">
+              <Button onClick={() => setOpenDetails(null)} className="w-full sm:w-auto rounded-xl px-5">
                 Cerrar
               </Button>
             </div>

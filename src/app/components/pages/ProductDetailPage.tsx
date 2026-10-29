@@ -1,11 +1,13 @@
 import { useParams, useNavigate, Link } from 'react-router';
-import { useProducts } from '../ProductContext';
+import { useProducts, firstAvailableStorage, firstAvailableColor } from '../ProductContext';
+import { FinanciacionDisponible } from '../FinanciacionDisponible';
 import { Star, ShoppingCart, ArrowLeft, Package, Shield, Truck, Zap, CheckCircle, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '../ToastContext';
 import { QuickBuyDialog } from '../QuickBuyDialog';
 import { ProductReviews } from '../ProductReviews';
 import { API_ORIGIN, API_BASE_URL, fetchWithTimeout } from '../../lib/api-base';
+import { esCelular, COSTO_DOMICILIO } from '../../lib/domicilio';
 
 const EXCHANGE_RATE = 1; // Precios en COP
 
@@ -19,7 +21,7 @@ export function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
   const [selectedStorage, setSelectedStorage] = useState<string | undefined>(undefined);
   const [quickBuyOpen, setQuickBuyOpen] = useState(false);
-  const [quickBuyPaymentMethod, setQuickBuyPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi'>('efectivo');
+  const [quickBuyPaymentMethod, setQuickBuyPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold'>('efectivo');
   const [ratingSummary, setRatingSummary] = useState({ average: 0, count: 0 });
 
   // Notificarme cuando haya stock
@@ -39,10 +41,10 @@ export function ProductDetailPage() {
   useEffect(() => {
     if (product) {
       if (product.storageVariants && product.storageVariants.length > 0 && !selectedStorage) {
-        setSelectedStorage(product.storageVariants[0].storage);
+        setSelectedStorage(firstAvailableStorage(product.storageVariants));
       }
       if (product.colorVariants && product.colorVariants.length > 0 && !selectedColor) {
-        setSelectedColor(product.colorVariants[0].color);
+        setSelectedColor(firstAvailableColor(product.colorVariants));
       }
       
       // Fetch dynamic reviews for the star badge
@@ -203,24 +205,31 @@ export function ProductDetailPage() {
                   Capacidad de Almacenamiento
                 </label>
                 <div className="flex flex-wrap gap-3">
-                  {product.storageVariants.map((variant) => (
+                  {product.storageVariants.map((variant) => {
+                    const sinStock = (variant.stock ?? 0) <= 0;
+                    return (
                     <button
                       key={variant.storage}
                       onClick={() => setSelectedStorage(variant.storage)}
                       className={`px-6 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
                         selectedStorage === variant.storage
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                          : sinStock
+                            ? 'border-gray-200 bg-gray-50 text-gray-400'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                       }`}
                     >
                       <div className="text-center">
-                        <div className="font-semibold">{variant.storage}</div>
+                        <div className={`font-semibold ${sinStock ? 'line-through' : ''}`}>{variant.storage}</div>
                         <div className="text-xs mt-1">
-                          ${(variant.price * EXCHANGE_RATE).toLocaleString('es-CO')} COP
+                          {sinStock
+                            ? 'Agotado'
+                            : `$${(variant.price * EXCHANGE_RATE).toLocaleString('es-CO')} COP`}
                         </div>
                       </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -325,25 +334,8 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            {/* Addi Widget */}
-            <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2 hover:border-[#4A3BFA] transition-colors cursor-pointer group" onClick={() => { setQuickBuyPaymentMethod('addi'); setQuickBuyOpen(true); }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">Págalo en cuotas con</span>
-                  <span className="text-[#4A3BFA] font-black text-xl tracking-tighter">addi</span>
-                </div>
-                <div className="bg-[#4A3BFA]/10 text-[#4A3BFA] text-xs font-bold px-2 py-1 rounded-md">Fácil y rápido</div>
-              </div>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl font-bold text-gray-900">3</span>
-                <span className="text-sm font-medium text-gray-600">cuotas de</span>
-                <span className="text-2xl font-bold text-[#4A3BFA]">${Math.round((currentPrice / 0.80) / 3).toLocaleString('es-CO')}</span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
-                <span>* Precio total: ${(currentPrice / 0.80).toLocaleString('es-CO')} COP</span>
-                <span className="underline decoration-gray-300 underline-offset-2">Ver requisitos</span>
-              </div>
-            </div>
+            {/* Aliados de financiación (informativo, no es método de pago) */}
+            <FinanciacionDisponible className="mb-6" />
 
             {/* Urgencia stock bajo */}
             {availableStock > 0 && availableStock < 5 && (
@@ -423,7 +415,14 @@ export function ProductDetailPage() {
             <div className="border-t border-gray-200 pt-5 space-y-3">
               <div className="flex items-center gap-3 text-sm font-bold text-gray-900">
                 <Truck className="w-5 h-5 text-gray-900 flex-shrink-0" />
-                <span>Envío a domicilio GRATIS · Todo Cartagena · ~1 hora</span>
+                {/* El domicilio solo es gratis en celulares; en lo demás cuesta
+                    $10.000. Aquí sabemos qué producto es, así que lo decimos bien
+                    en vez de prometer "GRATIS" y cobrarlo luego en el checkout. */}
+                <span>
+                  {esCelular(product)
+                    ? 'Envío a domicilio GRATIS · Todo Cartagena · ~1 hora'
+                    : `Envío a domicilio $${COSTO_DOMICILIO.toLocaleString('es-CO')} · Todo Cartagena · ~1 hora`}
+                </span>
               </div>
               <div className="flex items-center gap-3 text-sm font-bold text-gray-900">
                 <CheckCircle className="w-5 h-5 text-gray-900 flex-shrink-0" />

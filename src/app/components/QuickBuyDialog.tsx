@@ -1,16 +1,15 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { useProducts, Product } from './ProductContext';
+import { useProducts, Product, firstAvailableStorage, firstAvailableColor } from './ProductContext';
 import { Button } from './ui/button';
 import { Zap, Store, Truck, CreditCard, Loader2, ShoppingBag, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ThermalTicket } from './ThermalTicket';
 import { toast } from 'sonner';
 import { API_ORIGIN } from '../lib/api-base';
-
-const DELIVERY_FEE = 0; // Domicilio GRATIS en Cartagena
+import { calcularDomicilio, etiquetaDomicilio } from '../lib/domicilio';
 
 type DeliveryMethod = 'delivery' | 'pickup';
-type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold' | 'addi';
+type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold';
 
 interface QuickBuyDialogProps {
   isOpen: boolean;
@@ -26,10 +25,10 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
 
   // Variantes seleccionadas
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
-    initialColor ?? product.colorVariants?.[0]?.color
+    initialColor ?? firstAvailableColor(product.colorVariants)
   );
   const [selectedStorage, setSelectedStorage] = useState<string | undefined>(
-    initialStorage ?? product.storageVariants?.[0]?.storage
+    initialStorage ?? firstAvailableStorage(product.storageVariants)
   );
 
   // Paso de la UI: 'config' | 'checkout' | 'done'
@@ -52,8 +51,8 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
 
   // Sincronizar variantes cuando cambia el producto
   useEffect(() => {
-    setSelectedColor(initialColor ?? product.colorVariants?.[0]?.color);
-    setSelectedStorage(initialStorage ?? product.storageVariants?.[0]?.storage);
+    setSelectedColor(initialColor ?? firstAvailableColor(product.colorVariants));
+    setSelectedStorage(initialStorage ?? firstAvailableStorage(product.storageVariants));
   }, [product.id, initialColor, initialStorage]);
 
   // Reset completo al cerrar
@@ -98,11 +97,13 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
 
   const unitPrice = selectedStorage ? product.storageVariants?.find(v => v.storage === selectedStorage)?.price || product.price : product.price;
   const totalCOP = unitPrice;
-  const addiSurcharge = paymentMethod === 'addi' ? Math.round(totalCOP * 0.20) : 0;
   const cardSurcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold')
     ? Math.round(totalCOP * 0.05)
-    : addiSurcharge;
-  const deliveryFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
+    : 0;
+  // $10.000 de domicilio, gratis si el producto es un celular. Ver lib/domicilio.ts.
+  // `costoDomicilio` rotula el botón, que hay que poder leer antes de elegirlo.
+  const costoDomicilio = calcularDomicilio([product], 'delivery');
+  const deliveryFee = calcularDomicilio([product], deliveryMethod);
   const grandTotal = totalCOP + cardSurcharge + deliveryFee;
   const availableStock = getAvailableStock();
 
@@ -111,7 +112,6 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
     paymentMethod === 'transferencia' ? 'Transferencia bancaria' :
     paymentMethod === 'nequi' ? 'Nequi' :
     paymentMethod === 'bold' ? 'BOLD (Tarjeta)' :
-    paymentMethod === 'addi' ? 'Addi (Crédito a cuotas)' :
     'Tarjeta';
 
   // ─── Construir el CartItem para la orden ────────────────────────────────────
@@ -203,121 +203,6 @@ export function QuickBuyDialog({ isOpen, onClose, product, initialColor, initial
       console.error('Error al crear orden:', err);
       toast.error('Hubo un error al procesar el pedido. Intenta de nuevo.');
     } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ─── Pago Addi ──────────────────────────────────────────────────────────────
-  const handleAddiPayment = async () => {
-    if (!customerName || !customerIdNumber || !customerEmail || !phone) {
-      toast.error('Por favor completa todos los campos obligatorios antes de pagar con Addi');
-      return;
-    }
-    if (deliveryMethod === 'delivery' && !address) {
-      toast.error('Por favor ingresa el barrio/dirección de envío');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const orderItem = {
-        product: { ...product, price: unitPrice },
-        quantity: 1,
-        selectedColor,
-        selectedStorage
-      };
-
-      const newOrder = await addOrder({
-        items: [orderItem],
-        total: totalCOP,
-        status: 'pending_addi',
-        createdAt: new Date().toISOString(),
-        customerInfo: {
-          email: customerEmail, name: customerName, idNumber: customerIdNumber, phone, deliveryMethod,
-          address: deliveryMethod === 'delivery' ? address : 'Retiro en tienda',
-          paymentMethod: 'Addi (Crédito a cuotas)', deliveryFee,
-        },
-        paymentMethod: 'Addi (Crédito a cuotas)',
-      });
-
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'InitiateCheckout', {
-          content_ids: [product.id],
-          content_type: 'product',
-          value: grandTotal,
-          currency: 'COP',
-          num_items: 1
-        });
-      }
-
-      const nameParts = customerName.trim().split(' ');
-      const firstName = nameParts[0] || 'Cliente';
-      const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
-
-      const items = [{
-        sku: product.id || 'XM-01',
-        name: `${product.name} ${selectedStorage || ''}`.trim(),
-        quantity: 1,
-        unitPrice: unitPrice
-      }];
-
-      if (ticketConfig.addiMode === 'whatsapp') {
-        const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
-        
-*🛍️ PRODUCTOS:*
-• ${product.name} x1 ${selectedStorage ? `[${selectedStorage}]` : ''} ${selectedColor ? `(${selectedColor})` : ''}
-  *Financiado por Addi:* $${(totalCOP + addiSurcharge).toLocaleString()} COP
-
-*📍 DATOS DE ENVÍO:*
-*Nombre:* ${customerName}
-*Cédula:* ${customerIdNumber}
-*Teléfono:* ${phone}
-*Dirección:* ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
-
-*💳 PAGO CON ADDI A CUOTAS:*
-*Subtotal:* $${(totalCOP + addiSurcharge).toLocaleString()} COP
-*Envío:* $${deliveryFee.toLocaleString()} COP
-
-💰 *TOTAL A PAGAR: $${grandTotal.toLocaleString()} COP* 💰
-
-Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame el link de pago.`;
-        window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
-        return;
-      }
-
-      const addiRes = await fetch(`${API_ORIGIN}/api/addi/create-transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: newOrder.orderNumber,
-          totalAmount: grandTotal,
-          items,
-          client: {
-            idType: "CC",
-            idNumber: customerIdNumber,
-            firstName,
-            lastName,
-            email: customerEmail,
-            cellphone: phone.replace(/[^0-9]/g, ''),
-            cellphoneCountryCode: "+57",
-            address: {
-              lineOne: deliveryMethod === 'delivery' ? address : 'Tienda Fisica',
-              city: "Cartagena",
-              country: "CO"
-            }
-          }
-        })
-      });
-
-      const addiData = await addiRes.json();
-      if (addiData.success && addiData.redirectUrl) {
-        window.location.href = addiData.redirectUrl;
-      } else {
-        throw new Error(addiData.error || 'Error conectando con Addi');
-      }
-
-    } catch (err: any) {
-      toast.error(err.message || 'Error al iniciar pago con Addi.');
       setIsSubmitting(false);
     }
   };
@@ -608,7 +493,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
           </h3>
           <div className="grid grid-cols-2 gap-3">
             {([
-              { value: 'delivery', label: 'Domicilio', sub: 'GRATIS', Icon: Truck, subClass: 'text-green-600' },
+              { value: 'delivery', label: 'Domicilio', sub: etiquetaDomicilio(costoDomicilio), Icon: Truck, subClass: costoDomicilio === 0 ? 'text-green-600' : 'text-gray-500' },
               { value: 'pickup', label: 'Retirar en Tienda', sub: '¡Gratis!', Icon: Store, subClass: 'text-emerald-600' },
             ] as const).map(opt => (
               <button key={opt.value} type="button" onClick={() => setDeliveryMethod(opt.value)}
@@ -659,7 +544,6 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
             <option value="transferencia">🏦 Transferencia Bancaria</option>
             <option value="tarjeta">💳 Tarjeta con Datáfono (Contra entrega) (+5%)</option>
             <option value="bold">🌐 Pago Seguro en Línea - BOLD (+5%)</option>
-            <option value="addi">🛍️ Paga con Addi a Cuotas</option>
           </select>
           {(paymentMethod === 'bold' || paymentMethod === 'tarjeta') && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-800 flex items-start gap-2">
@@ -676,16 +560,16 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
           <div className="space-y-2.5 relative z-10">
             <div className="flex justify-between text-sm text-gray-300 border-b border-gray-700/50 pb-2">
               <span className="truncate pr-4">1x {product.name}{selectedStorage ? ` ${selectedStorage}` : ''}</span>
-              <span className="shrink-0">${(unitPrice + addiSurcharge).toLocaleString('es-CO')}</span>
+              <span className="shrink-0">${unitPrice.toLocaleString('es-CO')}</span>
             </div>
             <div className="flex justify-between items-center text-sm text-gray-400">
               <span>Subtotal</span>
-              <span>${(unitPrice + addiSurcharge).toLocaleString('es-CO')}</span>
+              <span>${unitPrice.toLocaleString('es-CO')}</span>
             </div>
             {deliveryFee > 0 && (
               <div className="flex justify-between items-center text-sm text-gray-300">
                 <span>Domicilio</span>
-                <span>+${DELIVERY_FEE.toLocaleString('es-CO')}</span>
+                <span>+${deliveryFee.toLocaleString('es-CO')}</span>
               </div>
             )}
             {(paymentMethod === 'tarjeta' || paymentMethod === 'bold') && (
@@ -719,15 +603,6 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
               <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generando Link de Pago...</>
             ) : (
               <><CreditCard className="w-5 h-5 mr-2" />Pagar y Confirmar Pedido</>
-            )}
-          </Button>
-        ) : paymentMethod === 'addi' ? (
-          <Button onClick={handleAddiPayment} disabled={isSubmitting}
-            className="w-full h-14 text-base font-bold bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-lg rounded-xl transition-all">
-            {isSubmitting ? (
-              <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Procesando crédito...</>
-            ) : (
-              <><ShoppingBag className="w-5 h-5 mr-2" />Pagar con Addi</>
             )}
           </Button>
         ) : (

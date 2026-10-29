@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router';
-import { useProducts, Product } from './ProductContext';
+import { useProducts, Product, firstAvailableStorage, firstAvailableColor } from './ProductContext';
 import { Search, X, Sparkles, AlertCircle, ShoppingCart, CornerDownLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -249,13 +249,9 @@ export function SmartSearch({ isOpen, onClose }: SmartSearchProps) {
     e.stopPropagation();
     if (!product) return;
 
-    // Select default storage or color if available
-    const defaultColor = product.colorVariants && product.colorVariants.length > 0
-      ? product.colorVariants[0].color
-      : undefined;
-    const defaultStorage = product.storageVariants && product.storageVariants.length > 0
-      ? product.storageVariants[0].storage
-      : undefined;
+    // Preseleccionar la primera variante CON stock (no la primera del array)
+    const defaultColor = firstAvailableColor(product.colorVariants);
+    const defaultStorage = firstAvailableStorage(product.storageVariants);
 
     addToCart(product, 1, defaultColor, defaultStorage);
     toast.success(`${product.name} añadido al carrito`, { icon: '🛒' });

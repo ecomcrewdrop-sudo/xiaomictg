@@ -101,22 +101,22 @@ export function ReviewsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
-        <div>
-          <h2 className="text-xl font-black text-slate-900">Gestor de Reseñas</h2>
+      <div className="flex flex-col gap-3 bg-white p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-black text-slate-900">Gestor de Reseñas</h2>
           <p className="text-sm text-slate-500">Aprueba reseñas de clientes o inyecta "Social Proof"</p>
         </div>
         <button
           onClick={() => setShowManualForm(!showManualForm)}
-          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+          className="w-full sm:w-auto shrink-0 min-h-11 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 sm:min-h-0"
         >
-          <PenSquare className="w-4 h-4" />
+          <PenSquare className="w-4 h-4 shrink-0" />
           Añadir Reseña Manual
         </button>
       </div>
 
       {showManualForm && (
-        <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-[2rem] animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-indigo-50 border border-indigo-100 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] animate-in fade-in slide-in-from-top-4 duration-300">
           <h3 className="font-black text-indigo-900 mb-4 flex items-center gap-2">
             <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
             Inyectar Social Proof
@@ -147,8 +147,8 @@ export function ReviewsManager() {
               <label className="block text-xs font-bold text-indigo-800 mb-1">Comentario</label>
               <textarea required value={manualForm.comment} onChange={e => setManualForm({...manualForm, comment: e.target.value})} className="w-full p-2.5 rounded-xl border border-indigo-200" rows={3} placeholder="¡Excelente producto! Me llegó súper rápido..." />
             </div>
-            <div className="md:col-span-2 flex justify-end">
-              <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-md">Guardar Reseña</button>
+            <div className="md:col-span-2 flex md:justify-end">
+              <button type="submit" className="w-full md:w-auto min-h-11 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-md md:min-h-0">Guardar Reseña</button>
             </div>
           </form>
         </div>
@@ -162,35 +162,41 @@ export function ReviewsManager() {
             <p className="text-center text-slate-500 py-8">No hay reseñas registradas en la base de datos.</p>
           ) : (
             reviews.map(review => (
-              <div key={review._id} className="bg-white p-5 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-black text-slate-900">{review.author}</span>
+              <div key={review._id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-3 md:gap-4 items-start md:items-center justify-between">
+                <div className="min-w-0 w-full md:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="font-black text-slate-900 break-words">{review.author}</span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      review.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 
+                      review.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
                       review.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                     }`}>
                       {review.status === 'approved' ? 'Aprobada' : review.status === 'pending' ? 'Pendiente' : 'Rechazada'}
                     </span>
-                    {review.verifiedPurchase && <ShieldCheck className="w-3 h-3 text-emerald-500" />}
+                    {review.verifiedPurchase && <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />}
                   </div>
-                  <div className="flex items-center gap-1 mb-1">
-                    {[1,2,3,4,5].map(s => <Star key={s} className={`w-3 h-3 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />)}
-                    <span className="text-xs text-slate-400 ml-2">Prod: <b className="text-slate-700">{review.productId}</b></span>
+                  {/* El productId es un slug sin espacios ("redmi-note-15-pro-5g"):
+                      junto a las cinco estrellas se salía de la tarjeta. */}
+                  <div className="flex flex-wrap items-center gap-1 mb-1">
+                    {[1,2,3,4,5].map(s => <Star key={s} className={`w-3 h-3 shrink-0 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />)}
+                    <span className="min-w-0 text-xs text-slate-400 ml-2 break-all">Prod: <b className="text-slate-700">{review.productId}</b></span>
                   </div>
-                  <p className="text-sm text-slate-600 italic">"{review.comment}"</p>
+                  <p className="text-sm text-slate-600 italic break-words">"{review.comment}"</p>
                 </div>
-                <div className="flex gap-2">
+                {/* Aprobar / rechazar / eliminar: con `p-2` y un icono de 20px
+                    medían 36px. Son las tres acciones del módulo y están una al
+                    lado de la otra, así que fallar el toque cuesta una reseña
+                    aprobada por error. 44px en móvil, 36px de sm hacia arriba. */}
+                <div className="flex shrink-0 gap-2">
                   {review.status === 'pending' && (
                     <>
-                      <button onClick={() => updateReviewStatus(review._id, 'approved')} className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg" title="Aprobar"><CheckCircle className="w-5 h-5"/></button>
-                      <button onClick={() => updateReviewStatus(review._id, 'rejected')} className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg" title="Rechazar"><XCircle className="w-5 h-5"/></button>
+                      <button onClick={() => updateReviewStatus(review._id, 'approved')} className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 sm:h-auto sm:w-auto sm:p-2" aria-label={`Aprobar reseña de ${review.author}`} title="Aprobar"><CheckCircle className="w-5 h-5"/></button>
+                      <button onClick={() => updateReviewStatus(review._id, 'rejected')} className="flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 sm:h-auto sm:w-auto sm:p-2" aria-label={`Rechazar reseña de ${review.author}`} title="Rechazar"><XCircle className="w-5 h-5"/></button>
                     </>
                   )}
                   {review.status === 'rejected' && (
-                    <button onClick={() => updateReviewStatus(review._id, 'approved')} className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg" title="Aprobar"><CheckCircle className="w-5 h-5"/></button>
+                    <button onClick={() => updateReviewStatus(review._id, 'approved')} className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 sm:h-auto sm:w-auto sm:p-2" aria-label={`Aprobar reseña de ${review.author}`} title="Aprobar"><CheckCircle className="w-5 h-5"/></button>
                   )}
-                  <button onClick={() => deleteReview(review._id)} className="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg" title="Eliminar"><Trash2 className="w-5 h-5"/></button>
+                  <button onClick={() => deleteReview(review._id)} className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 sm:h-auto sm:w-auto sm:p-2" aria-label={`Eliminar reseña de ${review.author}`} title="Eliminar"><Trash2 className="w-5 h-5"/></button>
                 </div>
               </div>
             ))

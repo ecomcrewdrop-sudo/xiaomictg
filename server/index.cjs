@@ -69735,10 +69735,10 @@ var require_utils4 = __commonJS({
     function squashError(_error) {
       return;
     }
-    var randomBytes9 = (size) => {
+    var randomBytes13 = (size) => {
       return Promise.resolve(crypto.getRandomValues(new Uint8Array(size)));
     };
-    exports2.randomBytes = randomBytes9;
+    exports2.randomBytes = randomBytes13;
     async function once2(ee, name, options) {
       options?.signal?.throwIfAborted();
       const { promise, resolve, reject } = promiseWithResolvers();
@@ -79738,8 +79738,8 @@ var require_tr46 = __commonJS({
         return l;
       });
       if (verifyDNSLength) {
-        const total2 = labels.join(".").length;
-        if (total2 > 253 || total2 === 0) {
+        const total = labels.join(".").length;
+        if (total > 253 || total === 0) {
           result.error = true;
         }
         for (let i = 0; i < labels.length; ++i) {
@@ -96028,10 +96028,10 @@ var require_parser_v3 = __commonJS({
         buffers.push(msg);
         bufferTail = bufferTail.slice(msgLength + 1);
       }
-      var total2 = buffers.length;
-      for (i = 0; i < total2; i++) {
+      var total = buffers.length;
+      for (i = 0; i < total; i++) {
         var buffer = buffers[i];
-        callback(decodePacket(buffer, binaryType, true), i, total2);
+        callback(decodePacket(buffer, binaryType, true), i, total);
       }
     }
   }
@@ -99901,7 +99901,7 @@ var require_websocket2 = __commonJS({
     var http = require("http");
     var net = require("net");
     var tls = require("tls");
-    var { randomBytes: randomBytes9, createHash: createHash7 } = require("crypto");
+    var { randomBytes: randomBytes13, createHash: createHash7 } = require("crypto");
     var { Duplex, Readable: Readable3 } = require("stream");
     var { URL: URL5 } = require("url");
     var PerMessageDeflate = require_permessage_deflate();
@@ -100428,7 +100428,7 @@ var require_websocket2 = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes9(16).toString("base64");
+      const key = randomBytes13(16).toString("base64");
       const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -115531,7 +115531,7 @@ var require_timing_safe_equal = __commonJS({
         throw new Error(msg);
       }
     }
-    function timingSafeEqual2(a, b) {
+    function timingSafeEqual4(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
@@ -115551,7 +115551,7 @@ var require_timing_safe_equal = __commonJS({
       }
       return out === 0;
     }
-    exports2.timingSafeEqual = timingSafeEqual2;
+    exports2.timingSafeEqual = timingSafeEqual4;
   }
 });
 
@@ -153796,7 +153796,7 @@ var init_MP4Parser = __esm({
             this.metadata.setFormat("bitsPerSample", ssd.description.sampleSize);
             this.metadata.setFormat("numberOfChannels", ssd.description.numAudioChannels);
             if (audioTrack.media.header.timeScale === 0 && audioTrack.timeToSampleTable.length > 0) {
-              const totalSampleSize = audioTrack.timeToSampleTable.map((ttstEntry) => ttstEntry.count * ttstEntry.duration).reduce((total2, sampleSize) => total2 + sampleSize);
+              const totalSampleSize = audioTrack.timeToSampleTable.map((ttstEntry) => ttstEntry.count * ttstEntry.duration).reduce((total, sampleSize) => total + sampleSize);
               audioTrack.duration = totalSampleSize / ssd.description.sampleRate;
             }
           }
@@ -182199,9 +182199,9 @@ async function requestApi(pathname, init, commandOptions) {
           },
           onUploadProgress: (commandOptions == null ? void 0 : commandOptions.onUploadProgress) ? (loaded) => {
             var _a3;
-            const total2 = bodyLength !== 0 ? bodyLength : loaded;
+            const total = bodyLength !== 0 ? bodyLength : loaded;
             totalLoaded = loaded;
-            const percentage = bodyLength > 0 ? Number((loaded / total2 * 100).toFixed(2)) : 0;
+            const percentage = bodyLength > 0 ? Number((loaded / total * 100).toFixed(2)) : 0;
             if (percentage === 100 && bodyLength > 0) {
               return;
             }
@@ -182211,7 +182211,7 @@ async function requestApi(pathname, init, commandOptions) {
               // Instead of defining total as total?: number we decided to set the total to the currently
               // loaded number. This is not inaccurate and way more practical for DX.
               // Passing down a stream to put() is very rare
-              total: total2,
+              total,
               percentage
             });
           } : void 0
@@ -182533,9 +182533,9 @@ function uploadAllParts({
           },
           0
         );
-        const total2 = totalToLoad || loaded;
+        const total = totalToLoad || loaded;
         const percentage = totalToLoad > 0 ? Number(((loaded / totalToLoad || loaded) * 100).toFixed(2)) : 0;
-        (_a3 = options.onUploadProgress) == null ? void 0 : _a3.call(options, { loaded, total: total2, percentage });
+        (_a3 = options.onUploadProgress) == null ? void 0 : _a3.call(options, { loaded, total, percentage });
       }, 150);
     }
     read2().catch(cancel);
@@ -188332,7 +188332,7 @@ var Resend = class {
 // server/index.ts
 var import_nodemailer = __toESM(require_nodemailer(), 1);
 var import_dotenv = __toESM(require_main(), 1);
-var import_crypto23 = require("crypto");
+var import_crypto26 = require("crypto");
 var import_dns = __toESM(require("dns"), 1);
 
 // node_modules/@whiskeysockets/baileys/WAProto/index.js
@@ -276660,17 +276660,17 @@ var QueryIds;
 
 // node_modules/@whiskeysockets/baileys/lib/Types/index.js
 var DisconnectReason;
-(function(DisconnectReason2) {
-  DisconnectReason2[DisconnectReason2["connectionClosed"] = 428] = "connectionClosed";
-  DisconnectReason2[DisconnectReason2["connectionLost"] = 408] = "connectionLost";
-  DisconnectReason2[DisconnectReason2["connectionReplaced"] = 440] = "connectionReplaced";
-  DisconnectReason2[DisconnectReason2["timedOut"] = 408] = "timedOut";
-  DisconnectReason2[DisconnectReason2["loggedOut"] = 401] = "loggedOut";
-  DisconnectReason2[DisconnectReason2["badSession"] = 500] = "badSession";
-  DisconnectReason2[DisconnectReason2["restartRequired"] = 515] = "restartRequired";
-  DisconnectReason2[DisconnectReason2["multideviceMismatch"] = 411] = "multideviceMismatch";
-  DisconnectReason2[DisconnectReason2["forbidden"] = 403] = "forbidden";
-  DisconnectReason2[DisconnectReason2["unavailableService"] = 503] = "unavailableService";
+(function(DisconnectReason3) {
+  DisconnectReason3[DisconnectReason3["connectionClosed"] = 428] = "connectionClosed";
+  DisconnectReason3[DisconnectReason3["connectionLost"] = 408] = "connectionLost";
+  DisconnectReason3[DisconnectReason3["connectionReplaced"] = 440] = "connectionReplaced";
+  DisconnectReason3[DisconnectReason3["timedOut"] = 408] = "timedOut";
+  DisconnectReason3[DisconnectReason3["loggedOut"] = 401] = "loggedOut";
+  DisconnectReason3[DisconnectReason3["badSession"] = 500] = "badSession";
+  DisconnectReason3[DisconnectReason3["restartRequired"] = 515] = "restartRequired";
+  DisconnectReason3[DisconnectReason3["multideviceMismatch"] = 411] = "multideviceMismatch";
+  DisconnectReason3[DisconnectReason3["forbidden"] = 403] = "forbidden";
+  DisconnectReason3[DisconnectReason3["unavailableService"] = 503] = "unavailableService";
 })(DisconnectReason || (DisconnectReason = {}));
 
 // node_modules/@whiskeysockets/baileys/lib/WABinary/constants.js
@@ -280429,6 +280429,7 @@ async function derivePairingCodeKey(pairingCode, salt) {
 }
 
 // node_modules/@whiskeysockets/baileys/lib/Utils/generics.js
+var baileysVersion = [2, 3e3, 1035194821];
 var BufferJSON = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   replacer: (k2, value) => {
@@ -280572,6 +280573,38 @@ function bindWaitForEvent(ev, event) {
   };
 }
 var bindWaitForConnectionUpdate = (ev) => bindWaitForEvent(ev, "connection.update");
+var fetchLatestBaileysVersion = async (options = {}) => {
+  const URL5 = "https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/index.ts";
+  try {
+    const response = await fetch(URL5, {
+      dispatcher: options.dispatcher,
+      method: "GET",
+      headers: options.headers
+    });
+    if (!response.ok) {
+      throw new import_boom3.Boom(`Failed to fetch latest Baileys version: ${response.statusText}`, { statusCode: response.status });
+    }
+    const text = await response.text();
+    const lines = text.split("\n");
+    const versionLine = lines[6];
+    const versionMatch = versionLine.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/);
+    if (versionMatch) {
+      const version4 = [parseInt(versionMatch[1]), parseInt(versionMatch[2]), parseInt(versionMatch[3])];
+      return {
+        version: version4,
+        isLatest: true
+      };
+    } else {
+      throw new Error("Could not parse version from Defaults/index.ts");
+    }
+  } catch (error) {
+    return {
+      version: baileysVersion,
+      isLatest: false,
+      error
+    };
+  }
+};
 var generateMdTagPrefix = () => {
   const bytes2 = (0, import_crypto2.randomBytes)(4);
   return `${bytes2.readUInt16BE()}.${bytes2.readUInt16BE(2)}-`;
@@ -283279,11 +283312,11 @@ var generateMac = (operation, data, keyId, key) => {
   keyData.set(keyIdBuffer, 1);
   const last = new Uint8Array(8);
   last[7] = keyData.length;
-  const total2 = new Uint8Array(keyData.length + data.length + last.length);
-  total2.set(keyData, 0);
-  total2.set(data, keyData.length);
-  total2.set(last, keyData.length + data.length);
-  const hmac = hmacSign(total2, key, "sha512");
+  const total = new Uint8Array(keyData.length + data.length + last.length);
+  total.set(keyData, 0);
+  total.set(data, keyData.length);
+  total.set(last, keyData.length + data.length);
+  const hmac = hmacSign(total, key, "sha512");
   return hmac.subarray(0, 32);
 };
 var to64BitNetworkOrder = (e) => {
@@ -283322,12 +283355,12 @@ var makeLtHashGenerator = ({ indexValueMap, hash: hash2 }) => {
   };
 };
 var generateSnapshotMac = (lthash, version4, name, key) => {
-  const total2 = Buffer.concat([lthash, to64BitNetworkOrder(version4), Buffer.from(name, "utf-8")]);
-  return hmacSign(total2, key, "sha256");
+  const total = Buffer.concat([lthash, to64BitNetworkOrder(version4), Buffer.from(name, "utf-8")]);
+  return hmacSign(total, key, "sha256");
 };
 var generatePatchMac = (snapshotMac, valueMacs, version4, type, key) => {
-  const total2 = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version4), Buffer.from(type, "utf-8")]);
-  return hmacSign(total2, key);
+  const total = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version4), Buffer.from(type, "utf-8")]);
+  return hmacSign(total, key);
 };
 var newLTHashState = () => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} });
 var ensureLTHashStateVersion = (state) => {
@@ -298861,13 +298894,3516 @@ var lib_default = Socket_default;
 
 // server/index.ts
 var import_qrcode = __toESM(require_lib11(), 1);
+
+// server/trustonic.ts
+var BASE_URL = (process.env.TRUSTONIC_BASE_URL || "").trim().replace(/\/+$/, "");
+var TOKEN = (process.env.TRUSTONIC_TOKEN || "").trim();
+var TIMEOUT_MS = Number(process.env.TRUSTONIC_TIMEOUT_MS || 15e3);
+function trustonicConfigurado() {
+  return Boolean(BASE_URL && TOKEN);
+}
+function enmascararImei(valor) {
+  const s = String(valor ?? "");
+  if (s.length < 8) return "***";
+  return `${s.slice(0, 8)}****${s.slice(-3)}`;
+}
+function imeiValido(valor) {
+  const s = String(valor ?? "").trim();
+  if (!/^\d{14,17}$/.test(s)) return false;
+  if (s.length !== 15) return true;
+  let suma = 0;
+  for (let i = 0; i < 15; i++) {
+    let d = s.charCodeAt(i) - 48;
+    if (i % 2 === 1) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    suma += d;
+  }
+  return suma % 10 === 0;
+}
+async function llamarHbm(code, data, variant = "A") {
+  if (!trustonicConfigurado()) {
+    const error = "Trustonic no est\xE1 configurado: faltan TRUSTONIC_BASE_URL o TRUSTONIC_TOKEN.";
+    console.error(`[trustonic] ${error}`);
+    return { ok: false, status: 0, cuerpo: null, error };
+  }
+  const url = `${BASE_URL}/v1/hbm`;
+  const cuerpoPeticion = JSON.stringify({ service: { code, variant }, data });
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
+  const iniciado = Date.now();
+  try {
+    const respuesta = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${TOKEN}`
+      },
+      body: cuerpoPeticion,
+      signal: controlador.signal
+    });
+    const texto = await respuesta.text();
+    let cuerpo = texto;
+    try {
+      cuerpo = texto ? JSON.parse(texto) : null;
+    } catch {
+    }
+    const ms = Date.now() - iniciado;
+    if (!respuesta.ok) {
+      console.error(`[trustonic] ${code} -> HTTP ${respuesta.status} en ${ms}ms`);
+      return {
+        ok: false,
+        status: respuesta.status,
+        cuerpo,
+        error: `Trustonic respondi\xF3 ${respuesta.status}.`
+      };
+    }
+    console.log(`[trustonic] ${code} -> HTTP ${respuesta.status} en ${ms}ms`);
+    return { ok: true, status: respuesta.status, cuerpo };
+  } catch (err) {
+    const abortado = err?.name === "AbortError";
+    const error = abortado ? `Trustonic no respondi\xF3 en ${TIMEOUT_MS}ms.` : `No se pudo contactar con Trustonic: ${err?.message || "error desconocido"}`;
+    console.error(`[trustonic] ${code} fall\xF3: ${error}`);
+    return { ok: false, status: 0, cuerpo: null, error };
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+async function consultarDispositivos(imeis) {
+  return llamarHbm("QUERY_DEVICES", {
+    deviceList: imeis.map((deviceUid) => ({ deviceUid }))
+  });
+}
+function leerDispositivos(respuesta) {
+  const lista = respuesta.cuerpo?.dataResponse?.deviceResponseList;
+  return Array.isArray(lista) ? lista : [];
+}
+async function consultarUno(imei) {
+  const respuesta = await consultarDispositivos([imei]);
+  const dispositivo = leerDispositivos(respuesta).find((d) => String(d.deviceUid) === String(imei)) || null;
+  return { encontrado: respuesta.ok && Boolean(dispositivo), dispositivo, respuesta };
+}
+function estadoDesdeHbm(stateInfo) {
+  return String(stateInfo ?? "").toLowerCase() === "locked" ? "blocked" : "active";
+}
+function horasDesdeCheckIn(lastCheckIn) {
+  if (!lastCheckIn) return null;
+  const t = new Date(String(lastCheckIn)).getTime();
+  if (Number.isNaN(t)) return null;
+  return (Date.now() - t) / 36e5;
+}
+async function bloquear(imei, titulo, mensaje) {
+  return llamarHbm("DEVICE_LOCK", {
+    lockList: [
+      {
+        deviceUid: imei,
+        lockType: "lock",
+        lockMsgTitle: titulo,
+        lockMsgContent: mensaje
+      }
+    ]
+  });
+}
+async function desbloquear(imei) {
+  return llamarHbm("DEVICE_UNLOCK", { unLockList: [{ deviceUid: imei }] });
+}
+async function desbloquearConPin(imei, challenge) {
+  return llamarHbm("DEVICE_PIN_UNLOCK", {
+    pinUnlockList: [{ deviceUid: imei, challenge }]
+  });
+}
+async function notificar(imei, titulo, contenido, notificationType = "headsup") {
+  return llamarHbm("DEVICE_NOTIFY", {
+    messageList: [
+      {
+        deviceUid: imei,
+        notificationTitle: titulo,
+        notificationType,
+        notificationContent: contenido
+      }
+    ]
+  });
+}
+async function mensajeEnBloqueo(imei, titulo, contenido) {
+  return llamarHbm("DEVICE_LOCK_MESSAGE", {
+    lockMessageList: [{ deviceUid: imei, messageTitle: titulo, messageContent: contenido }]
+  });
+}
+async function liberar(imei, motivo) {
+  return llamarHbm("DEVICE_RELEASE", {
+    deviceReleaseList: [{ deviceUid: imei, reason: motivo }]
+  });
+}
+async function bloquearReseteoFabrica(imei) {
+  return llamarHbm("DEVICE_BLOCK_FACTORY_RESET", {
+    deviceList: [{ deviceUid: imei }]
+  });
+}
+async function bloquearAdb(imei) {
+  return llamarHbm("DEVICE_BLOCK_ADB", { deviceList: [{ deviceUid: imei }] });
+}
+async function bloquearReaprovisionamiento(imei) {
+  return llamarHbm("DEVICE_BLOCK_AEPROVISION", { deviceList: [{ deviceUid: imei }] });
+}
+async function crearWebhook(url, eventos) {
+  return llamarHbm("WEBHOOK_CREATE", {
+    subscriptionList: [{ callbackUrl: url, eventList: eventos }]
+  });
+}
+async function listarWebhooks() {
+  return llamarHbm("WEBHOOK_GET_ALL", {});
+}
+async function borrarWebhook(id) {
+  return llamarHbm("WEBHOOK_DELETE", { subscriptionList: [{ subscriptionId: id }] });
+}
+
+// server/prorroga.ts
+function soloFecha(valor) {
+  const texto = String(valor ?? "");
+  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10);
+  const d = new Date(texto);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+function fechaLimite(cuota) {
+  if (!cuota) return "";
+  const prorrogada = soloFecha(cuota.prorroga?.hasta);
+  return prorrogada || soloFecha(cuota.dueDate);
+}
+function tieneProrroga(cuota) {
+  return Boolean(cuota?.prorroga?.hasta);
+}
+function prorrogaVigente(cuota, hoy) {
+  const p = cuota?.prorroga;
+  if (!p?.hasta) return null;
+  const hasta = soloFecha(p.hasta);
+  if (!hasta || !hoy) return null;
+  return hasta >= hoy ? p : null;
+}
+function fechaLarga(fecha) {
+  const d = /* @__PURE__ */ new Date(`${soloFecha(fecha)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return String(fecha);
+  return d.toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC"
+  });
+}
+function diasEntreFechas(desde, hasta) {
+  const a = Date.parse(`${desde}T00:00:00Z`);
+  const b = Date.parse(`${hasta}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
+  return Math.round((b - a) / 864e5);
+}
+var MAX_DIAS_PRORROGA = 60;
+function validarProrroga(hastaCrudo, cuota, hoy) {
+  const hasta = soloFecha(hastaCrudo);
+  if (!hasta) {
+    return { error: "La fecha de la pr\xF3rroga no es v\xE1lida." };
+  }
+  if (cuota.status === "paid") {
+    return { error: "Esta cuota ya est\xE1 pagada; no necesita pr\xF3rroga." };
+  }
+  if (hasta < hoy) {
+    return { error: "La pr\xF3rroga tiene que ser para hoy o m\xE1s adelante." };
+  }
+  const original = soloFecha(cuota.dueDate);
+  if (original && hasta < original) {
+    return {
+      error: `La cuota vence el ${original}. Una pr\xF3rroga s\xF3lo puede dar m\xE1s plazo, no adelantarlo.`
+    };
+  }
+  const dias = diasEntreFechas(hoy, hasta);
+  if (!Number.isNaN(dias) && dias > MAX_DIAS_PRORROGA) {
+    return {
+      error: `Son ${dias} d\xEDas de plazo. El m\xE1ximo es ${MAX_DIAS_PRORROGA}; revisa el a\xF1o en la fecha.`
+    };
+  }
+  return { hasta };
+}
+
+// server/blocking.ts
+function conLinkDePago(deps, registro, texto) {
+  const link = deps.linkPortal?.(registro);
+  if (!link) return texto;
+  const bloque = `\u{1F4B3} *Paga aqu\xED y se desbloquea solo:*
+${link}
+
+`;
+  const firma = "_CREDILOCK \u2014 Sistema de financiamiento_";
+  return texto.includes(firma) ? texto.replace(firma, `${bloque}${firma}`) : `${texto}
+
+${bloque}`;
+}
+var COL_EQUIPOS = "blocking_devices";
+var COL_HISTORIAL = "blocking_history";
+var COL_CONFIG = "blocking_config";
+var COL_ALERTAS = "blocking_alerts";
+var COL_PAGOS = "blocking_payments";
+var TELEFONO_TIENDA = "302 287 5280";
+var EQUIPOS_POR_VUELTA = 10;
+var HORAS_PARA_DAR_POR_INCOMUNICADO = 48;
+var CONFIG_POR_DEFECTO = {
+  autoBloqueoActivo: false,
+  simulacion: true,
+  diasDeGracia: 1,
+  maxBloqueosPorVuelta: 5,
+  avisoEnPantallaActivo: true,
+  secretoWebhook: ""
+};
+async function leerConfig(deps) {
+  const db2 = deps.getDb();
+  if (!db2) return CONFIG_POR_DEFECTO;
+  const doc = await db2.collection(COL_CONFIG).findOne({ _id: "config" });
+  return { ...CONFIG_POR_DEFECTO, ...doc || {} };
+}
+function hoyColombia() {
+  const ahora = /* @__PURE__ */ new Date();
+  const fecha = ahora.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  const [h, m] = ahora.toLocaleTimeString("en-GB", { timeZone: "America/Bogota", hour12: false }).split(":");
+  return { fecha, hora: Number(h), minuto: Number(m) };
+}
+function diasEntre(desde, hasta) {
+  const a = Date.parse(`${desde}T00:00:00Z`);
+  const b = Date.parse(`${hasta}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
+  return Math.round((b - a) / 864e5);
+}
+function pesos(valor) {
+  return `$${Math.round(valor).toLocaleString("es-CO")} COP`;
+}
+async function auditar(deps, entrada) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return;
+    await db2.collection(COL_HISTORIAL).insertOne({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ...entrada,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  } catch (err) {
+    console.error("[credilock] No se pudo escribir en el historial:", err);
+  }
+}
+async function alertar(deps, deviceId, type, message) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return;
+    await db2.collection(COL_ALERTAS).insertOne({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      deviceId,
+      type,
+      message,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      acknowledged: false
+    });
+  } catch (err) {
+    console.error("[credilock] No se pudo crear la alerta:", err);
+  }
+}
+function resumirCartera(registro, hoy) {
+  const cuotas = Array.isArray(registro?.cuotas) ? registro.cuotas : [];
+  const previas = Number(registro?.cuotasPrevias || 0);
+  const valorCuota = Number(registro?.valorCuota || 0);
+  const pagadas = cuotas.filter((c) => c.status === "paid").length;
+  const pendientes = cuotas.filter((c) => c.status !== "paid");
+  const vencidas = pendientes.filter((c) => {
+    const f = fechaLimite(c);
+    return f !== "" && diasEntre(f, hoy) >= 1;
+  });
+  const ordenadas = [...pendientes].sort(
+    (a, b) => fechaLimite(a).localeCompare(fechaLimite(b))
+  );
+  const proxima = ordenadas[0] || null;
+  const diasDeMora = vencidas.length ? Math.max(
+    ...vencidas.map((c) => {
+      const d = diasEntre(fechaLimite(c), hoy);
+      return Number.isNaN(d) ? 0 : d;
+    })
+  ) : 0;
+  return {
+    totalCuotas: cuotas.length + previas,
+    pagadas: pagadas + previas,
+    pendientes: pendientes.length,
+    vencidas: vencidas.length,
+    proxima,
+    diasDeMora,
+    saldo: pendientes.length * valorCuota,
+    liquidado: cuotas.length > 0 && pendientes.length === 0,
+    prorroga: prorrogaVigente(proxima, hoy),
+    conProrrogaVigente: pendientes.filter((c) => prorrogaVigente(c, hoy)).length
+  };
+}
+function textoBloqueo(nombre, cartera, linkCorto) {
+  const cuota = cartera.proxima ? `#${cartera.proxima.number}` : "";
+  const detalle = cartera.vencidas > 1 ? `Tienes ${cartera.vencidas} cuotas vencidas por ${pesos(cartera.saldo)}.` : `Tienes la cuota ${cuota} vencida.`;
+  const comoPagar = linkCorto ? `Paga en ${linkCorto} con los 4 \xFAltimos d\xEDgitos de tu c\xE9dula y se desbloquea solo. ` : "Al registrar el pago se desbloquea autom\xE1ticamente. ";
+  return {
+    titulo: "Equipo bloqueado por pago pendiente",
+    mensaje: `${nombre}: ${detalle} ${comoPagar}Comun\xEDcate al ${TELEFONO_TIENDA} para reactivarlo.`
+  };
+}
+function textoAvisoPantalla(cartera) {
+  const cuota = cartera.proxima ? `#${cartera.proxima.number}` : "";
+  if (cartera.prorroga) {
+    return {
+      titulo: "Ma\xF1ana vence tu plazo",
+      contenido: `Cuota ${cuota}. Se te dio plazo hasta ma\xF1ana. Tel: ${TELEFONO_TIENDA}`
+    };
+  }
+  return {
+    titulo: "Tu cuota vence ma\xF1ana",
+    contenido: `Cuota ${cuota}. Paga a tiempo para evitar el bloqueo. Tel: ${TELEFONO_TIENDA}`
+  };
+}
+async function sincronizarDesdeCartera(deps) {
+  const db2 = deps.getDb();
+  if (!db2) return { creados: 0, actualizados: 0, sinImei: 0 };
+  const registros = await db2.collection("financing").find({}).toArray();
+  const { fecha: hoy } = hoyColombia();
+  let creados = 0;
+  let actualizados = 0;
+  let sinImei = 0;
+  for (const registro of registros) {
+    const imei = String(registro.imei || "").trim();
+    if (!imeiValido(imei)) {
+      sinImei++;
+      const existe = await db2.collection(COL_ALERTAS).findOne({
+        deviceId: `financing:${registro.id}`,
+        type: "imei_invalido",
+        acknowledged: false
+      });
+      if (!existe) {
+        await alertar(
+          deps,
+          `financing:${registro.id}`,
+          "imei_invalido",
+          `${registro.nombre}: el IMEI "${imei}" no es v\xE1lido, as\xED que este equipo NO se puede bloquear. Hay que corregirlo mirando el equipo o la caja.`
+        );
+      }
+      continue;
+    }
+    const cartera = resumirCartera(registro, hoy);
+    const existente = await db2.collection(COL_EQUIPOS).findOne({ imei });
+    const desdeCartera = {
+      imei,
+      owner: registro.nombre || "Sin nombre",
+      phoneNumber: registro.telefono || "",
+      financingId: registro.id,
+      producto: registro.producto || "",
+      horaBloqueo: registro.horaBloqueo || "08:00",
+      cuotasVencidas: cartera.vencidas,
+      cuotasPendientes: cartera.pendientes,
+      cuotasPagadas: cartera.pagadas,
+      totalCuotas: cartera.totalCuotas,
+      saldo: cartera.saldo,
+      diasDeMora: cartera.diasDeMora,
+      liquidado: cartera.liquidado,
+      financingStatus: registro.status || "active",
+      /**
+       * Se copia al equipo para que el panel de bloqueo pueda decir "con plazo
+       * hasta el 20" sin tener que cargar la cartera entera de 113 registros
+       * para pintar una fila. `null` explícito y no omitido: al vencerse o
+       * anularse la prórroga, este `$set` tiene que borrar el valor anterior.
+       */
+      prorrogaHasta: cartera.prorroga?.hasta || null
+    };
+    if (!existente) {
+      await db2.collection(COL_EQUIPOS).insertOne({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ...desdeCartera,
+        brand: "",
+        model: "",
+        // Provisionales hasta la primera reconciliación: aquí todavía no se ha
+        // hablado con el proveedor. Si el equipo ya venía bloqueado de antes,
+        // `reconciliarEquipo` adopta su estado real como intención, porque
+        // nadie ha pedido nada y una diferencia sin orden no es una orden.
+        status: "active",
+        intencion: "active",
+        plataforma: "desconocida",
+        enrolledInMDM: false,
+        autoBloqueo: true,
+        lastCheckIn: null,
+        lastSync: null,
+        createdAt: registro.createdAt || (/* @__PURE__ */ new Date()).toISOString()
+      });
+      creados++;
+    } else {
+      await db2.collection(COL_EQUIPOS).updateOne({ imei }, { $set: desdeCartera });
+      actualizados++;
+    }
+  }
+  return { creados, actualizados, sinImei };
+}
+async function reconciliarEquipo(deps, equipo) {
+  const db2 = deps.getDb();
+  if (!db2) return;
+  const { encontrado, dispositivo, respuesta } = await consultarUno(equipo.imei);
+  const ahora = (/* @__PURE__ */ new Date()).toISOString();
+  if (!respuesta.ok && respuesta.status === 0) {
+    await db2.collection(COL_EQUIPOS).updateOne(
+      { imei: equipo.imei },
+      { $set: { ultimoErrorApi: respuesta.error || "sin respuesta", lastSyncIntento: ahora } }
+    );
+    return;
+  }
+  if (!encontrado) {
+    await db2.collection(COL_EQUIPOS).updateOne(
+      { imei: equipo.imei },
+      {
+        $set: {
+          plataforma: "nuovo",
+          enrolledInMDM: false,
+          lastSync: ahora,
+          ultimoErrorApi: null
+        }
+      }
+    );
+    return;
+  }
+  const d = dispositivo;
+  const estadoReal = estadoDesdeHbm(d.stateInfo);
+  const horas = horasDesdeCheckIn(d.lastCheckIn);
+  const nuncaSeMandoOrden = !equipo.ordenBloqueoEnviadaEn && !equipo.ordenDesbloqueoEnviadaEn;
+  const adoptarEstadoDelProveedor = nuncaSeMandoOrden && equipo.intencion !== estadoReal ? { intencion: estadoReal } : {};
+  await db2.collection(COL_EQUIPOS).updateOne(
+    { imei: equipo.imei },
+    {
+      $set: {
+        ...adoptarEstadoDelProveedor,
+        plataforma: "trustonic",
+        enrolledInMDM: true,
+        status: estadoReal,
+        trustonicState: d.stateInfo || null,
+        brand: d.deviceManufacturer || equipo.brand || "",
+        model: d.deviceMarketName || d.deviceModel || equipo.model || "",
+        lastCheckIn: d.lastCheckIn || null,
+        horasSinReportar: horas,
+        incomunicado: horas === null || horas > HORAS_PARA_DAR_POR_INCOMUNICADO,
+        organizacionEnEquipo: d.additionalInfo?.["Organization Name"] || null,
+        imsiLock: d.imsiInfo?.["IMSI Lock"] ?? null,
+        lastSync: ahora,
+        ultimoErrorApi: null,
+        ...estadoReal === "blocked" && !equipo.blockedAt ? { blockedAt: ahora } : {},
+        ...estadoReal === "active" && equipo.status === "blocked" ? { blockedAt: null } : {}
+      }
+    }
+  );
+  if (equipo.intencion && equipo.intencion !== estadoReal && !nuncaSeMandoOrden) {
+    console.log(
+      `[credilock] ${enmascararImei(equipo.imei)} divergente: queremos ${equipo.intencion}, el proveedor dice ${estadoReal}.`
+    );
+  }
+}
+function revisarAntesDeActuar(equipo) {
+  if (!trustonicConfigurado()) {
+    return "Trustonic no est\xE1 configurado en el servidor (faltan TRUSTONIC_BASE_URL o TRUSTONIC_TOKEN).";
+  }
+  if (!imeiValido(equipo?.imei)) {
+    return `El IMEI "${equipo?.imei}" no es v\xE1lido; corr\xEDgelo antes de operar sobre este equipo.`;
+  }
+  if (equipo.plataforma === "nuovo") {
+    return "Este equipo est\xE1 enrolado en Nuovo, no en Trustonic, y esta API no lo alcanza. Hay que bloquearlo a mano desde el portal de Nuovo.";
+  }
+  return null;
+}
+async function aplicarBloqueo(deps, equipo, motivo, usuario) {
+  const db2 = deps.getDb();
+  const problema = revisarAntesDeActuar(equipo);
+  if (problema) return { ok: false, mensaje: problema };
+  const { fecha: hoy } = hoyColombia();
+  const registro = equipo.financingId ? await db2.collection("financing").findOne({ id: equipo.financingId }) : null;
+  const cartera = resumirCartera(registro || {}, hoy);
+  const linkCorto = registro ? await deps.linkCortoPortal?.(registro).catch(() => null) : null;
+  const { titulo, mensaje } = textoBloqueo(deps.nombreBonito(equipo.owner || ""), cartera, linkCorto);
+  const respuesta = await bloquear(equipo.imei, titulo, mensaje);
+  const ahora = (/* @__PURE__ */ new Date()).toISOString();
+  await db2.collection(COL_EQUIPOS).updateOne(
+    { imei: equipo.imei },
+    {
+      $set: {
+        intencion: "blocked",
+        reason: motivo,
+        ordenBloqueoEnviadaEn: ahora,
+        // Quién pidió el bloqueo. El automatismo no debe deshacer lo que el
+        // dueño decidió a mano: ver `decidir`.
+        bloqueoManual: usuario !== "automatismo",
+        ultimoErrorApi: respuesta.ok ? null : respuesta.error || `HTTP ${respuesta.status}`
+      }
+    }
+  );
+  await auditar(deps, {
+    deviceId: equipo.id,
+    imei: equipo.imei,
+    action: "block",
+    user: usuario,
+    reason: motivo,
+    deviceInfo: `${equipo.brand || ""} ${equipo.model || ""} \u2014 ${equipo.owner || ""}`.trim(),
+    metadata: {
+      cuotasVencidas: cartera.vencidas,
+      diasDeMora: cartera.diasDeMora,
+      saldo: cartera.saldo,
+      httpStatus: respuesta.status,
+      resultCode: respuesta.cuerpo?.dataResponse?.resultCode,
+      respuesta: respuesta.cuerpo
+    }
+  });
+  if (!respuesta.ok) {
+    return {
+      ok: false,
+      mensaje: `El proveedor rechaz\xF3 el bloqueo: ${respuesta.error || `HTTP ${respuesta.status}`}`,
+      respuesta
+    };
+  }
+  const horas = equipo.horasSinReportar;
+  const dudoso = horas === null || horas === void 0 || horas > HORAS_PARA_DAR_POR_INCOMUNICADO;
+  if (dudoso) {
+    return {
+      ok: true,
+      pendienteDeEntrega: true,
+      mensaje: "Orden de bloqueo aceptada, pero el equipo no reporta desde hace " + (horas == null ? "nunca" : `${Math.round(horas)} h`) + ". Si est\xE1 apagado o sin datos, el bloqueo entrar\xE1 cuando se conecte. El panel lo confirmar\xE1 solo.",
+      respuesta
+    };
+  }
+  return {
+    ok: true,
+    pendienteDeEntrega: true,
+    mensaje: "Orden de bloqueo aceptada. Suele entrar en menos de un minuto; se confirmar\xE1 solo.",
+    respuesta
+  };
+}
+async function aplicarDesbloqueo(deps, equipo, usuario, motivo = "Desbloqueo manual") {
+  const db2 = deps.getDb();
+  const problema = revisarAntesDeActuar(equipo);
+  if (problema) return { ok: false, mensaje: problema };
+  const respuesta = await desbloquear(equipo.imei);
+  await db2.collection(COL_EQUIPOS).updateOne(
+    { imei: equipo.imei },
+    {
+      $set: {
+        intencion: "active",
+        reason: null,
+        bloqueoManual: false,
+        ordenDesbloqueoEnviadaEn: (/* @__PURE__ */ new Date()).toISOString(),
+        ultimoErrorApi: respuesta.ok ? null : respuesta.error || `HTTP ${respuesta.status}`
+      }
+    }
+  );
+  await auditar(deps, {
+    deviceId: equipo.id,
+    imei: equipo.imei,
+    action: "unblock",
+    user: usuario,
+    reason: motivo,
+    deviceInfo: `${equipo.brand || ""} ${equipo.model || ""} \u2014 ${equipo.owner || ""}`.trim(),
+    metadata: { httpStatus: respuesta.status, respuesta: respuesta.cuerpo }
+  });
+  if (!respuesta.ok) {
+    return {
+      ok: false,
+      mensaje: `El proveedor rechaz\xF3 el desbloqueo: ${respuesta.error || `HTTP ${respuesta.status}`}`,
+      respuesta
+    };
+  }
+  return { ok: true, pendienteDeEntrega: true, mensaje: "Orden de desbloqueo aceptada.", respuesta };
+}
+function decidir(equipo, cartera, config, ahora) {
+  const base = { imei: equipo.imei, owner: equipo.owner || "" };
+  if (equipo.plataforma !== "trustonic") {
+    return { ...base, accion: "nada", motivo: "No est\xE1 en Trustonic; se gestiona a mano." };
+  }
+  if (equipo.autoBloqueo === false) {
+    return { ...base, accion: "nada", motivo: "Automatismo desactivado para este equipo." };
+  }
+  if (cartera.liquidado) {
+    return equipo.status === "blocked" ? { ...base, accion: "desbloquear", motivo: "Termin\xF3 de pagar y sigue bloqueado." } : { ...base, accion: "liberar", motivo: "Termin\xF3 de pagar; corresponde liberar el equipo." };
+  }
+  if (cartera.vencidas === 0) {
+    if (equipo.status === "blocked" || equipo.intencion === "blocked") {
+      if (equipo.bloqueoManual) {
+        return { ...base, accion: "nada", motivo: "Bloqueado a mano; s\xF3lo se quita a mano." };
+      }
+      return cartera.prorroga ? { ...base, accion: "desbloquear", motivo: `Tiene pr\xF3rroga hasta el ${cartera.prorroga.hasta}.` } : { ...base, accion: "desbloquear", motivo: "No tiene cuotas vencidas." };
+    }
+    if (config.avisoEnPantallaActivo && cartera.proxima) {
+      const limite = fechaLimite(cartera.proxima);
+      const dias = diasEntre(ahora.fecha, limite);
+      if (dias === 1 && equipo.avisoPantallaEnviado !== limite) {
+        return {
+          ...base,
+          accion: "avisar_pantalla",
+          motivo: cartera.prorroga ? "Su pr\xF3rroga vence ma\xF1ana." : "Su cuota vence ma\xF1ana."
+        };
+      }
+    }
+    return {
+      ...base,
+      accion: "nada",
+      motivo: cartera.prorroga ? `Con pr\xF3rroga hasta el ${cartera.prorroga.hasta}.` : "Al d\xEDa."
+    };
+  }
+  const primerDiaConBloqueo = Math.max(1, config.diasDeGracia);
+  if (cartera.diasDeMora < primerDiaConBloqueo) {
+    return {
+      ...base,
+      accion: "nada",
+      motivo: `En mora de ${cartera.diasDeMora} d\xEDa(s), dentro de los ${config.diasDeGracia} d\xEDa(s) de gracia.`
+    };
+  }
+  if (cartera.diasDeMora === primerDiaConBloqueo) {
+    const [hPactada, mPactada] = String(equipo.horaBloqueo || "08:00").split(":").map(Number);
+    const minutosAhora = ahora.hora * 60 + ahora.minuto;
+    const minutosPactados = (hPactada || 8) * 60 + (mPactada || 0);
+    if (minutosAhora < minutosPactados) {
+      return {
+        ...base,
+        accion: "nada",
+        motivo: `En mora, pero a\xFAn no llega la hora pactada (${equipo.horaBloqueo || "08:00"}).`
+      };
+    }
+  }
+  if (equipo.status === "blocked" && equipo.intencion === "blocked") {
+    return { ...base, accion: "nada", motivo: "Ya est\xE1 bloqueado." };
+  }
+  return {
+    ...base,
+    accion: "bloquear",
+    motivo: `${cartera.vencidas} cuota(s) vencida(s), ${cartera.diasDeMora} d\xEDa(s) de mora, saldo ${pesos(cartera.saldo)}.`
+  };
+}
+async function ejecutarPolitica(deps) {
+  const db2 = deps.getDb();
+  if (!db2) return [];
+  const config = await leerConfig(deps);
+  const ahora = hoyColombia();
+  const equipos = await db2.collection(COL_EQUIPOS).find({ financingStatus: { $ne: "cancelled" } }).toArray();
+  const decisiones = [];
+  let bloqueosHechos = 0;
+  for (const equipo of equipos) {
+    const registro = await db2.collection("financing").findOne({ id: equipo.financingId });
+    if (!registro) continue;
+    const cartera = resumirCartera(registro, ahora.fecha);
+    const decision = decidir(equipo, cartera, config, ahora);
+    if (decision.accion === "nada") continue;
+    decisiones.push(decision);
+    if (!config.autoBloqueoActivo) continue;
+    if (config.simulacion) {
+      await auditar(deps, {
+        deviceId: equipo.id,
+        imei: equipo.imei,
+        action: `simulado:${decision.accion}`,
+        user: "automatismo",
+        reason: decision.motivo,
+        deviceInfo: `${equipo.brand || ""} ${equipo.model || ""} \u2014 ${equipo.owner || ""}`.trim(),
+        metadata: { simulacion: true, autoBloqueoActivo: config.autoBloqueoActivo }
+      });
+      continue;
+    }
+    if (decision.accion === "bloquear") {
+      if (bloqueosHechos >= config.maxBloqueosPorVuelta) {
+        console.log(
+          `[credilock] Tope de ${config.maxBloqueosPorVuelta} bloqueos por vuelta alcanzado; el resto espera a la pr\xF3xima.`
+        );
+        break;
+      }
+      const r = await aplicarBloqueo(deps, equipo, `Autom\xE1tico: ${decision.motivo}`, "automatismo");
+      if (r.ok) {
+        bloqueosHechos++;
+        await avisarPorWhatsApp(deps, equipo, registro, "bloqueado");
+      }
+    } else if (decision.accion === "desbloquear") {
+      const r = await aplicarDesbloqueo(deps, equipo, "automatismo", `Autom\xE1tico: ${decision.motivo}`);
+      if (r.ok) await avisarPorWhatsApp(deps, equipo, registro, "desbloqueado");
+    } else if (decision.accion === "avisar_pantalla") {
+      const { titulo, contenido } = textoAvisoPantalla(cartera);
+      const r = await notificar(equipo.imei, titulo, contenido);
+      if (r.ok && cartera.proxima) {
+        await db2.collection(COL_EQUIPOS).updateOne(
+          { imei: equipo.imei },
+          { $set: { avisoPantallaEnviado: fechaLimite(cartera.proxima) } }
+        );
+      }
+      await auditar(deps, {
+        deviceId: equipo.id,
+        imei: equipo.imei,
+        action: "notify",
+        user: "automatismo",
+        reason: decision.motivo,
+        deviceInfo: `${equipo.brand || ""} ${equipo.model || ""}`.trim(),
+        metadata: { httpStatus: r.status, respuesta: r.cuerpo }
+      });
+    } else if (decision.accion === "liberar") {
+      await alertar(
+        deps,
+        equipo.id,
+        "payment_completed",
+        `${equipo.owner} termin\xF3 de pagar. Corresponde liberar el equipo en Trustonic (acci\xF3n irreversible, conf\xEDrmala desde el panel).`
+      );
+    }
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  return decisiones;
+}
+async function avisarPorWhatsApp(deps, equipo, registro, que) {
+  if (!deps.whatsappListo()) return;
+  const nombre = deps.nombreBonito(equipo.owner || "");
+  const { fecha: hoy } = hoyColombia();
+  const cartera = resumirCartera(registro, hoy);
+  let texto;
+  if (que === "bloqueado") {
+    texto = `\u{1F512} *CREDILOCK \u2014 Equipo bloqueado*
+
+Hola *${nombre}*, tu equipo fue bloqueado por ${cartera.vencidas} cuota(s) pendiente(s) (${pesos(cartera.saldo)}).
+
+\u2705 Al registrar el pago se desbloquea autom\xE1ticamente.
+
+\u{1F4DE} ${TELEFONO_TIENDA}
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+    texto = conLinkDePago(deps, registro, texto);
+  } else {
+    texto = `\u{1F513} *CREDILOCK \u2014 Equipo desbloqueado*
+
+Hola *${nombre}*, ya registramos tu pago y tu equipo qued\xF3 desbloqueado.
+
+Cuotas pagadas: ${cartera.pagadas}/${cartera.totalCuotas}
+
+Gracias por estar al d\xEDa.
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+  }
+  await deps.enviarWhatsApp(equipo.phoneNumber || registro.telefono, texto).catch(() => false);
+}
+async function avisarDeProrroga(deps, financingId, hasta, cuotaNumber, seDesbloqueo) {
+  try {
+    if (!deps.whatsappListo()) return;
+    const db2 = deps.getDb();
+    if (!db2) return;
+    const registro = await db2.collection("financing").findOne({ id: financingId });
+    if (!registro) return;
+    const nombre = deps.nombreBonito(registro.nombre || "");
+    const plazo = fechaLarga(hasta);
+    const valor = pesos(Number(registro.valorCuota || 0));
+    const texto = seDesbloqueo ? `\u{1F513} *CREDILOCK \u2014 Equipo desbloqueado con plazo*
+
+Hola *${nombre}*, te dimos plazo hasta el *${plazo}* para tu cuota #${cuotaNumber} de *${valor}* y tu equipo ya qued\xF3 desbloqueado.
+
+\u26A0\uFE0F *La cuota sigue pendiente.* Si no se paga dentro del plazo, el equipo se vuelve a bloquear.
+
+\u{1F4DE} ${TELEFONO_TIENDA}
+
+_CREDILOCK \u2014 Sistema de financiamiento_` : `\u23F3 *CREDILOCK \u2014 Tienes plazo*
+
+Hola *${nombre}*, qued\xF3 registrado que tienes plazo hasta el *${plazo}* para pagar tu cuota #${cuotaNumber} de *${valor}*.
+
+\u26A0\uFE0F *La cuota sigue pendiente.* Si no se paga dentro del plazo, el equipo ser\xE1 bloqueado.
+
+\u{1F4DE} ${TELEFONO_TIENDA}
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+    await deps.enviarWhatsApp(registro.telefono, conLinkDePago(deps, registro, texto)).catch(() => false);
+  } catch (err) {
+    console.error("[credilock] Error avisando de la pr\xF3rroga:", err);
+  }
+}
+async function liberarPorqueYaNoDebe(deps, financingId, opts) {
+  const db2 = deps.getDb();
+  if (!db2) return { liberado: false, detalle: "" };
+  const equipo = await db2.collection(COL_EQUIPOS).findOne({ financingId });
+  if (!equipo) return { liberado: false, detalle: "" };
+  if (equipo.plataforma !== "trustonic") {
+    return { liberado: false, detalle: "El equipo no se gestiona desde Trustonic; si est\xE1 bloqueado hay que soltarlo a mano." };
+  }
+  const registro = await db2.collection("financing").findOne({ id: financingId });
+  if (!registro) return { liberado: false, detalle: "" };
+  const { fecha: hoy } = hoyColombia();
+  const cartera = resumirCartera(registro, hoy);
+  if (cartera.vencidas > 0) {
+    return {
+      liberado: false,
+      detalle: `Sigue con ${cartera.vencidas} cuota(s) vencida(s), as\xED que el equipo no se suelta.`
+    };
+  }
+  const estaBloqueado = equipo.status === "blocked" || equipo.intencion === "blocked";
+  if (!estaBloqueado) return { liberado: false, detalle: "" };
+  if (opts.respetarBloqueoManual && equipo.bloqueoManual) {
+    return {
+      liberado: false,
+      detalle: "El equipo fue bloqueado a mano, as\xED que sigue bloqueado. Si quieres soltarlo, usa Desbloquear."
+    };
+  }
+  const r = await aplicarDesbloqueo(deps, equipo, opts.usuario, opts.motivo);
+  if (!r.ok) {
+    return { liberado: false, detalle: `No se pudo desbloquear: ${r.mensaje || "el proveedor rechaz\xF3 la orden"}.` };
+  }
+  console.log(`[credilock] ${enmascararImei(equipo.imei)} desbloqueado: ${opts.motivo}`);
+  if (opts.aviso) await avisarPorWhatsApp(deps, equipo, registro, opts.aviso);
+  return { liberado: true, detalle: "El equipo qued\xF3 desbloqueado." };
+}
+async function alRegistrarPago(deps, financingId) {
+  try {
+    await liberarPorqueYaNoDebe(deps, financingId, {
+      usuario: "pago-registrado",
+      motivo: "Pago registrado: ya no tiene cuotas vencidas",
+      aviso: "desbloqueado",
+      respetarBloqueoManual: false
+    });
+  } catch (err) {
+    console.error("[credilock] Error desbloqueando tras el pago:", err);
+  }
+}
+async function refrescarPlazoDelEquipo(deps, financingId) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return;
+    const registro = await db2.collection("financing").findOne({ id: financingId });
+    if (!registro) return;
+    const { fecha: hoy } = hoyColombia();
+    const cartera = resumirCartera(registro, hoy);
+    await db2.collection(COL_EQUIPOS).updateOne(
+      { financingId },
+      { $set: { prorrogaHasta: cartera.prorroga?.hasta || null } }
+    );
+  } catch (err) {
+    console.error("[credilock] No se pudo refrescar el plazo en el equipo:", err);
+  }
+}
+async function alAnularProrroga(deps, financingId) {
+  await refrescarPlazoDelEquipo(deps, financingId);
+}
+async function alOtorgarProrroga(deps, financingId, hasta, cuotaNumber) {
+  let r = { liberado: false, detalle: "" };
+  try {
+    r = await liberarPorqueYaNoDebe(deps, financingId, {
+      usuario: "prorroga",
+      motivo: `Pr\xF3rroga concedida hasta el ${hasta}`,
+      aviso: null,
+      respetarBloqueoManual: true
+    });
+  } catch (err) {
+    console.error("[credilock] Error desbloqueando tras la pr\xF3rroga:", err);
+    r = { liberado: false, detalle: "La pr\xF3rroga qued\xF3 guardada, pero fall\xF3 el desbloqueo del equipo. Rev\xEDsalo en CrediLock." };
+  }
+  await refrescarPlazoDelEquipo(deps, financingId);
+  await avisarDeProrroga(deps, financingId, hasta, cuotaNumber, r.liberado);
+  return r;
+}
+function usuarioDe(req) {
+  return req.sesion?.usuario || "admin";
+}
+function paraElPanel(equipo) {
+  const ordenEnviadaEn = (equipo.intencion === "blocked" ? equipo.ordenBloqueoEnviadaEn : equipo.ordenDesbloqueoEnviadaEn) || null;
+  return {
+    id: equipo.id,
+    imei: equipo.imei,
+    brand: equipo.brand || "",
+    model: equipo.model || equipo.producto || "",
+    phoneNumber: equipo.phoneNumber || "",
+    owner: equipo.owner || "",
+    status: equipo.status || "active",
+    intencion: equipo.intencion || "active",
+    plataforma: equipo.plataforma || "desconocida",
+    gestionManual: equipo.plataforma !== "trustonic",
+    enrolledInMDM: Boolean(equipo.enrolledInMDM),
+    blockedAt: equipo.blockedAt || void 0,
+    createdAt: equipo.createdAt,
+    reason: equipo.reason || void 0,
+    lastSync: equipo.lastSync || void 0,
+    lastCheckIn: equipo.lastCheckIn || null,
+    horasSinReportar: equipo.horasSinReportar ?? null,
+    incomunicado: Boolean(equipo.incomunicado),
+    trustonicState: equipo.trustonicState || null,
+    /**
+     * Sólo es divergencia si HAY una orden esperando. Antes bastaba con que
+     * `intencion` y `status` no coincidieran, y eso marcaba como "orden en cola"
+     * a los equipos que ya estaban bloqueados en el proveedor desde antes de
+     * CrediLock: nadie había pedido nada, pero el panel ofrecía "Reintentar" y
+     * "Anular orden" sobre una orden inexistente.
+     */
+    divergente: Boolean(ordenEnviadaEn && equipo.intencion !== equipo.status),
+    bloqueoManual: Boolean(equipo.bloqueoManual),
+    ordenEnviadaEn,
+    cuotasVencidas: equipo.cuotasVencidas ?? 0,
+    cuotasPagadas: equipo.cuotasPagadas ?? 0,
+    totalCuotas: equipo.totalCuotas ?? 0,
+    saldo: equipo.saldo ?? 0,
+    diasDeMora: equipo.diasDeMora ?? 0,
+    liquidado: Boolean(equipo.liquidado),
+    /** Plazo concedido que sigue abierto, o null. Ver `prorrogaHasta` en el sync. */
+    prorrogaHasta: equipo.prorrogaHasta || null,
+    autoBloqueo: equipo.autoBloqueo !== false,
+    financingId: equipo.financingId || null,
+    ultimoErrorApi: equipo.ultimoErrorApi || null,
+    organizacionEnEquipo: equipo.organizacionEnEquipo || null
+  };
+}
+function registrarBloqueo(app2, deps) {
+  const db2 = () => deps.getDb();
+  async function equipoFresco(id) {
+    const doc = await db2().collection(COL_EQUIPOS).findOne({ id });
+    return doc ? paraElPanel(doc) : null;
+  }
+  app2.get("/api/blocking/devices", async (_req, res) => {
+    try {
+      const equipos = await db2().collection(COL_EQUIPOS).find({}).sort({ owner: 1 }).toArray();
+      res.json(equipos.map(paraElPanel));
+    } catch (error) {
+      console.error("[credilock] Error listando equipos:", error);
+      res.status(500).json({ error: "Error al cargar los equipos" });
+    }
+  });
+  app2.post("/api/blocking/devices", async (req, res) => {
+    try {
+      const { imei, owner, phoneNumber, brand, model, financingId } = req.body || {};
+      if (!imeiValido(imei)) {
+        return res.status(400).json({ error: "IMEI no v\xE1lido: deben ser 15 d\xEDgitos con d\xEDgito de control correcto." });
+      }
+      const existente = await db2().collection(COL_EQUIPOS).findOne({ imei: String(imei).trim() });
+      if (existente) return res.status(409).json({ error: "Ese IMEI ya est\xE1 registrado." });
+      const equipo = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        imei: String(imei).trim(),
+        owner: owner || "Sin nombre",
+        phoneNumber: phoneNumber || "",
+        brand: brand || "",
+        model: model || "",
+        financingId: financingId || null,
+        status: "active",
+        intencion: "active",
+        plataforma: "desconocida",
+        enrolledInMDM: false,
+        autoBloqueo: true,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      await db2().collection(COL_EQUIPOS).insertOne(equipo);
+      await auditar(deps, {
+        deviceId: equipo.id,
+        imei: equipo.imei,
+        action: "add",
+        user: usuarioDe(req),
+        deviceInfo: `${equipo.brand} ${equipo.model} \u2014 ${equipo.owner}`.trim()
+      });
+      await reconciliarEquipo(deps, equipo).catch(() => {
+      });
+      const fresco = await db2().collection(COL_EQUIPOS).findOne({ imei: equipo.imei });
+      res.json(paraElPanel(fresco));
+    } catch (error) {
+      console.error("[credilock] Error creando equipo:", error);
+      res.status(500).json({ error: "Error al registrar el equipo" });
+    }
+  });
+  app2.put("/api/blocking/devices", async (req, res) => {
+    try {
+      const { id, action, reason } = req.body || {};
+      if (!id || !action) return res.status(400).json({ error: "Faltan id y action." });
+      const equipo = await db2().collection(COL_EQUIPOS).findOne({ id });
+      if (!equipo) return res.status(404).json({ error: "Equipo no encontrado." });
+      if (action === "block") {
+        if (!reason || !String(reason).trim()) {
+          return res.status(400).json({ error: "El motivo del bloqueo es obligatorio." });
+        }
+        const r = await aplicarBloqueo(deps, equipo, String(reason).trim(), usuarioDe(req));
+        if (!r.ok) return res.status(502).json({ error: r.mensaje });
+        return res.json({
+          mensaje: r.mensaje,
+          pendienteDeEntrega: r.pendienteDeEntrega,
+          equipo: await equipoFresco(id)
+        });
+      }
+      if (action === "unblock") {
+        const r = await aplicarDesbloqueo(deps, equipo, usuarioDe(req));
+        if (!r.ok) return res.status(502).json({ error: r.mensaje });
+        return res.json({
+          mensaje: r.mensaje,
+          pendienteDeEntrega: r.pendienteDeEntrega,
+          equipo: await equipoFresco(id)
+        });
+      }
+      if (action === "notify") {
+        const titulo = String(req.body.titulo || "Aviso de CrediLock").slice(0, 60);
+        const contenido = String(req.body.contenido || "").slice(0, 300);
+        if (!contenido) return res.status(400).json({ error: "Falta el contenido del aviso." });
+        const problema = revisarAntesDeActuar(equipo);
+        if (problema) return res.status(400).json({ error: problema });
+        const r = await notificar(equipo.imei, titulo, contenido);
+        await auditar(deps, {
+          deviceId: equipo.id,
+          imei: equipo.imei,
+          action: "notify",
+          user: usuarioDe(req),
+          reason: contenido,
+          deviceInfo: `${equipo.brand || ""} ${equipo.model || ""}`.trim(),
+          metadata: { httpStatus: r.status, respuesta: r.cuerpo }
+        });
+        if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+        return res.json({ mensaje: "Aviso enviado a la pantalla del equipo." });
+      }
+      if (action === "lock_message") {
+        const problema = revisarAntesDeActuar(equipo);
+        if (problema) return res.status(400).json({ error: problema });
+        const r = await mensajeEnBloqueo(
+          equipo.imei,
+          String(req.body.titulo || "Equipo bloqueado").slice(0, 60),
+          String(req.body.contenido || "").slice(0, 300)
+        );
+        if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+        return res.json({ mensaje: "Mensaje de la pantalla de bloqueo actualizado." });
+      }
+      if (action === "pin_unlock") {
+        const challenge = String(req.body.challenge || "").trim();
+        if (!challenge) {
+          return res.status(400).json({ error: "Falta el c\xF3digo que muestra la pantalla del equipo." });
+        }
+        const problema = revisarAntesDeActuar(equipo);
+        if (problema) return res.status(400).json({ error: problema });
+        const r = await desbloquearConPin(equipo.imei, challenge);
+        await auditar(deps, {
+          deviceId: equipo.id,
+          imei: equipo.imei,
+          action: "pin_unlock",
+          user: usuarioDe(req),
+          reason: "Desbloqueo por PIN (equipo sin datos)",
+          deviceInfo: `${equipo.brand || ""} ${equipo.model || ""}`.trim(),
+          metadata: { httpStatus: r.status, respuesta: r.cuerpo }
+        });
+        if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+        return res.json({ mensaje: "PIN generado.", datos: r.cuerpo?.dataResponse ?? null });
+      }
+      if (action === "release") {
+        const problema = revisarAntesDeActuar(equipo);
+        if (problema) return res.status(400).json({ error: problema });
+        if (req.body.confirmar !== true) {
+          return res.status(400).json({
+            error: "Liberar es irreversible: el equipo sale del financiamiento y no se podr\xE1 volver a bloquear. Vuelve a enviar con confirmar: true."
+          });
+        }
+        const r = await liberar(equipo.imei, String(reason || "Financiamiento liquidado"));
+        await auditar(deps, {
+          deviceId: equipo.id,
+          imei: equipo.imei,
+          action: "release",
+          user: usuarioDe(req),
+          reason: String(reason || "Financiamiento liquidado"),
+          deviceInfo: `${equipo.brand || ""} ${equipo.model || ""} \u2014 ${equipo.owner || ""}`.trim(),
+          metadata: { httpStatus: r.status, respuesta: r.cuerpo }
+        });
+        if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+        await db2().collection(COL_EQUIPOS).updateOne(
+          { id },
+          { $set: { liberado: true, liberadoEn: (/* @__PURE__ */ new Date()).toISOString(), autoBloqueo: false } }
+        );
+        return res.json({ mensaje: "Equipo liberado del financiamiento." });
+      }
+      if (action === "harden") {
+        const problema = revisarAntesDeActuar(equipo);
+        if (problema) return res.status(400).json({ error: problema });
+        const resultados = {
+          reseteoFabrica: await bloquearReseteoFabrica(equipo.imei),
+          adb: await bloquearAdb(equipo.imei),
+          reaprovisionamiento: await bloquearReaprovisionamiento(equipo.imei)
+        };
+        await auditar(deps, {
+          deviceId: equipo.id,
+          imei: equipo.imei,
+          action: "harden",
+          user: usuarioDe(req),
+          reason: "Anti-evasi\xF3n: reseteo de f\xE1brica, ADB y re-aprovisionamiento",
+          deviceInfo: `${equipo.brand || ""} ${equipo.model || ""}`.trim(),
+          metadata: Object.fromEntries(
+            Object.entries(resultados).map(([k2, v]) => [k2, { status: v.status, cuerpo: v.cuerpo }])
+          )
+        });
+        const fallidos = Object.entries(resultados).filter(([, v]) => !v.ok).map(([k2]) => k2);
+        return res.json({
+          mensaje: fallidos.length ? `Protecciones aplicadas parcialmente. Fall\xF3: ${fallidos.join(", ")}.` : "Reseteo de f\xE1brica, ADB y re-aprovisionamiento bloqueados."
+        });
+      }
+      if (action === "set_auto") {
+        const activo = req.body.autoBloqueo !== false;
+        await db2().collection(COL_EQUIPOS).updateOne({ id }, { $set: { autoBloqueo: activo } });
+        await auditar(deps, {
+          deviceId: equipo.id,
+          imei: equipo.imei,
+          action: activo ? "auto_on" : "auto_off",
+          user: usuarioDe(req),
+          deviceInfo: `${equipo.owner || ""}`.trim()
+        });
+        return res.json({ mensaje: activo ? "Automatismo activado para este equipo." : "Automatismo desactivado para este equipo." });
+      }
+      if (action === "refresh") {
+        await reconciliarEquipo(deps, equipo);
+        const fresco = await db2().collection(COL_EQUIPOS).findOne({ id });
+        return res.json(paraElPanel(fresco));
+      }
+      return res.status(400).json({ error: `Acci\xF3n no reconocida: ${action}` });
+    } catch (error) {
+      console.error("[credilock] Error en acci\xF3n sobre equipo:", error);
+      res.status(500).json({ error: "Error al ejecutar la acci\xF3n" });
+    }
+  });
+  app2.delete("/api/blocking/devices", async (req, res) => {
+    try {
+      const id = String(req.query.id || "");
+      const equipo = await db2().collection(COL_EQUIPOS).findOne({ id });
+      if (!equipo) return res.status(404).json({ error: "Equipo no encontrado." });
+      if (equipo.status === "blocked" || equipo.intencion === "blocked") {
+        return res.status(400).json({
+          error: "Este equipo est\xE1 bloqueado. Desbloqu\xE9alo antes de quitarlo del panel."
+        });
+      }
+      await db2().collection(COL_EQUIPOS).deleteOne({ id });
+      await auditar(deps, {
+        deviceId: id,
+        imei: equipo.imei,
+        action: "delete",
+        user: usuarioDe(req),
+        deviceInfo: `${equipo.brand || ""} ${equipo.model || ""} \u2014 ${equipo.owner || ""}`.trim(),
+        metadata: { nota: "S\xF3lo se quit\xF3 del panel; sigue enrolado en el proveedor." }
+      });
+      res.status(204).end();
+    } catch (error) {
+      console.error("[credilock] Error borrando equipo:", error);
+      res.status(500).json({ error: "Error al quitar el equipo" });
+    }
+  });
+  app2.get("/api/blocking/history", async (req, res) => {
+    try {
+      const limite = Math.min(Number(req.query.limit) || 50, 500);
+      const entradas = await db2().collection(COL_HISTORIAL).find({}).sort({ timestamp: -1 }).limit(limite).toArray();
+      res.json(entradas);
+    } catch (error) {
+      console.error("[credilock] Error cargando historial:", error);
+      res.status(500).json({ error: "Error al cargar el historial" });
+    }
+  });
+  app2.post("/api/blocking/history", (_req, res) => {
+    res.status(405).json({
+      error: "El historial lo escribe el servidor. No se pueden a\xF1adir entradas desde el panel."
+    });
+  });
+  app2.get("/api/blocking/data", async (req, res) => {
+    try {
+      const tipo = String(req.query.type || "");
+      if (tipo === "alerts") {
+        const alertas = await db2().collection(COL_ALERTAS).find({}).sort({ timestamp: -1 }).limit(200).toArray();
+        return res.json(alertas);
+      }
+      if (tipo === "payments") {
+        const filtro = req.query.deviceId ? { deviceId: String(req.query.deviceId) } : {};
+        const pagos = await db2().collection(COL_PAGOS).find(filtro).sort({ date: -1 }).limit(500).toArray();
+        return res.json(pagos);
+      }
+      if (tipo === "config") {
+        return res.json(await leerConfig(deps));
+      }
+      if (tipo === "stats") {
+        const equipos = await db2().collection(COL_EQUIPOS).find({}).toArray();
+        const plataformaDe = (e) => e.plataforma || "desconocida";
+        const trustonic = equipos.filter((e) => plataformaDe(e) === "trustonic");
+        return res.json({
+          total: equipos.length,
+          active: equipos.filter((e) => e.status === "active").length,
+          blocked: equipos.filter((e) => e.status === "blocked").length,
+          enrolled: trustonic.length,
+          enNuovo: equipos.filter((e) => plataformaDe(e) === "nuovo").length,
+          sinResolver: equipos.filter((e) => plataformaDe(e) === "desconocida").length,
+          // Lo que de verdad hay que mirar: equipos que no reportan (un bloqueo
+          // no les llegaría) y equipos en los que intención y realidad difieren.
+          incomunicados: trustonic.filter((e) => e.incomunicado).length,
+          divergentes: trustonic.filter((e) => paraElPanel(e).divergente).length,
+          enMora: equipos.filter((e) => (e.cuotasVencidas || 0) > 0).length,
+          liquidados: equipos.filter((e) => e.liquidado).length,
+          saldoTotal: equipos.reduce((a, e) => a + (e.saldo || 0), 0),
+          kioskMode: 0
+        });
+      }
+      return res.status(400).json({ error: `Tipo no reconocido: ${tipo}` });
+    } catch (error) {
+      console.error("[credilock] Error en /data:", error);
+      res.status(500).json({ error: "Error al cargar los datos" });
+    }
+  });
+  app2.post("/api/blocking/data", async (req, res) => {
+    try {
+      const { type, data } = req.body || {};
+      if (type === "acknowledge_alert") {
+        await db2().collection(COL_ALERTAS).updateOne({ id: data?.id }, { $set: { acknowledged: true } });
+        return res.status(204).end();
+      }
+      if (type === "payment") {
+        const pago = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          deviceId: data?.deviceId,
+          amount: Number(data?.amount || 0),
+          method: data?.method || "efectivo",
+          date: (/* @__PURE__ */ new Date()).toISOString(),
+          status: "completed",
+          registradoPor: usuarioDe(req)
+        };
+        await db2().collection(COL_PAGOS).insertOne(pago);
+        return res.json(pago);
+      }
+      if (type === "config") {
+        const actual = await leerConfig(deps);
+        const nueva = {
+          autoBloqueoActivo: Boolean(data?.autoBloqueoActivo ?? actual.autoBloqueoActivo),
+          simulacion: Boolean(data?.simulacion ?? actual.simulacion),
+          diasDeGracia: Math.max(0, Math.min(Number(data?.diasDeGracia ?? actual.diasDeGracia), 30)),
+          maxBloqueosPorVuelta: Math.max(1, Math.min(Number(data?.maxBloqueosPorVuelta ?? actual.maxBloqueosPorVuelta), 50)),
+          avisoEnPantallaActivo: Boolean(data?.avisoEnPantallaActivo ?? actual.avisoEnPantallaActivo),
+          secretoWebhook: String(data?.secretoWebhook ?? actual.secretoWebhook)
+        };
+        await db2().collection(COL_CONFIG).updateOne({ _id: "config" }, { $set: nueva }, { upsert: true });
+        await auditar(deps, {
+          deviceId: "config",
+          imei: "",
+          action: "config",
+          user: usuarioDe(req),
+          reason: `autoBloqueo=${nueva.autoBloqueoActivo} simulacion=${nueva.simulacion} gracia=${nueva.diasDeGracia}d tope=${nueva.maxBloqueosPorVuelta}`,
+          deviceInfo: "Configuraci\xF3n de CrediLock",
+          metadata: { antes: actual, despues: nueva }
+        });
+        return res.json(nueva);
+      }
+      return res.status(400).json({ error: `Tipo no reconocido: ${type}` });
+    } catch (error) {
+      console.error("[credilock] Error en POST /data:", error);
+      res.status(500).json({ error: "Error al guardar" });
+    }
+  });
+  app2.post("/api/blocking/sync", async (_req, res) => {
+    try {
+      const resumen = await sincronizarDesdeCartera(deps);
+      res.json({
+        ...resumen,
+        mensaje: `${resumen.creados} equipo(s) nuevo(s), ${resumen.actualizados} actualizado(s)` + (resumen.sinImei ? `, ${resumen.sinImei} sin IMEI v\xE1lido (ver alertas)` : "") + "."
+      });
+    } catch (error) {
+      console.error("[credilock] Error sincronizando desde la cartera:", error);
+      res.status(500).json({ error: "Error al sincronizar con la cartera" });
+    }
+  });
+  app2.post("/api/blocking/reconcile", async (_req, res) => {
+    try {
+      const equipos = await db2().collection(COL_EQUIPOS).find({}).toArray();
+      let consultados = 0;
+      for (const equipo of equipos) {
+        if (!imeiValido(equipo.imei)) continue;
+        await reconciliarEquipo(deps, equipo);
+        consultados++;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      res.json({ consultados, mensaje: `${consultados} equipo(s) consultado(s) al proveedor.` });
+    } catch (error) {
+      console.error("[credilock] Error reconciliando:", error);
+      res.status(500).json({ error: "Error al reconciliar con el proveedor" });
+    }
+  });
+  app2.get("/api/blocking/preview", async (_req, res) => {
+    try {
+      const config = await leerConfig(deps);
+      const ahora = hoyColombia();
+      const equipos = await db2().collection(COL_EQUIPOS).find({}).toArray();
+      const decisiones = [];
+      for (const equipo of equipos) {
+        const registro = await db2().collection("financing").findOne({ id: equipo.financingId });
+        if (!registro) continue;
+        const d = decidir(equipo, resumirCartera(registro, ahora.fecha), config, ahora);
+        if (d.accion !== "nada") decisiones.push(d);
+      }
+      res.json({ config, decisiones });
+    } catch (error) {
+      console.error("[credilock] Error calculando la previsualizaci\xF3n:", error);
+      res.status(500).json({ error: "Error al calcular las decisiones" });
+    }
+  });
+  app2.post("/api/blocking/refrescar-mensajes", async (req, res) => {
+    try {
+      const aplicar = req.body?.aplicar === true;
+      const { fecha: hoy } = hoyColombia();
+      const equipos = await db2().collection(COL_EQUIPOS).find({ intencion: "blocked", status: "blocked" }).toArray();
+      const detalle = [];
+      let enviados = 0;
+      for (const equipo of equipos) {
+        const problema = revisarAntesDeActuar(equipo);
+        if (problema) {
+          detalle.push({ imei: enmascararImei(equipo.imei), owner: equipo.owner, omitido: problema });
+          continue;
+        }
+        const registro = equipo.financingId ? await db2().collection("financing").findOne({ id: equipo.financingId }) : null;
+        if (!registro) {
+          detalle.push({
+            imei: enmascararImei(equipo.imei),
+            owner: equipo.owner,
+            omitido: "No se encontr\xF3 su financiamiento."
+          });
+          continue;
+        }
+        const cartera = resumirCartera(registro, hoy);
+        const linkCorto = await deps.linkCortoPortal?.(registro).catch(() => null);
+        const { titulo, mensaje } = textoBloqueo(deps.nombreBonito(equipo.owner || ""), cartera, linkCorto);
+        const fila = {
+          imei: enmascararImei(equipo.imei),
+          owner: equipo.owner,
+          linkCorto: linkCorto || null,
+          titulo,
+          mensaje,
+          caracteres: mensaje.length
+        };
+        if (aplicar) {
+          const r = await mensajeEnBloqueo(equipo.imei, titulo.slice(0, 60), mensaje.slice(0, 300));
+          fila.enviado = r.ok;
+          if (!r.ok) fila.error = r.error || `El proveedor respondi\xF3 ${r.status}.`;
+          else enviados++;
+          await auditar(deps, {
+            deviceId: equipo.id,
+            imei: equipo.imei,
+            action: "lock_message",
+            user: usuarioDe(req),
+            reason: "Refresco masivo del texto de bloqueo (a\xF1ade el link corto para pagar)",
+            deviceInfo: `${equipo.brand || ""} ${equipo.model || ""} \u2014 ${equipo.owner || ""}`.trim(),
+            metadata: { httpStatus: r.status, respuesta: r.cuerpo, mensaje }
+          });
+          await new Promise((r2) => setTimeout(r2, 400));
+        }
+        detalle.push(fila);
+      }
+      return res.json({
+        aplicado: aplicar,
+        bloqueados: equipos.length,
+        candidatos: detalle.filter((d) => !d.omitido).length,
+        enviados,
+        detalle,
+        mensaje: aplicar ? `${enviados} de ${detalle.filter((d) => !d.omitido).length} pantalla(s) actualizada(s).` : `En seco: ${detalle.filter((d) => !d.omitido).length} pantalla(s) se actualizar\xEDan. Repite con {"aplicar":true} para enviarlo de verdad.`
+      });
+    } catch (error) {
+      console.error("[credilock] Error refrescando los mensajes de bloqueo:", error);
+      return res.status(500).json({ error: "Error al refrescar los mensajes de bloqueo" });
+    }
+  });
+  app2.get("/api/blocking/webhooks", async (_req, res) => {
+    const r = await listarWebhooks();
+    if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+    res.json(r.cuerpo?.dataResponse ?? {});
+  });
+  app2.post("/api/blocking/webhooks", async (req, res) => {
+    try {
+      const url = String(req.body?.url || "").trim();
+      if (!/^https:\/\//.test(url)) {
+        return res.status(400).json({ error: "La URL del webhook debe ser https." });
+      }
+      const r = await crearWebhook(url, ["locked", "released", "active", "enrolled", "idle", "readyForUse"]);
+      if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+      res.json(r.cuerpo?.dataResponse ?? {});
+    } catch (error) {
+      console.error("[credilock] Error creando webhook:", error);
+      res.status(500).json({ error: "Error al crear el webhook" });
+    }
+  });
+  app2.delete("/api/blocking/webhooks", async (req, res) => {
+    const r = await borrarWebhook(String(req.query.id || ""));
+    if (!r.ok) return res.status(502).json({ error: r.error || `El proveedor respondi\xF3 ${r.status}.` });
+    res.status(204).end();
+  });
+  app2.post("/api/blocking/webhook/:secreto", async (req, res) => {
+    const config = await leerConfig(deps);
+    if (!config.secretoWebhook || req.params.secreto !== config.secretoWebhook) {
+      console.warn("[credilock] Webhook con secreto incorrecto; se rechaza.");
+      return res.status(401).json({ error: "Secreto no v\xE1lido." });
+    }
+    res.status(200).json({ recibido: true });
+    try {
+      const imeis = [];
+      const cuerpo = req.body || {};
+      const candidatos = [cuerpo, ...Array.isArray(cuerpo.eventList) ? cuerpo.eventList : []];
+      for (const c of candidatos) {
+        const v = c?.deviceUid || c?.imei;
+        if (v && imeiValido(v)) imeis.push(String(v));
+      }
+      for (const imei of [...new Set(imeis)]) {
+        const equipo = await db2().collection(COL_EQUIPOS).findOne({ imei });
+        if (equipo) await reconciliarEquipo(deps, equipo);
+      }
+      console.log(`[credilock] Webhook procesado: ${imeis.length} equipo(s) reconsultado(s).`);
+    } catch (err) {
+      console.error("[credilock] Error procesando el webhook:", err);
+    }
+  });
+  let reconciliando = false;
+  let cursor = 0;
+  async function vueltaDeReconciliacion() {
+    if (reconciliando || !deps.getDb() || !trustonicConfigurado()) return;
+    reconciliando = true;
+    try {
+      const equipos = await db2().collection(COL_EQUIPOS).find({}).sort({ imei: 1 }).skip(cursor).limit(EQUIPOS_POR_VUELTA).toArray();
+      if (!equipos.length) {
+        cursor = 0;
+        return;
+      }
+      cursor += equipos.length;
+      for (const equipo of equipos) {
+        if (!imeiValido(equipo.imei)) continue;
+        await reconciliarEquipo(deps, equipo);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } catch (err) {
+      console.error("[credilock] Error en la vuelta de reconciliaci\xF3n:", err);
+    } finally {
+      reconciliando = false;
+    }
+  }
+  let aplicandoPolitica = false;
+  async function vueltaDePolitica() {
+    if (aplicandoPolitica || !deps.getDb()) return;
+    aplicandoPolitica = true;
+    try {
+      await sincronizarDesdeCartera(deps);
+      const decisiones = await ejecutarPolitica(deps);
+      if (decisiones.length) {
+        const config = await leerConfig(deps);
+        const modo = !config.autoBloqueoActivo ? "APAGADO" : config.simulacion ? "SIMULACI\xD3N" : "EJECUTANDO";
+        console.log(`[credilock] Pol\xEDtica (${modo}): ${decisiones.length} decisi\xF3n(es).`);
+        for (const d of decisiones) {
+          console.log(`[credilock]   ${d.accion} ${enmascararImei(d.imei)} \u2014 ${d.motivo}`);
+        }
+      }
+    } catch (err) {
+      console.error("[credilock] Error en la vuelta de pol\xEDtica:", err);
+    } finally {
+      aplicandoPolitica = false;
+    }
+  }
+  setInterval(vueltaDeReconciliacion, 2 * 60 * 1e3);
+  setTimeout(vueltaDeReconciliacion, 45e3);
+  setInterval(vueltaDePolitica, 30 * 60 * 1e3);
+  setTimeout(vueltaDePolitica, 9e4);
+  console.log("[credilock] M\xF3dulo de bloqueo montado en /api/blocking/*.");
+  if (!trustonicConfigurado()) {
+    console.warn("[credilock] \u26A0 Sin TRUSTONIC_BASE_URL/TRUSTONIC_TOKEN: el panel funciona pero no se puede bloquear nada.");
+  }
+}
+
+// server/portal-rutas.ts
+var import_crypto25 = require("crypto");
+
+// server/portal.ts
+var import_crypto23 = require("crypto");
+var LARGO_FIRMA = 24;
+var ID_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
+function base64url(valor) {
+  return valor.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function firmaPortal(secreto, financingId, version4) {
+  const mensaje = `portal:${financingId}:${Number(version4) || 0}`;
+  return base64url((0, import_crypto23.createHmac)("sha256", secreto).update(mensaje).digest()).slice(0, LARGO_FIRMA);
+}
+function tokenPortal(secreto, financingId, version4 = 0) {
+  const id = String(financingId ?? "");
+  if (!secreto || !ID_VALIDO.test(id)) return null;
+  return `${id}.${firmaPortal(secreto, id, Number(version4) || 0)}`;
+}
+function leerTokenPortal(token) {
+  const texto = String(token ?? "");
+  const punto = texto.lastIndexOf(".");
+  if (punto <= 0) return null;
+  const id = texto.slice(0, punto);
+  const firma = texto.slice(punto + 1);
+  if (!ID_VALIDO.test(id) || !firma) return null;
+  return { id, firma };
+}
+function firmaCorrecta(secreto, financingId, version4, firma) {
+  if (!secreto) return false;
+  const esperada = Buffer.from(firmaPortal(secreto, financingId, Number(version4) || 0), "utf8");
+  const recibida = Buffer.from(String(firma || ""), "utf8");
+  if (esperada.length !== recibida.length) return false;
+  return (0, import_crypto23.timingSafeEqual)(esperada, recibida);
+}
+function linkPortal(base, secreto, registro) {
+  const token = tokenPortal(secreto, registro?.id, registro?.portalVersion);
+  if (!token) return null;
+  return `${String(base).replace(/\/+$/, "")}/p/${token}`;
+}
+var PREFIJO_PAGO_CUOTA = "CL-";
+function nuevaReferenciaPago() {
+  return `${PREFIJO_PAGO_CUOTA}${(0, import_crypto23.randomBytes)(6).toString("hex").toUpperCase()}`;
+}
+var FORMA_REFERENCIA = /^CL-[0-9A-F]{12}$/;
+function esReferenciaDeCuota(referencia) {
+  return FORMA_REFERENCIA.test(String(referencia ?? ""));
+}
+function elegirCuotasAPagar(registro, alcance, hoy) {
+  const valorCuota = Number(registro?.valorCuota || 0);
+  if (!(valorCuota > 0)) return { error: "Este financiamiento no tiene un valor de cuota v\xE1lido." };
+  const todas = Array.isArray(registro?.cuotas) ? registro.cuotas : [];
+  const pendientes = todas.filter((c) => c?.status !== "paid").sort((a, b) => fechaLimite(a).localeCompare(fechaLimite(b)));
+  if (!pendientes.length) return { error: "No te quedan cuotas pendientes." };
+  let elegidas;
+  if (alcance === "saldo") {
+    elegidas = pendientes;
+  } else if (alcance === "vencidas") {
+    elegidas = pendientes.filter((c) => {
+      const f = fechaLimite(c);
+      return f !== "" && diasEntreFechas(f, hoy) >= 0;
+    });
+    if (!elegidas.length) elegidas = [pendientes[0]];
+  } else {
+    elegidas = [pendientes[0]];
+  }
+  const cuotas = elegidas.map((c) => Number(c.number)).filter((n) => Number.isFinite(n));
+  if (!cuotas.length) return { error: "No se pudo determinar qu\xE9 cuota cobrar." };
+  const monto = cuotas.length * valorCuota;
+  const concepto = cuotas.length === 1 ? `Cuota #${cuotas[0]}` : `Cuotas #${cuotas[0]} a #${cuotas[cuotas.length - 1]} (${cuotas.length})`;
+  return { cuotas, monto, concepto };
+}
+function imeiCorto(imei) {
+  const limpio = String(imei ?? "").replace(/\D/g, "");
+  if (limpio.length <= 4) return limpio ? `\u2022\u2022\u2022\u2022${limpio}` : "\u2014";
+  return `\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 ${limpio.slice(-4)}`;
+}
+function estadoDeCuota(cuota, hoy) {
+  if (cuota?.status === "paid") return "pagada";
+  if (prorrogaVigente(cuota, hoy)) return "con-plazo";
+  const limite = fechaLimite(cuota);
+  if (!limite) return "pendiente";
+  if (limite < hoy) return "vencida";
+  if (limite === hoy) return "vence-hoy";
+  return "pendiente";
+}
+function aCuotaPortal(cuota, valorCuota, hoy) {
+  const limite = fechaLimite(cuota);
+  const pactada = soloFecha(cuota?.dueDate);
+  const estado = estadoDeCuota(cuota, hoy);
+  const mora = estado === "vencida" ? diasEntreFechas(limite, hoy) : 0;
+  return {
+    numero: Number(cuota?.number) || 0,
+    estado,
+    vence: limite,
+    venceLargo: limite ? fechaLarga(limite) : "\u2014",
+    vencePactada: tieneProrroga(cuota) && pactada && pactada !== limite ? pactada : null,
+    valor: valorCuota,
+    pagadaEn: cuota?.paidDate ? soloFecha(cuota.paidDate) : null,
+    conRespaldo: Boolean(cuota?.comprobante?.mediaId || cuota?.pagoEnLinea?.referencia),
+    enLinea: Boolean(cuota?.pagoEnLinea?.referencia),
+    diasDeMora: Number.isNaN(mora) ? 0 : Math.max(0, mora)
+  };
+}
+function armarResumenPortal(registro, equipo, hoy) {
+  const valorCuota = Number(registro?.valorCuota || 0);
+  const previas = Number(registro?.cuotasPrevias || 0);
+  const todas = Array.isArray(registro?.cuotas) ? registro.cuotas : [];
+  const cuotas = todas.map((c) => aCuotaPortal(c, valorCuota, hoy)).sort((a, b) => a.numero - b.numero);
+  const pendientes = cuotas.filter((c) => c.estado !== "pagada");
+  const vencidas = pendientes.filter((c) => c.estado === "vencida");
+  const ordenadasPorFecha = [...pendientes].sort((a, b) => a.vence.localeCompare(b.vence));
+  const proxima = ordenadasPorFecha[0] || null;
+  const cuotaCruda = proxima ? todas.find((c) => Number(c?.number) === proxima.numero) : null;
+  const plazo = prorrogaVigente(cuotaCruda, hoy);
+  const solicitud = solicitudPendienteDe(registro);
+  const opcionesPago = [];
+  if (proxima) {
+    opcionesPago.push({
+      alcance: "proxima",
+      etiqueta: `Pagar la cuota #${proxima.numero}`,
+      monto: valorCuota
+    });
+    const alDia = pendientes.filter((c) => c.estado === "vencida" || c.estado === "vence-hoy").length;
+    if (alDia > 1) {
+      opcionesPago.push({
+        alcance: "vencidas",
+        etiqueta: `Pagar lo vencido (${alDia} cuotas)`,
+        monto: alDia * valorCuota
+      });
+    }
+    if (pendientes.length > alDia && pendientes.length > 1) {
+      opcionesPago.push({
+        alcance: "saldo",
+        etiqueta: `Pagar todo y terminar (${pendientes.length} cuotas)`,
+        monto: pendientes.length * valorCuota
+      });
+    }
+  }
+  return {
+    nombre: String(registro?.nombre || "").trim(),
+    producto: String(registro?.producto || "").trim(),
+    imei: imeiCorto(registro?.imei),
+    valorCuota,
+    totalCuotas: todas.length + previas,
+    pagadas: cuotas.filter((c) => c.estado === "pagada").length + previas,
+    pendientes: pendientes.length,
+    vencidas: vencidas.length,
+    saldo: pendientes.length * valorCuota,
+    diasDeMora: vencidas.length ? Math.max(...vencidas.map((c) => c.diasDeMora)) : 0,
+    liquidado: todas.length > 0 && pendientes.length === 0,
+    horaBloqueo: String(registro?.horaBloqueo || "08:00"),
+    equipo: {
+      bloqueado: Boolean(equipo && (equipo.status === "blocked" || equipo.intencion === "blocked")),
+      automatico: Boolean(equipo && equipo.plataforma === "trustonic")
+    },
+    proxima,
+    cuotas,
+    plazo: plazo ? { hasta: soloFecha(plazo.hasta), hastaLargo: fechaLarga(plazo.hasta) } : null,
+    solicitudPendiente: solicitud ? {
+      hasta: solicitud.hasta,
+      hastaLargo: fechaLarga(solicitud.hasta),
+      pedidaEn: String(solicitud.pedidaEn || "")
+    } : null,
+    // Sin cuotas pendientes no hay nada que aplazar, y con una solicitud sin
+    // resolver el botón sólo serviría para que el dueño reciba el mismo mensaje
+    // cinco veces mientras decide.
+    puedePedirPlazo: Boolean(proxima) && !solicitud && !plazo,
+    opcionesPago,
+    maxDiasPlazo: MAX_DIAS_PRORROGA,
+    hoy
+  };
+}
+function solicitudesDe(registro) {
+  return Array.isArray(registro?.solicitudesPlazo) ? registro.solicitudesPlazo : [];
+}
+function solicitudPendienteDe(registro) {
+  return solicitudesDe(registro).find((s) => s?.estado === "pendiente") || null;
+}
+function nuevaSolicitudId() {
+  return `sol-${Date.now().toString(36)}-${(0, import_crypto23.randomBytes)(3).toString("hex")}`;
+}
+var REGLAS_PLAZO_AUTO_POR_DEFECTO = {
+  activo: false,
+  maxDias: 4,
+  maxPorContrato: 1,
+  nadaSiIncumplio: true
+};
+function normalizarReglasPlazo(crudo) {
+  const d = REGLAS_PLAZO_AUTO_POR_DEFECTO;
+  const num = (v, pordefecto, tope) => {
+    const n = Math.floor(Number(v));
+    if (!Number.isFinite(n) || n < 0) return pordefecto;
+    return Math.min(n, tope);
+  };
+  return {
+    activo: crudo?.activo === true,
+    maxDias: num(crudo?.maxDias, d.maxDias, MAX_DIAS_PRORROGA),
+    maxPorContrato: num(crudo?.maxPorContrato, d.maxPorContrato, 12),
+    nadaSiIncumplio: crudo?.nadaSiIncumplio !== false
+  };
+}
+function decidirPlazoAutomatico(reglas, registro, hasta, hoy) {
+  if (!reglas.activo) return { auto: false, motivo: "el plazo autom\xE1tico est\xE1 desactivado" };
+  const dias = diasEntreFechas(hoy, hasta);
+  if (Number.isNaN(dias)) return { auto: false, motivo: "la fecha no se pudo interpretar" };
+  if (dias > reglas.maxDias) {
+    return { auto: false, motivo: `pide ${dias} d\xEDas y el tope autom\xE1tico son ${reglas.maxDias}` };
+  }
+  const yaDadas = Number(registro?.prorrogasOtorgadas || 0);
+  if (yaDadas >= reglas.maxPorContrato) {
+    return {
+      auto: false,
+      motivo: `ya se le dieron ${yaDadas} plazo(s) y el tope autom\xE1tico es ${reglas.maxPorContrato}`
+    };
+  }
+  if (reglas.nadaSiIncumplio) {
+    const incumplio = (Array.isArray(registro?.cuotas) ? registro.cuotas : []).some(
+      (c) => c?.status !== "paid" && tieneProrroga(c) && soloFecha(c?.prorroga?.hasta) < hoy
+    );
+    if (incumplio) return { auto: false, motivo: "ya dej\xF3 pasar un plazo anterior sin pagar" };
+  }
+  return { auto: true };
+}
+
+// server/codigo-corto.ts
+var import_crypto24 = require("crypto");
+var ALFABETO = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+var LARGO_CODIGO = 6;
+var FEAS = ["PUT", "KUL", "CAG", "MRD", "TET", "ANO", "CUL", "PEN", "ZRR"];
+function esFea(codigo) {
+  return FEAS.some((f) => codigo.includes(f));
+}
+function generarCodigo(bytes2 = import_crypto24.randomBytes) {
+  for (let intento = 0; intento < 20; intento++) {
+    const crudo = bytes2(LARGO_CODIGO);
+    let codigo = "";
+    for (let i = 0; i < LARGO_CODIGO; i++) {
+      codigo += ALFABETO[crudo[i] % ALFABETO.length];
+    }
+    if (!esFea(codigo)) return codigo;
+  }
+  return ALFABETO[0].repeat(LARGO_CODIGO);
+}
+function normalizarCodigo(entrada) {
+  const limpio = String(entrada ?? "").toUpperCase().replace(/[\s-]/g, "").replace(/[IL]/g, "1").replace(/O/g, "0");
+  if (limpio.length !== LARGO_CODIGO) return null;
+  for (const c of limpio) if (!ALFABETO.includes(c)) return null;
+  return limpio;
+}
+function pareceCodigoCorto(valor) {
+  const s = String(valor ?? "");
+  return !s.includes(".") && normalizarCodigo(s) !== null;
+}
+function ultimos4(cedula) {
+  const digitos = String(cedula ?? "").replace(/\D/g, "");
+  return digitos.length >= 4 ? digitos.slice(-4) : null;
+}
+function cedulaCoincide(cedula, intento) {
+  const real = ultimos4(cedula);
+  const dado = String(intento ?? "").replace(/\D/g, "");
+  if (!real || dado.length !== 4) return false;
+  return (0, import_crypto24.timingSafeEqual)(Buffer.from(real), Buffer.from(dado));
+}
+function controlDeIntentos(maximo = 5, ventanaMs = 15 * 6e4, ahora = Date.now) {
+  const registro = /* @__PURE__ */ new Map();
+  function vigente(codigo) {
+    const d = registro.get(codigo);
+    if (!d) return null;
+    if (ahora() - d.desde > ventanaMs) {
+      registro.delete(codigo);
+      return null;
+    }
+    return d;
+  }
+  return {
+    permite(codigo) {
+      const d = vigente(codigo);
+      return !d || d.fallos < maximo;
+    },
+    fallo(codigo) {
+      const d = vigente(codigo);
+      if (d) d.fallos += 1;
+      else registro.set(codigo, { fallos: 1, desde: ahora() });
+    },
+    exito(codigo) {
+      registro.delete(codigo);
+    },
+    esperaMinutos(codigo) {
+      const d = vigente(codigo);
+      if (!d || d.fallos < maximo) return 0;
+      return Math.max(1, Math.ceil((ventanaMs - (ahora() - d.desde)) / 6e4));
+    }
+  };
+}
+var COL_FINANCING = "financing";
+async function asegurarIndiceCodigo(db2) {
+  if (!db2) return;
+  try {
+    await db2.collection(COL_FINANCING).createIndex(
+      { codigoCorto: 1 },
+      { unique: true, partialFilterExpression: { codigoCorto: { $type: "string" } }, name: "codigoCorto_unico" }
+    );
+  } catch (error) {
+    console.error("[codigo-corto] No se pudo crear el \xEDndice \xFAnico de codigoCorto:", error);
+  }
+}
+async function asegurarCodigoCorto(db2, financingId, generar = generarCodigo) {
+  if (!db2 || !financingId) return null;
+  const col = db2.collection(COL_FINANCING);
+  try {
+    const doc = await col.findOne({ id: financingId }, { projection: { codigoCorto: 1 } });
+    if (!doc) return null;
+    const ya = normalizarCodigo(doc.codigoCorto);
+    if (ya) return ya;
+    const sinCodigo = {
+      id: financingId,
+      $or: [{ codigoCorto: { $exists: false } }, { codigoCorto: null }, { codigoCorto: "" }]
+    };
+    for (let intento = 0; intento < 8; intento++) {
+      const codigo = generar();
+      try {
+        const r = await col.updateOne(sinCodigo, {
+          $set: { codigoCorto: codigo, codigoCortoDesde: (/* @__PURE__ */ new Date()).toISOString() }
+        });
+        if (r?.modifiedCount) return codigo;
+        const otro = await col.findOne({ id: financingId }, { projection: { codigoCorto: 1 } });
+        return normalizarCodigo(otro?.codigoCorto);
+      } catch (error) {
+        if (error?.code === 11e3 || /E11000/.test(String(error?.message || ""))) continue;
+        throw error;
+      }
+    }
+    console.error(`[codigo-corto] Ocho choques seguidos asignando c\xF3digo a ${financingId}.`);
+    return null;
+  } catch (error) {
+    console.error("[codigo-corto] Error asegurando el c\xF3digo corto:", error);
+    return null;
+  }
+}
+async function buscarPorCodigo(db2, codigoCrudo) {
+  const codigo = normalizarCodigo(codigoCrudo);
+  if (!db2 || !codigo) return null;
+  try {
+    return await db2.collection(COL_FINANCING).findOne({ codigoCorto: codigo });
+  } catch (error) {
+    console.error("[codigo-corto] Error buscando por c\xF3digo:", error);
+    return null;
+  }
+}
+
+// server/portal-page.ts
+function esc(valor) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function aJs(valor) {
+  return JSON.stringify(String(valor ?? "")).replace(/</g, "\\u003c");
+}
+function pesos2(valor) {
+  return `$${Math.round(Number(valor) || 0).toLocaleString("es-CO")}`;
+}
+function nombreBonito(nombre) {
+  return String(nombre || "").trim().replace(/\s+/g, " ").replace(/(^|\s)(\p{Ll})/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase("es-CO"));
+}
+var TELEFONO_TIENDA2 = "302 287 5280";
+var WHATSAPP_TIENDA = "573022875280";
+var LOGO = `<svg class="logo" viewBox="0 0 1000 1000" role="img" aria-label="Xiaomi">
+<path fill="#ff6700" d="M0 401.7v196.6c0 221.9 179.8 401.7 401.7 401.7h196.6c221.9 0 401.7-179.8 401.7-401.7V401.7C1000 179.8 820.2 0 598.3 0H401.7C179.8 0 0 179.8 0 401.7z"/>
+<path fill="#fff" d="M473.1 366.1v401.6H335.7V440.8h-74.8v326.9H123.5V366.1h349.6zm132.8 0h137.4v401.6H605.9V366.1z"/>
+</svg>`;
+var ESTILOS = `
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#09090b;--card:#141418;--card2:#1b1b21;--line:#26262e;--line2:#33333d;
+  --tx:#f5f5f7;--tx2:#9b9ba5;--tx3:#6b6b76;
+  --mi:#ff6700;--mi2:#ff9143;
+  --ok:#3ddc84;--warn:#ffb020;--bad:#ff5a65;
+  --r:16px;
+}
+body{background:var(--bg);color:var(--tx);line-height:1.5;-webkit-font-smoothing:antialiased;
+     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+     padding-bottom:calc(2.5rem + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding:0 1.05rem}
+
+/* \u2500\u2500 Barra superior \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.top{position:sticky;top:0;z-index:30;background:rgba(9,9,11,.82);border-bottom:1px solid var(--line);
+     -webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);
+     padding-top:env(safe-area-inset-top)}
+.top .in{max-width:560px;margin:0 auto;padding:.62rem 1.05rem;display:flex;align-items:center;gap:.6rem}
+.logo{width:30px;height:30px;border-radius:9px;display:block;flex:none}
+.marca{font-size:.95rem;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.marca i{font-style:normal;color:var(--tx2);font-weight:500}
+.cuenta{margin-left:auto;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;
+        color:var(--tx3);white-space:nowrap}
+
+/* \u2500\u2500 Saludo y banner \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.hola{font-size:.92rem;color:var(--tx2);margin-top:1.15rem}
+.hola b{color:var(--tx);font-weight:600}
+.banner{border-radius:var(--r);padding:1.05rem 1.15rem;margin-top:.7rem;border:1px solid;
+        display:flex;gap:.75rem;align-items:flex-start}
+.banner .ico{font-size:1.2rem;line-height:1.25;flex:none}
+.banner .t{font-size:1.04rem;font-weight:700;letter-spacing:-.015em}
+.banner .d{font-size:.87rem;margin-top:.25rem;opacity:.85}
+.b-ok{background:#0d2318;border-color:#1f6b3d;color:#bdf2d1}
+.b-aviso{background:#2a2110;border-color:#7a5a16;color:#ffe2a8}
+.b-mal{background:#2a1215;border-color:#7a2230;color:#ffc5cb}
+.b-info{background:#101c2a;border-color:#1c4b7a;color:#c3deff}
+
+/* \u2500\u2500 Tarjetas \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:1.1rem;margin-top:.85rem}
+.h{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tx3);margin-bottom:.75rem}
+
+/* Saldo grande: la cifra que el cliente busca al abrir */
+.saldo .l{font-size:.78rem;color:var(--tx2)}
+.saldo .v{font-size:2.1rem;font-weight:800;letter-spacing:-.045em;line-height:1.1;margin-top:.1rem}
+.barra{height:8px;background:#26262e;border-radius:99px;overflow:hidden;margin-top:1rem}
+.barra i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--mi),var(--mi2))}
+.bajo{display:flex;justify-content:space-between;font-size:.78rem;color:var(--tx2);margin-top:.5rem}
+.bajo b{color:var(--tx);font-weight:600}
+
+.fila{display:flex;justify-content:space-between;gap:.7rem;font-size:.9rem;padding:.55rem 0;
+      border-bottom:1px solid #1f1f26}
+.fila:last-child{border-bottom:0}
+.fila:first-of-type{padding-top:0}
+.fila .k{color:var(--tx2)}
+.fila .v{text-align:right;font-weight:600}
+.fila .v.mal{color:#ff9fab}
+.fila .v.suave{color:var(--tx3);font-weight:500}
+
+/* \u2500\u2500 Botones \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+button,.btn{display:block;width:100%;border:0;border-radius:12px;padding:.95rem 1rem;font-size:.95rem;
+      font-weight:700;font-family:inherit;cursor:pointer;text-align:center;text-decoration:none;
+      transition:filter .15s,opacity .15s,transform .08s}
+button:active,.btn:active{filter:brightness(.9);transform:scale(.993)}
+button[disabled]{opacity:.5;cursor:default;transform:none}
+.p{background:linear-gradient(180deg,var(--mi),#f05d00);color:#fff;margin-top:.55rem;
+   box-shadow:0 6px 18px -8px rgba(255,103,0,.75)}
+.s{background:var(--card2);color:#e8e8ec;border:1px solid var(--line2);margin-top:.55rem}
+.monto{font-weight:800;white-space:nowrap}
+
+/* Medios de pago: decir cu\xE1les son evita el abandono en la pasarela */
+.medios{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.85rem}
+.medio{font-size:.72rem;font-weight:600;color:var(--tx2);background:var(--card2);
+       border:1px solid var(--line2);border-radius:99px;padding:.3rem .6rem}
+
+/* \u2500\u2500 Acordeones \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+details{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-top:.6rem;overflow:hidden}
+details>summary{cursor:pointer;font-size:.89rem;font-weight:600;color:#d8d8de;padding:.95rem 1.1rem;
+                list-style:none;display:flex;align-items:center;gap:.6rem}
+details>summary::-webkit-details-marker{display:none}
+details>summary::after{content:'';margin-left:auto;width:7px;height:7px;flex:none;
+  border-right:2px solid var(--tx3);border-bottom:2px solid var(--tx3);transform:rotate(45deg);
+  transition:transform .18s}
+details[open]>summary::after{transform:rotate(-135deg)}
+details[open]>summary{border-bottom:1px solid var(--line)}
+.cuerpo{padding:1.1rem}
+.cuerpo>p:first-child{font-size:.86rem;color:var(--tx2)}
+
+/* \u2500\u2500 Tabla de cuotas \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.tabla{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.83rem}
+th{text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);
+   padding:.5rem .35rem;border-bottom:1px solid var(--line);font-weight:700}
+td{padding:.58rem .35rem;border-bottom:1px solid #1b1b21;vertical-align:top}
+tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font-size:.66rem;font-weight:700;padding:.16rem .48rem;border-radius:6px;white-space:nowrap}
+.t-pagada{background:#123021;color:#86e2ab}
+.t-vencida{background:#33151a;color:#ff9fab}
+.t-hoy{background:#3a2c10;color:#ffcf7a}
+.t-plazo{background:#152a3d;color:#9bd0ff}
+.t-pendiente{background:#232329;color:#a9a9b2}
+.tach{text-decoration:line-through;color:var(--tx3);font-size:.73rem;display:block}
+
+/* \u2500\u2500 Formularios \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+label{display:block;font-size:.79rem;color:var(--tx2);margin:.85rem 0 .35rem;font-weight:500}
+input,textarea,select{width:100%;background:#0e0e11;border:1px solid var(--line2);border-radius:11px;
+      color:var(--tx);padding:.75rem .85rem;font-size:.95rem;font-family:inherit}
+input:focus,textarea:focus{outline:0;border-color:var(--mi)}
+textarea{resize:vertical;min-height:72px}
+input[type=file]{padding:.6rem}
+.msg{font-size:.85rem;border-radius:11px;padding:.75rem .85rem;margin-top:.75rem;display:none}
+.msg.ok{display:block;background:#0d2318;border:1px solid #1f6b3d;color:#bdf2d1}
+.msg.err{display:block;background:#2a1215;border:1px solid #7a2230;color:#ffc5cb}
+.nota{font-size:.77rem;color:var(--tx3);margin-top:.6rem;line-height:1.55}
+
+/* \u2500\u2500 Entrada por c\xF3digo corto \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* El c\xF3digo se MUESTRA de vuelta para que el cliente confirme que tecle\xF3 lo
+   mismo que ve en la pantalla del equipo. Monoespaciado y espaciado porque se
+   lee car\xE1cter por car\xE1cter, no como palabra. */
+.codigo{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.5rem;font-weight:700;
+        letter-spacing:.22em;text-align:center;color:var(--mi2);background:#0e0e11;
+        border:1px solid var(--line2);border-radius:12px;padding:.7rem .4rem .7rem .62rem}
+/* Cuatro d\xEDgitos, grandes: se teclean en un celular prestado y con prisa. */
+input.pin{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.65rem;
+      font-weight:700;letter-spacing:.42em;text-align:center;padding:.8rem .4rem .8rem .82rem}
+
+/* \u2500\u2500 Pie \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.pie{text-align:center;font-size:.8rem;color:var(--tx2);margin-top:2rem;line-height:1.75}
+.pie .wa{display:inline-flex;align-items:center;gap:.4rem;margin-top:.5rem;padding:.6rem 1rem;
+   background:var(--card);border:1px solid var(--line2);border-radius:99px;color:#ff9143;
+   text-decoration:none;font-weight:700;font-size:.85rem}
+.dir{font-size:.75rem;color:var(--tx3);margin-top:.7rem}
+.vista{font-size:.74rem;color:#55555f;margin-top:1.5rem;padding-top:1.1rem;border-top:1px solid #18181d;
+       line-height:1.6}
+`;
+function aviso(clase, icono, titulo, detalle) {
+  return `<div class="banner ${clase}">
+    <div class="ico">${icono}</div>
+    <div><div class="t">${titulo}</div><div class="d">${detalle}</div></div>
+  </div>`;
+}
+function banner(r, avisoPago) {
+  if (avisoPago === "aprobado") {
+    return aviso(
+      "b-ok",
+      "\u2705",
+      "Pago confirmado",
+      `Ya qued\xF3 registrado. ${r.equipo.bloqueado ? "El desbloqueo del equipo puede tardar unos minutos en llegarle al tel\xE9fono." : "No tienes que hacer nada m\xE1s."}`
+    );
+  }
+  if (avisoPago === "pendiente") {
+    return aviso(
+      "b-info",
+      "\u23F3",
+      "Estamos confirmando tu pago",
+      "Normalmente tarda menos de un minuto. Esta p\xE1gina se actualiza sola."
+    );
+  }
+  if (avisoPago === "rechazado") {
+    return aviso(
+      "b-mal",
+      "\u26A0\uFE0F",
+      "No se pudo cobrar",
+      "El pago no fue aprobado y no se te descont\xF3 nada. Puedes intentarlo otra vez o con otro medio."
+    );
+  }
+  if (r.liquidado) {
+    return aviso(
+      "b-ok",
+      "\u{1F389}",
+      "Terminaste de pagar",
+      `Pagaste las ${r.totalCuotas} cuotas. El equipo queda libre y sin restricciones.`
+    );
+  }
+  if (r.equipo.bloqueado) {
+    const quePagar = r.vencidas > 1 ? `tus ${r.vencidas} cuotas vencidas` : `tu cuota #${r.proxima?.numero ?? ""}`;
+    return aviso(
+      "b-mal",
+      "\u{1F512}",
+      "Tu equipo est\xE1 bloqueado",
+      `Se desbloquea al registrarse el pago de ${quePagar}. Si pagas aqu\xED abajo se suelta solo, sin que tengas que llamar.`
+    );
+  }
+  if (r.plazo) {
+    return aviso(
+      "b-info",
+      "\u23F3",
+      `Tienes plazo hasta el ${esc(r.plazo.hastaLargo)}`,
+      `Tu cuota #${r.proxima?.numero ?? ""} sigue pendiente. Si no se paga ese d\xEDa, el equipo se bloquea a las ${esc(
+        r.horaBloqueo
+      )}.`
+    );
+  }
+  if (r.vencidas > 0) {
+    const cual = r.vencidas > 1 ? `Tienes ${r.vencidas} cuotas vencidas por ${pesos2(r.vencidas * r.valorCuota)}` : `Tu cuota #${r.proxima?.numero ?? ""} venci\xF3${r.diasDeMora === 1 ? " ayer" : ` hace ${r.diasDeMora} d\xEDas`}`;
+    return aviso(
+      "b-mal",
+      "\u26A0\uFE0F",
+      esc(cual),
+      `El equipo puede bloquearse a las ${esc(r.horaBloqueo)}. Si ya pagaste, s\xFAbenos la captura aqu\xED abajo.`
+    );
+  }
+  if (r.proxima?.estado === "vence-hoy") {
+    return aviso(
+      "b-aviso",
+      "\u{1F4C5}",
+      `Hoy vence tu cuota #${r.proxima.numero}`,
+      `Son ${pesos2(r.valorCuota)}. Si no se paga antes de las ${esc(
+        r.horaBloqueo
+      )} de ma\xF1ana, el equipo se bloquea.`
+    );
+  }
+  if (r.proxima) {
+    return aviso(
+      "b-ok",
+      "\u2705",
+      "Est\xE1s al d\xEDa",
+      `Tu pr\xF3xima cuota, la #${r.proxima.numero}, vence el ${esc(r.proxima.venceLargo)}.`
+    );
+  }
+  return aviso(
+    "b-info",
+    "\u2139\uFE0F",
+    "Tu cuenta",
+    "No hay cuotas registradas todav\xEDa. Si crees que es un error, escr\xEDbenos."
+  );
+}
+var ETIQUETAS = {
+  pagada: { clase: "t-pagada", texto: "Pagada" },
+  vencida: { clase: "t-vencida", texto: "Vencida" },
+  "vence-hoy": { clase: "t-hoy", texto: "Vence hoy" },
+  "con-plazo": { clase: "t-plazo", texto: "Con plazo" },
+  pendiente: { clase: "t-pendiente", texto: "Pendiente" }
+};
+function tablaCuotas(r) {
+  if (!r.cuotas.length) return "";
+  const filas = r.cuotas.map((c) => {
+    const e = ETIQUETAS[c.estado] || ETIQUETAS.pendiente;
+    const pactada = c.vencePactada ? `<span class="tach">${esc(c.vencePactada)}</span>` : "";
+    return `<tr>
+        <td>#${c.numero}</td>
+        <td>${esc(c.vence)}${pactada}</td>
+        <td><span class="tag ${e.clase}">${e.texto}</span>${c.enLinea ? '<span class="tach" style="text-decoration:none">en l\xEDnea</span>' : ""}</td>
+        <td style="text-align:right">${pesos2(c.valor)}</td>
+      </tr>`;
+  }).join("");
+  return `<details><summary>Ver mis ${r.cuotas.length} cuotas una por una</summary>
+    <div class="cuerpo"><div class="tabla">
+    <table><thead><tr><th>Cuota</th><th>Vence</th><th>Estado</th><th style="text-align:right">Valor</th></tr></thead>
+    <tbody>${filas}</tbody></table></div>
+    ${r.cuotas.some((c) => c.vencePactada) ? '<p class="nota">La fecha tachada es la que estaba pactada; la de arriba es el plazo que se te dio.</p>' : ""}</div></details>`;
+}
+function botonesPago(r, pagoActivo) {
+  if (!r.proxima) return "";
+  if (!pagoActivo) {
+    return `<div class="card"><div class="h">Pagar</div>
+      <p style="font-size:.88rem;color:#a9a9b2">El pago en l\xEDnea todav\xEDa no est\xE1 habilitado. Para pagar tu cuota de
+      <span class="monto">${pesos2(r.valorCuota)}</span>, escr\xEDbenos por WhatsApp al ${TELEFONO_TIENDA2}.</p>
+      <a class="btn p" href="https://wa.me/${WHATSAPP_TIENDA}?text=${encodeURIComponent(
+      `Hola, quiero pagar mi cuota #${r.proxima.numero}`
+    )}">Escribir por WhatsApp</a></div>`;
+  }
+  const botones = r.opcionesPago.map(
+    (o, i) => `<button class="${i === 0 ? "p" : "s"}" data-pagar="${esc(o.alcance)}">${esc(
+      o.etiqueta
+    )} \xB7 <span class="monto">${pesos2(o.monto)}</span></button>`
+  ).join("");
+  const medios = ["PSE", "Nequi", "Bot\xF3n Bancolombia"].map((m) => `<span class="medio">${m}</span>`).join("");
+  return `<div class="card"><div class="h">Pagar en l\xEDnea</div>
+    ${botones}
+    <div class="medios">${medios}</div>
+    <p class="nota">El pago queda registrado al instante${r.equipo.bloqueado ? " y el equipo se desbloquea solo" : ""}; no tienes que mandar comprobante.</p>
+    <div id="msg-pago" class="msg"></div></div>`;
+}
+function subirComprobante(r) {
+  if (!r.proxima) return "";
+  return `<details><summary>Ya pagu\xE9 por transferencia y quiero mandar el comprobante</summary>
+    <div class="cuerpo">
+      <p>Sube la captura del pago de tu cuota #${r.proxima.numero}.
+      La revisamos y te la registramos; no hace falta que nos escribas aparte.</p>
+      <label for="cmp">Captura del pago</label>
+      <input type="file" id="cmp" accept="image/*">
+      <button class="s" id="btn-cmp">Enviar comprobante</button>
+      <div id="msg-cmp" class="msg"></div>
+    </div></details>`;
+}
+function pedirPlazo(r) {
+  if (r.solicitudPendiente) {
+    return `<div class="card"><div class="h">Tu solicitud de plazo</div>
+      <p style="font-size:.88rem;color:var(--tx2)">Pediste plazo hasta el <strong style="color:var(--tx)">${esc(
+      r.solicitudPendiente.hastaLargo
+    )}</strong>. Est\xE1 pendiente de que la tienda la apruebe; te avisamos por WhatsApp en cuanto se resuelva.</p>
+      <p class="nota">Mientras no se apruebe, la fecha que vale sigue siendo la de tu cuota.</p></div>`;
+  }
+  if (!r.puedePedirPlazo) return "";
+  const max = new Date(Date.parse(`${r.hoy}T00:00:00Z`) + r.maxDiasPlazo * 864e5).toISOString().slice(0, 10);
+  const minimo = r.proxima && r.proxima.vence > r.hoy ? r.proxima.vence : r.hoy;
+  return `<details><summary>No puedo pagar ahora, quiero pedir unos d\xEDas</summary>
+    <div class="cuerpo">
+      <p>Dinos hasta qu\xE9 d\xEDa podr\xEDas pagar. La tienda lo revisa; si lo aprueba,
+      el equipo no se bloquea hasta esa fecha y te llega la confirmaci\xF3n por WhatsApp.</p>
+      <label for="hasta">\xBFHasta qu\xE9 d\xEDa?</label>
+      <input type="date" id="hasta" min="${esc(minimo)}" max="${esc(max)}">
+      <label for="motivo">\xBFPor qu\xE9? (nos ayuda a aprobarlo)</label>
+      <textarea id="motivo" maxlength="300" placeholder="Me pagan el viernes..."></textarea>
+      <button class="s" id="btn-plazo">Pedir el plazo</button>
+      <div id="msg-plazo" class="msg"></div>
+    </div></details>`;
+}
+var GUION = `
+<script>
+(function(){
+  var API = window.__API__, T = window.__TOKEN__;
+  function msg(id, texto, ok){
+    var e = document.getElementById(id);
+    if(!e) return;
+    e.className = 'msg ' + (ok ? 'ok' : 'err');
+    e.textContent = texto;
+  }
+  function pedir(ruta, cuerpo){
+    return fetch(API + '/api/portal/' + T + ruta, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo || {})
+    }).then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(d){
+        if(!res.ok) throw new Error(d && d.error ? d.error : 'No se pudo completar la operaci\xF3n.');
+        return d;
+      });
+    });
+  }
+
+  // --- Pagar ---------------------------------------------------------------
+  Array.prototype.forEach.call(document.querySelectorAll('[data-pagar]'), function(b){
+    b.addEventListener('click', function(){
+      var todos = document.querySelectorAll('[data-pagar]');
+      Array.prototype.forEach.call(todos, function(x){ x.disabled = true; });
+      b.textContent = 'Abriendo el pago...';
+      pedir('/pagar', { alcance: b.getAttribute('data-pagar') })
+        .then(function(d){ window.location.href = d.url; })
+        .catch(function(e){
+          msg('msg-pago', e.message, false);
+          Array.prototype.forEach.call(todos, function(x){ x.disabled = false; });
+          window.location.reload();
+        });
+    });
+  });
+
+  // --- Comprobante ---------------------------------------------------------
+  /* Las capturas salen de la c\xE1mara del tel\xE9fono y pesan 2-4 MB; el servidor
+     acepta 700 KB. Sin reducirla aqu\xED, la mayor\xEDa de los env\xEDos fracasar\xEDan y el
+     cliente volver\xEDa a WhatsApp, que es justo lo que esto viene a evitar. */
+  function reducir(file){
+    return new Promise(function(resolve, reject){
+      var fr = new FileReader();
+      fr.onerror = function(){ reject(new Error('No se pudo leer la imagen.')); };
+      fr.onload = function(){
+        var img = new Image();
+        img.onerror = function(){ reject(new Error('El archivo no parece ser una imagen.')); };
+        img.onload = function(){
+          var MAX = 1400;
+          var esc2 = Math.min(1, MAX / Math.max(img.width, img.height));
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.width * esc2);
+          c.height = Math.round(img.height * esc2);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          var calidades = [0.75, 0.6, 0.45, 0.3];
+          for (var i = 0; i < calidades.length; i++){
+            var d = c.toDataURL('image/jpeg', calidades[i]);
+            if (d.length * 0.75 < 660 * 1024) return resolve(d);
+          }
+          resolve(c.toDataURL('image/jpeg', 0.25));
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  var btnC = document.getElementById('btn-cmp');
+  if (btnC) btnC.addEventListener('click', function(){
+    var f = document.getElementById('cmp').files[0];
+    if (!f) return msg('msg-cmp', 'Primero elige la captura del pago.', false);
+    btnC.disabled = true; btnC.textContent = 'Enviando...';
+    reducir(f)
+      .then(function(img){ return pedir('/comprobante', { image: img, filename: f.name }); })
+      .then(function(){
+        msg('msg-cmp', 'Listo, ya nos lleg\xF3. Lo revisamos y te registramos la cuota.', true);
+        btnC.textContent = 'Enviado';
+      })
+      .catch(function(e){
+        msg('msg-cmp', e.message, false);
+        btnC.disabled = false; btnC.textContent = 'Enviar comprobante';
+      });
+  });
+
+  // --- Pedir plazo ---------------------------------------------------------
+  var btnP = document.getElementById('btn-plazo');
+  if (btnP) btnP.addEventListener('click', function(){
+    var hasta = document.getElementById('hasta').value;
+    if (!hasta) return msg('msg-plazo', 'Elige hasta qu\xE9 d\xEDa podr\xEDas pagar.', false);
+    btnP.disabled = true; btnP.textContent = 'Enviando...';
+    pedir('/plazo', { hasta: hasta, motivo: document.getElementById('motivo').value })
+      .then(function(d){
+        msg('msg-plazo', d.mensaje || 'Tu solicitud qued\xF3 registrada.', true);
+        setTimeout(function(){ window.location.reload(); }, 1800);
+      })
+      .catch(function(e){
+        msg('msg-plazo', e.message, false);
+        btnP.disabled = false; btnP.textContent = 'Pedir el plazo';
+      });
+  });
+
+  /* Vuelta de Bold: el webhook puede tardar unos segundos en llegar, as\xED que la
+     p\xE1gina se recarga sola unas cuantas veces y luego para. Sin el tope, una
+     pesta\xF1a olvidada en un tel\xE9fono estar\xEDa recargando el backend para siempre. */
+  if (window.__ESPERANDO__) {
+    var n = Number(sessionStorage.getItem('cl-esperas') || 0);
+    if (n < 10) {
+      sessionStorage.setItem('cl-esperas', n + 1);
+      setTimeout(function(){ window.location.reload(); }, 4000);
+    }
+  } else {
+    sessionStorage.removeItem('cl-esperas');
+  }
+})();
+</script>`;
+function paginaPortal(o) {
+  const r = o.resumen;
+  const pagadasPct = r.totalCuotas > 0 ? Math.round(r.pagadas / r.totalCuotas * 100) : 0;
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d0d0f">
+<title>Mi cuenta \u2014 CREDILOCK</title>
+<style>${ESTILOS}</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  ${LOGO}
+  <div class="marca">CREDILOCK</div>
+  <div class="cuenta">Mi cuenta</div>
+</div></div>
+
+<div class="wrap">
+  <div class="hola">Hola, <b>${esc(nombreBonito(r.nombre))}</b></div>
+
+  ${banner(r, o.avisoPago)}
+
+  <div class="card">
+    <div class="h">Tu cr\xE9dito</div>
+    <div class="saldo">
+      <div class="l">${r.liquidado ? "Pagado por completo" : "Te falta por pagar"}</div>
+      <div class="v">${pesos2(r.saldo)}</div>
+    </div>
+    <div class="barra"><i style="width:${pagadasPct}%"></i></div>
+    <div class="bajo">
+      <span><b>${r.pagadas}</b> de ${r.totalCuotas} cuotas pagadas</span>
+      <span>${pagadasPct}%</span>
+    </div>
+  </div>
+
+  ${r.proxima ? `<div class="card">
+    <div class="h">Tu pr\xF3xima cuota</div>
+    <div class="fila"><span class="k">Cuota</span><span class="v">#${r.proxima.numero}</span></div>
+    <div class="fila"><span class="k">Valor</span><span class="v">${pesos2(r.valorCuota)}</span></div>
+    <div class="fila"><span class="k">${r.plazo ? "Plazo hasta" : "Vence"}</span><span class="v">${esc(
+    r.proxima.venceLargo
+  )}</span></div>
+    ${r.proxima.vencePactada ? `<div class="fila"><span class="k">Fecha pactada</span><span class="v suave">${esc(
+    r.proxima.vencePactada
+  )}</span></div>` : ""}
+    ${r.equipo.bloqueado ? '<div class="fila"><span class="k">Equipo</span><span class="v mal">Bloqueado</span></div>' : ""}
+  </div>` : ""}
+
+  ${botonesPago(r, o.pagoActivo)}
+  ${subirComprobante(r)}
+  ${pedirPlazo(r)}
+  ${tablaCuotas(r)}
+
+  <div class="card">
+    <div class="h">Tu equipo</div>
+    <div class="fila"><span class="k">Modelo</span><span class="v">${esc(r.producto || "\u2014")}</span></div>
+    <div class="fila"><span class="k">IMEI</span><span class="v">${esc(r.imei)}</span></div>
+  </div>
+
+  <div class="pie">
+    \xBFAlgo no cuadra? Escr\xEDbenos.<br>
+    <a class="wa" href="https://wa.me/${WHATSAPP_TIENDA}">WhatsApp ${TELEFONO_TIENDA2}</a>
+    <div class="dir">Cl. 31 #61-64, Los \xC1ngeles \u2014 Cartagena</div>
+    <div class="vista">Esta p\xE1gina es s\xF3lo tuya. No la compartas: cualquiera con el link ver\xEDa tu cuenta.</div>
+  </div>
+</div>
+<script>
+window.__TOKEN__ = ${aJs(o.token)};
+window.__API__ = ${aJs(o.api)};
+window.__ESPERANDO__ = ${o.avisoPago === "pendiente" ? "true" : "false"};
+</script>
+${GUION}
+</body>
+</html>`;
+}
+function paginaErrorPortal(titulo, detalle, codigo = 404) {
+  return {
+    codigo,
+    html: `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Mi cuenta \u2014 CREDILOCK</title><style>${ESTILOS}</style></head>
+<body>
+<div class="top"><div class="in">
+  ${LOGO}
+  <div class="marca">CREDILOCK</div>
+  <div class="cuenta">Mi cuenta</div>
+</div></div>
+<div class="wrap">
+  <div class="banner b-aviso" style="margin-top:1.5rem">
+    <div class="ico">\u{1F517}</div>
+    <div><div class="t">${esc(titulo)}</div><div class="d">${esc(detalle)}</div></div>
+  </div>
+  <!-- El pie no explica qu\xE9 hacer: eso ya lo dice el detalle, que cambia seg\xFAn el
+       caso. Un texto fijo aqu\xED ("te mandamos un link nuevo") mentir\xEDa en los 500 y
+       503, donde el link est\xE1 bien y lo roto somos nosotros. S\xF3lo la salida. -->
+  <div class="pie">
+    <a class="wa" href="https://wa.me/${WHATSAPP_TIENDA}">WhatsApp ${TELEFONO_TIENDA2}</a>
+  </div>
+</div></body></html>`
+  };
+}
+function paginaCodigoCorto(o) {
+  const esperando = Number(o.esperaMinutos) > 0;
+  const minutos = Math.max(1, Math.ceil(Number(o.esperaMinutos) || 0));
+  return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Mi cuenta \u2014 CREDILOCK</title><style>${ESTILOS}</style></head>
+<body>
+<div class="top"><div class="in">
+  ${LOGO}
+  <div class="marca">CREDILOCK</div>
+  <div class="cuenta">Mi cuenta</div>
+</div></div>
+<div class="wrap">
+${esperando ? `  <div class="banner b-mal" style="margin-top:1.5rem">
+    <div class="ico">\u23F3</div>
+    <div>
+      <div class="t">Demasiados intentos</div>
+      <div class="d">Por seguridad bloqueamos este c\xF3digo por ${minutos} minuto${minutos === 1 ? "" : "s"}.
+        Si no recuerdas los d\xEDgitos, escr\xEDbenos y te atendemos de una.</div>
+    </div>
+  </div>` : `  <div class="banner b-info" style="margin-top:1.5rem">
+    <div class="ico">\u{1F512}</div>
+    <div>
+      <div class="t">Confirma que eres t\xFA</div>
+      <div class="d">Para ver tu cuenta y pagar, escribe los <b>4 \xFAltimos d\xEDgitos de tu c\xE9dula</b>.</div>
+    </div>
+  </div>
+
+  <form class="card" method="POST" action="/p/${esc(o.codigo)}">
+    <div class="h">Tu c\xF3digo</div>
+    <div class="codigo">${esc(o.codigo)}</div>
+
+    <label for="cedula">\xDAltimos 4 d\xEDgitos de tu c\xE9dula</label>
+    <!-- inputmode=numeric saca el teclado de n\xFAmeros sin que el campo sea
+         type=number: en Android, type=number deja pegar signos y notaci\xF3n
+         cient\xEDfica, y recorta los ceros de la izquierda. pattern + maxlength
+         validan en el navegador, pero el servidor no se f\xEDa de ninguno. -->
+    <input class="pin" id="cedula" name="cedula" inputmode="numeric" pattern="[0-9]{4}"
+           maxlength="4" autocomplete="off" required autofocus placeholder="\u2022\u2022\u2022\u2022">
+    ${o.error ? `<div class="msg err">${esc(o.error)}</div>` : ""}
+
+    <button class="p" type="submit">Ver mi cuenta</button>
+
+    <div class="nota">
+      Son los 4 \xFAltimos d\xEDgitos de la c\xE9dula del titular del financiamiento, sin
+      puntos. Al entrar ver\xE1s tu saldo, tus cuotas y podr\xE1s pagar en l\xEDnea.
+    </div>
+  </form>`}
+
+  <div class="pie">
+    Comun\xEDcate al ${TELEFONO_TIENDA2} para reactivarlo.<br>
+    <a class="wa" href="https://wa.me/${WHATSAPP_TIENDA}">WhatsApp ${TELEFONO_TIENDA2}</a>
+    <div class="dir">Cl. 31 #61-64, Los \xC1ngeles \u2014 Cartagena</div>
+  </div>
+</div></body></html>`;
+}
+
+// server/portal-rutas.ts
+var COL_PAGOS_CUOTA = "pagos_cuota";
+var COL_FINANCING2 = "financing";
+var COL_EQUIPOS2 = "blocking_devices";
+var COL_PAGOS_BLOQUEO = "blocking_payments";
+var COL_SETTINGS = "settings";
+var CLAVE_REGLAS = "portal_plazo_auto";
+var MINUTOS_INTENCION_VIVA = 30;
+var HORAS_LINK_PAGO = 48;
+async function asegurarSecretoPortal(db2) {
+  const delEntorno = (process.env.PORTAL_SECRET || "").trim();
+  if (delEntorno.length >= 32) return delEntorno;
+  if (delEntorno) {
+    console.warn("[portal] PORTAL_SECRET es demasiado corto (m\xEDnimo 32 caracteres); se ignora.");
+  }
+  if (!db2) {
+    console.error("[portal] Sin base de datos no se puede fijar el secreto: los links no funcionar\xE1n.");
+    return "";
+  }
+  const guardado = await db2.collection(COL_SETTINGS).findOne({ key: "portal_secret" });
+  if (guardado?.value && String(guardado.value).length >= 32) return String(guardado.value);
+  const nuevo = (0, import_crypto25.randomBytes)(32).toString("hex");
+  await db2.collection(COL_SETTINGS).updateOne(
+    { key: "portal_secret" },
+    { $set: { key: "portal_secret", value: nuevo, creadoEn: (/* @__PURE__ */ new Date()).toISOString() } },
+    { upsert: true }
+  );
+  console.log("[portal] Secreto del portal generado y guardado. Los links de cliente ya son estables.");
+  return nuevo;
+}
+async function leerReglas(deps) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return normalizarReglasPlazo(null);
+    const doc = await db2.collection(COL_SETTINGS).findOne({ key: CLAVE_REGLAS });
+    return normalizarReglasPlazo(doc?.value);
+  } catch {
+    return normalizarReglasPlazo(null);
+  }
+}
+async function identificar(deps, tokenCrudo) {
+  const partes = leerTokenPortal(tokenCrudo);
+  if (!partes) return { error: "Este link no es v\xE1lido.", status: 404 };
+  const secreto = deps.secreto();
+  if (!secreto) {
+    console.error("[portal] No hay secreto configurado: no se puede verificar ning\xFAn link.");
+    return { error: "El portal no est\xE1 disponible en este momento.", status: 503 };
+  }
+  const db2 = deps.getDb();
+  if (!db2) return { error: "El portal no est\xE1 disponible en este momento.", status: 503 };
+  const registro = await db2.collection(COL_FINANCING2).findOne({ id: partes.id });
+  if (!registro) return { error: "Este link no es v\xE1lido.", status: 404 };
+  if (!firmaCorrecta(secreto, partes.id, registro.portalVersion, partes.firma)) {
+    return { error: "Este link no es v\xE1lido.", status: 404 };
+  }
+  return { registro, token: String(tokenCrudo) };
+}
+async function equipoDe(deps, financingId) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return null;
+    return await db2.collection(COL_EQUIPOS2).findOne({ financingId });
+  } catch {
+    return null;
+  }
+}
+function cuotaEnJuego(registro) {
+  const cuotas = Array.isArray(registro?.cuotas) ? registro.cuotas : [];
+  const pendientes = cuotas.filter((c) => c?.status !== "paid").sort((a, b) => fechaLimite(a).localeCompare(fechaLimite(b)));
+  return pendientes[0] || null;
+}
+function pesos3(valor) {
+  return `$${Math.round(Number(valor) || 0).toLocaleString("es-CO")}`;
+}
+async function confirmarPagoDeCuotas(deps, referencia, datosBold = {}) {
+  const db2 = deps.getDb();
+  if (!db2) {
+    console.error(`[portal-pago] Sin base de datos: no se pudo aplicar ${referencia}.`);
+    return;
+  }
+  const intencion = await db2.collection(COL_PAGOS_CUOTA).findOne({ referencia });
+  if (!intencion) {
+    console.error(`[portal-pago] Referencia desconocida: ${referencia}. No se aplica nada.`);
+    return;
+  }
+  const marcado = await db2.collection(COL_PAGOS_CUOTA).updateOne(
+    { referencia, estado: "pendiente" },
+    {
+      $set: {
+        estado: "aprobado",
+        aprobadoEn: (/* @__PURE__ */ new Date()).toISOString(),
+        boldPaymentId: datosBold.paymentId || null,
+        metodo: datosBold.metodo || null
+      }
+    }
+  );
+  if (marcado.modifiedCount !== 1) {
+    console.log(`[portal-pago] ${referencia} ya estaba resuelta (${intencion.estado}); no se repite.`);
+    return;
+  }
+  const registro = await db2.collection(COL_FINANCING2).findOne({ id: intencion.financingId });
+  if (!registro) {
+    console.error(
+      `[portal-pago] ${referencia} cobrada pero el financiamiento ${intencion.financingId} ya no existe. REVISAR A MANO: el dinero entr\xF3.`
+    );
+    await deps.avisarAlDueno(
+      `\u26A0\uFE0F Entr\xF3 un pago en l\xEDnea de ${pesos3(intencion.monto)} (ref ${referencia}) pero su financiamiento ya no est\xE1 en el sistema. Hay que revisarlo a mano.`
+    );
+    return;
+  }
+  const cuotas = Array.isArray(registro.cuotas) ? registro.cuotas : [];
+  const ahora = (/* @__PURE__ */ new Date()).toISOString();
+  const aplicadas = [];
+  for (const numero of intencion.cuotas) {
+    const idx = cuotas.findIndex((c) => Number(c?.number) === Number(numero));
+    if (idx === -1) continue;
+    if (cuotas[idx].status === "paid") continue;
+    cuotas[idx].status = "paid";
+    cuotas[idx].paidDate = ahora;
+    cuotas[idx].pagoEnLinea = {
+      referencia,
+      monto: Number(registro.valorCuota || 0),
+      metodo: datosBold.metodo || "Bold",
+      boldPaymentId: datosBold.paymentId || null,
+      aprobadoEn: ahora
+    };
+    cuotas[idx].comprobante = cuotas[idx].comprobante || null;
+    aplicadas.push(Number(numero));
+  }
+  const todasPagadas = cuotas.length > 0 && cuotas.every((c) => c.status === "paid");
+  await db2.collection(COL_FINANCING2).updateOne(
+    { id: registro.id },
+    { $set: { cuotas, ...todasPagadas ? { status: "completed" } : {} } }
+  );
+  console.log(
+    `[portal-pago] ${referencia}: ${pesos3(intencion.monto)} de ${registro.nombre}. Cuotas aplicadas: ${aplicadas.join(", ") || "ninguna (ya estaban pagadas)"}.`
+  );
+  try {
+    const equipo = await equipoDe(deps, registro.id);
+    await db2.collection(COL_PAGOS_BLOQUEO).insertOne({
+      id: `${Date.now()}-${(0, import_crypto25.randomBytes)(3).toString("hex")}`,
+      deviceId: equipo?.id || null,
+      amount: Number(intencion.monto || 0),
+      method: `Bold en l\xEDnea (${datosBold.metodo || "pasarela"})`,
+      date: ahora,
+      status: "completed",
+      registradoPor: "portal-cliente",
+      referencia,
+      cuotas: aplicadas
+    });
+  } catch (err) {
+    console.error("[portal-pago] No se pudo anotar el pago en el historial de bloqueo:", err);
+  }
+  try {
+    await deps.alRegistrarPago(registro.id);
+  } catch (err) {
+    console.error("[portal-pago] Error desbloqueando tras el pago en l\xEDnea:", err);
+  }
+  deps.emitir("financingUpdated", { id: registro.id, motivo: "pago-en-linea" });
+  const hoy = deps.hoy();
+  const frescos = await db2.collection(COL_FINANCING2).findOne({ id: registro.id });
+  const resumen = armarResumenPortal(frescos, await equipoDe(deps, registro.id), hoy);
+  const detalle = aplicadas.length === 1 ? `tu cuota #${aplicadas[0]}` : `tus cuotas #${aplicadas.join(", #")}`;
+  const cierre = resumen.liquidado ? "\n\n\u{1F389} *Con esto terminaste de pagar tu equipo.* Queda libre y sin restricciones. Gracias por cumplir." : `
+
+Te quedan ${resumen.pendientes} cuota(s) por ${pesos3(resumen.saldo)}.` + (resumen.proxima ? `
+La pr\xF3xima, la #${resumen.proxima.numero}, vence el *${resumen.proxima.venceLargo}*.` : "");
+  await enviarAlCliente(
+    deps,
+    registro,
+    `\u2705 *Pago recibido*
+
+Hola *${deps.nombreBonito(registro.nombre)}*, recibimos ${pesos3(
+      intencion.monto
+    )} y qued\xF3 registrado ${detalle}.${cierre}
+
+Comprobante: ${referencia}
+
+_CREDILOCK \u2014 Sistema de financiamiento_`
+  );
+  await deps.avisarAlDueno(
+    `\u{1F4B3} Pago en l\xEDnea de *${deps.nombreBonito(registro.nombre)}*: ${pesos3(intencion.monto)} (${detalle}). Ya qued\xF3 registrado${resumen.liquidado ? " y el financiamiento qued\xF3 liquidado" : ""}.`
+  );
+}
+async function rechazarPagoDeCuotas(deps, referencia) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return;
+    await db2.collection(COL_PAGOS_CUOTA).updateOne(
+      { referencia, estado: "pendiente" },
+      { $set: { estado: "rechazado", rechazadoEn: (/* @__PURE__ */ new Date()).toISOString() } }
+    );
+    console.log(`[portal-pago] ${referencia} rechazada por la pasarela.`);
+  } catch (err) {
+    console.error("[portal-pago] Error marcando el rechazo:", err);
+  }
+}
+async function enviarAlCliente(deps, registro, texto) {
+  try {
+    if (!deps.whatsappListo()) {
+      console.warn("[portal] WhatsApp no est\xE1 conectado; el mensaje al cliente no sale.");
+      return;
+    }
+    await deps.enviarWhatsApp(String(registro?.telefono || ""), texto);
+  } catch (err) {
+    console.error("[portal] Error enviando WhatsApp al cliente:", err);
+  }
+}
+function registrarPortal(app2, deps) {
+  const frenoCodigos = controlDeIntentos(5, 15 * 6e4);
+  const NO_CUADRA = "Los datos no coinciden. Revisa el c\xF3digo del equipo y los 4 d\xEDgitos.";
+  function servirCodigoCorto(res, codigo, error) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store, private");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    const espera = frenoCodigos.esperaMinutos(codigo);
+    return res.status(200).send(paginaCodigoCorto({ codigo, error, esperaMinutos: espera }));
+  }
+  app2.get("/p/:token", async (req, res, siguiente) => {
+    if (!pareceCodigoCorto(req.params.token)) return siguiente();
+    return servirCodigoCorto(res, normalizarCodigo(req.params.token));
+  });
+  app2.post("/p/:codigo", deps.limitador, async (req, res) => {
+    try {
+      const codigo = normalizarCodigo(req.params.codigo);
+      if (!codigo) {
+        const { html, codigo: status } = paginaErrorPortal(
+          "Este link no funciona",
+          "Revisa el c\xF3digo que aparece en la pantalla de tu equipo, o escr\xEDbenos.",
+          404
+        );
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.status(status).send(html);
+      }
+      if (!frenoCodigos.permite(codigo)) return servirCodigoCorto(res, codigo);
+      const db2 = deps.getDb();
+      if (!db2) {
+        return servirCodigoCorto(res, codigo, "No podemos consultar tu cuenta ahora mismo. Int\xE9ntalo en un rato.");
+      }
+      const registro = await buscarPorCodigo(db2, codigo);
+      if (!registro || !cedulaCoincide(registro.cedula, req.body?.cedula)) {
+        frenoCodigos.fallo(codigo);
+        return servirCodigoCorto(res, codigo, NO_CUADRA);
+      }
+      const secreto = deps.secreto();
+      const token = tokenPortal(secreto, registro.id, registro.portalVersion);
+      if (!token) {
+        console.error("[portal] C\xE9dula correcta pero no se pudo firmar el token; \xBFfalta el secreto?");
+        return servirCodigoCorto(res, codigo, "No podemos abrir tu cuenta ahora mismo. Escr\xEDbenos y te ayudamos.");
+      }
+      frenoCodigos.exito(codigo);
+      res.setHeader("Cache-Control", "no-store, private");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      return res.redirect(303, `/p/${token}`);
+    } catch (error) {
+      console.error("[portal] Error verificando el c\xF3digo corto:", error);
+      const normal = normalizarCodigo(req.params.codigo);
+      if (normal) {
+        return servirCodigoCorto(res, normal, "Algo se rompi\xF3 de nuestro lado. Vuelve a intentarlo en un rato.");
+      }
+      const { html } = paginaErrorPortal(
+        "Algo se rompi\xF3 de nuestro lado",
+        "No es culpa tuya ni afecta a tu cuenta. Vuelve a intentarlo en un rato.",
+        500
+      );
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.status(500).send(html);
+    }
+  });
+  app2.get("/p/:token", async (req, res) => {
+    try {
+      const quien = await identificar(deps, req.params.token);
+      if ("error" in quien) {
+        const { html, codigo } = paginaErrorPortal(
+          "Este link no funciona",
+          quien.status === 503 ? "Estamos teniendo un problema t\xE9cnico. Vuelve a intentarlo en un rato." : "Puede que sea viejo o que est\xE9 incompleto. Escr\xEDbenos y te mandamos uno nuevo.",
+          quien.status
+        );
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.status(codigo).send(html);
+      }
+      const hoy = deps.hoy();
+      const resumen = armarResumenPortal(quien.registro, await equipoDe(deps, quien.registro.id), hoy);
+      let avisoPago = null;
+      const ref = String(req.query.pago || "").trim();
+      if (ref) {
+        const db2 = deps.getDb();
+        const intencion = db2 ? await db2.collection(COL_PAGOS_CUOTA).findOne({ referencia: ref, financingId: quien.registro.id }) : null;
+        if (intencion) {
+          avisoPago = intencion.estado === "aprobado" ? "aprobado" : intencion.estado === "rechazado" ? "rechazado" : "pendiente";
+        }
+      }
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store, private");
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      return res.status(200).send(
+        paginaPortal({
+          resumen,
+          token: quien.token,
+          api: deps.baseUrl(),
+          avisoPago,
+          pagoActivo: deps.boldConfigurado()
+        })
+      );
+    } catch (error) {
+      console.error("[portal] Error sirviendo la p\xE1gina:", error);
+      const { html } = paginaErrorPortal(
+        "Algo se rompi\xF3 de nuestro lado",
+        "No es culpa tuya ni afecta a tu cuenta. Vuelve a intentarlo en un rato.",
+        500
+      );
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.status(500).send(html);
+    }
+  });
+  app2.get("/api/portal/:token", async (req, res) => {
+    try {
+      const quien = await identificar(deps, req.params.token);
+      if ("error" in quien) return res.status(quien.status).json({ error: quien.error });
+      const resumen = armarResumenPortal(
+        quien.registro,
+        await equipoDe(deps, quien.registro.id),
+        deps.hoy()
+      );
+      res.setHeader("Cache-Control", "no-store, private");
+      return res.json({ ...resumen, pagoActivo: deps.boldConfigurado() });
+    } catch (error) {
+      console.error("[portal] Error devolviendo el resumen:", error);
+      return res.status(500).json({ error: "No se pudo cargar tu cuenta." });
+    }
+  });
+  app2.post("/api/portal/:token/pagar", deps.limitador, async (req, res) => {
+    try {
+      if (!deps.boldConfigurado()) {
+        return res.status(503).json({ error: "El pago en l\xEDnea no est\xE1 disponible. Escr\xEDbenos por WhatsApp." });
+      }
+      const quien = await identificar(deps, req.params.token);
+      if ("error" in quien) return res.status(quien.status).json({ error: quien.error });
+      const alcanceCrudo = String(req.body?.alcance || "proxima");
+      if (!["proxima", "vencidas", "saldo"].includes(alcanceCrudo)) {
+        return res.status(400).json({ error: "No se entendi\xF3 qu\xE9 quieres pagar." });
+      }
+      const alcance = alcanceCrudo;
+      const seleccion = elegirCuotasAPagar(quien.registro, alcance, deps.hoy());
+      if ("error" in seleccion) return res.status(409).json({ error: seleccion.error });
+      const db2 = deps.getDb();
+      const desde = new Date(Date.now() - MINUTOS_INTENCION_VIVA * 6e4).toISOString();
+      let intencion = await db2.collection(COL_PAGOS_CUOTA).findOne({
+        financingId: quien.registro.id,
+        estado: "pendiente",
+        monto: seleccion.monto,
+        alcance,
+        creadoEn: { $gte: desde }
+      });
+      if (!intencion) {
+        intencion = {
+          referencia: nuevaReferenciaPago(),
+          financingId: quien.registro.id,
+          cliente: String(quien.registro.nombre || ""),
+          cuotas: seleccion.cuotas,
+          monto: seleccion.monto,
+          concepto: seleccion.concepto,
+          alcance,
+          moneda: "COP",
+          estado: "pendiente",
+          creadoEn: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        await db2.collection(COL_PAGOS_CUOTA).insertOne(intencion);
+        console.log(
+          `[portal-pago] Intenci\xF3n ${intencion.referencia} para ${quien.registro.nombre}: ${pesos3(seleccion.monto)} (${seleccion.concepto}).`
+        );
+      }
+      const base = deps.baseUrl();
+      const vuelta = `${base}/p/${encodeURIComponent(quien.token)}?pago=${encodeURIComponent(intencion.referencia)}`;
+      const margenMs = 5 * 6e4;
+      const vivo = intencion.linkUrl && intencion.linkVenceEn && new Date(intencion.linkVenceEn).getTime() > Date.now() + margenMs;
+      let urlPago = intencion.linkUrl;
+      let venceEn = intencion.linkVenceEn;
+      if (!vivo) {
+        let link;
+        try {
+          link = await deps.crearLinkPago({
+            referencia: intencion.referencia,
+            montoCOP: intencion.monto,
+            descripcion: `${seleccion.concepto} \u2014 ${deps.nombreBonito(quien.registro.nombre)}`,
+            callbackUrl: vuelta,
+            validoHoras: HORAS_LINK_PAGO
+          });
+        } catch (err) {
+          console.error("[portal-pago] Bold no entreg\xF3 link para", intencion.referencia, err);
+          return res.status(503).json({
+            error: "El pago en l\xEDnea no est\xE1 disponible ahora mismo. Escr\xEDbenos por WhatsApp."
+          });
+        }
+        urlPago = link.url;
+        venceEn = link.venceEn;
+        await db2.collection(COL_PAGOS_CUOTA).updateOne(
+          { referencia: intencion.referencia },
+          { $set: { linkId: link.id, linkUrl: link.url, linkVenceEn: link.venceEn } }
+        );
+      }
+      return res.json({
+        url: urlPago,
+        referencia: intencion.referencia,
+        monto: intencion.monto,
+        venceEn
+      });
+    } catch (error) {
+      console.error("[portal] Error preparando el pago:", error);
+      return res.status(500).json({ error: "No se pudo abrir el pago. Int\xE9ntalo otra vez." });
+    }
+  });
+  app2.post("/api/portal/:token/comprobante", deps.limitador, async (req, res) => {
+    try {
+      const quien = await identificar(deps, req.params.token);
+      if ("error" in quien) return res.status(quien.status).json({ error: quien.error });
+      const cuota = cuotaEnJuego(quien.registro);
+      if (!cuota) return res.status(409).json({ error: "No tienes cuotas pendientes." });
+      const { image, filename } = req.body || {};
+      if (!image || typeof image !== "string") {
+        return res.status(400).json({ error: "No lleg\xF3 la imagen. Vuelve a elegir la captura." });
+      }
+      const parsed = deps.parsearImagen(image);
+      if (!parsed) return res.status(400).json({ error: "El archivo no parece ser una imagen." });
+      if (parsed.buffer.length > deps.maxBytesComprobante) {
+        return res.status(413).json({
+          error: `La imagen pesa ${Math.round(parsed.buffer.length / 1024)} KB y el m\xE1ximo son ${Math.round(
+            deps.maxBytesComprobante / 1024
+          )} KB. Prueba con una captura de pantalla en vez de una foto.`
+        });
+      }
+      const db2 = deps.getDb();
+      if (cuota.comprobante?.mediaId) {
+        return res.status(409).json({
+          error: "Ya tenemos una captura de esta cuota. Si te equivocaste, escr\xEDbenos y la cambiamos."
+        });
+      }
+      const mediaId = `comprobante-${(0, import_crypto25.randomBytes)(16).toString("hex")}`;
+      await db2.collection("media").insertOne({
+        mediaId,
+        mime: parsed.mime,
+        data: parsed.buffer,
+        folder: "comprobantes",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      const cuotas = quien.registro.cuotas || [];
+      const idx = cuotas.findIndex((c) => Number(c?.number) === Number(cuota.number));
+      cuotas[idx].comprobante = {
+        mediaId,
+        mime: parsed.mime,
+        bytes: parsed.buffer.length,
+        nombreArchivo: String(filename || "comprobante.jpg").slice(0, 120),
+        subidoEn: (/* @__PURE__ */ new Date()).toISOString(),
+        /**
+         * Queda escrito que lo subió el cliente y no el mostrador. Importa: una
+         * captura que trajo el cliente sin que nadie la contrastara con el banco
+         * no vale lo mismo que una que el dueño ya verificó, y la cuota sigue
+         * SIN marcarse pagada hasta que una persona lo haga.
+         */
+        subidoPor: "cliente (portal)"
+      };
+      await db2.collection(COL_FINANCING2).updateOne({ id: quien.registro.id }, { $set: { cuotas } });
+      console.log(
+        `[portal] ${quien.registro.nombre} subi\xF3 comprobante de la cuota #${cuota.number} desde el portal.`
+      );
+      deps.emitir("financingUpdated", { id: quien.registro.id, motivo: "comprobante-portal" });
+      await deps.avisarAlDueno(
+        `\u{1F4CE} *${deps.nombreBonito(quien.registro.nombre)}* subi\xF3 el comprobante de su cuota #${cuota.number} (${pesos3(Number(quien.registro.valorCuota || 0))}) desde el portal. Falta verificarlo y marcar la cuota en el panel.`
+      );
+      return res.json({
+        ok: true,
+        mensaje: "Listo, ya nos lleg\xF3. Lo revisamos y te registramos la cuota."
+      });
+    } catch (error) {
+      console.error("[portal] Error guardando el comprobante del cliente:", error);
+      return res.status(500).json({ error: "No se pudo guardar la captura. Int\xE9ntalo otra vez." });
+    }
+  });
+  app2.post("/api/portal/:token/plazo", deps.limitador, async (req, res) => {
+    try {
+      const quien = await identificar(deps, req.params.token);
+      if ("error" in quien) return res.status(quien.status).json({ error: quien.error });
+      const { registro } = quien;
+      const hoy = deps.hoy();
+      const cuota = cuotaEnJuego(registro);
+      if (!cuota) return res.status(409).json({ error: "No tienes cuotas pendientes." });
+      if (solicitudPendienteDe(registro)) {
+        return res.status(409).json({
+          error: "Ya tienes una solicitud pendiente. Te avisamos en cuanto la revisemos."
+        });
+      }
+      const revision = validarProrroga(req.body?.hasta, cuota, hoy);
+      if ("error" in revision) return res.status(400).json({ error: revision.error });
+      const motivo = String(req.body?.motivo || "").trim().slice(0, 300);
+      const solicitud = {
+        id: nuevaSolicitudId(),
+        cuotaNumber: Number(cuota.number),
+        hasta: revision.hasta,
+        motivo,
+        pedidaEn: (/* @__PURE__ */ new Date()).toISOString(),
+        estado: "pendiente"
+      };
+      const db2 = deps.getDb();
+      await db2.collection(COL_FINANCING2).updateOne(
+        { id: registro.id },
+        { $push: { solicitudesPlazo: solicitud } }
+      );
+      const reglas = await leerReglas(deps);
+      const veredicto = decidirPlazoAutomatico(reglas, registro, revision.hasta, hoy);
+      if (veredicto.auto) {
+        const cuotas = registro.cuotas || [];
+        const idx = cuotas.findIndex((c) => Number(c?.number) === Number(cuota.number));
+        cuotas[idx].prorroga = {
+          hasta: revision.hasta,
+          otorgadaEn: (/* @__PURE__ */ new Date()).toISOString(),
+          otorgadaPor: "portal (autom\xE1tico)",
+          fechaOriginal: String(cuotas[idx].dueDate).slice(0, 10),
+          ...motivo ? { motivo } : {}
+        };
+        await db2.collection(COL_FINANCING2).updateOne(
+          { id: registro.id },
+          {
+            $set: {
+              cuotas,
+              prorrogasOtorgadas: Number(registro.prorrogasOtorgadas || 0) + 1
+            }
+          }
+        );
+        await marcarSolicitud(deps, registro.id, solicitud.id, "automatica", "portal");
+        const equipo = await deps.alOtorgarProrroga(registro.id, revision.hasta, Number(cuota.number));
+        deps.emitir("financingUpdated", { id: registro.id, motivo: "plazo-automatico" });
+        await deps.avisarAlDueno(
+          `\u23F3 Plazo *autom\xE1tico* concedido a *${deps.nombreBonito(registro.nombre)}*: cuota #${cuota.number} hasta el ${fechaLarga(revision.hasta)}.${motivo ? ` Dijo: "${motivo}".` : ""}${equipo.liberado ? " El equipo qued\xF3 desbloqueado." : ""}`
+        );
+        console.log(
+          `[portal] Plazo autom\xE1tico para ${registro.nombre} cuota #${cuota.number} hasta ${revision.hasta}.`
+        );
+        return res.json({
+          ok: true,
+          automatico: true,
+          mensaje: `Listo. Tienes plazo hasta el ${fechaLarga(revision.hasta)}.`
+        });
+      }
+      deps.emitir("solicitudPlazo", {
+        financingId: registro.id,
+        cliente: registro.nombre,
+        cuotaNumber: solicitud.cuotaNumber,
+        hasta: solicitud.hasta
+      });
+      await deps.avisarAlDueno(
+        `\u23F3 *${deps.nombreBonito(registro.nombre)}* pide plazo para su cuota #${cuota.number} (${pesos3(Number(registro.valorCuota || 0))}) hasta el *${fechaLarga(revision.hasta)}*.
+${motivo ? `Dice: "${motivo}"
+` : ""}Sin conceder: ${veredicto.motivo}.
+Plazos que ya se le dieron: ${Number(registro.prorrogasOtorgadas || 0)}.
+
+Apru\xE9balo o rech\xE1zalo en Financiamiento \u2192 Pr\xF3rroga.`
+      );
+      console.log(
+        `[portal] ${registro.nombre} pide plazo hasta ${revision.hasta} (cuota #${cuota.number}). No autom\xE1tico: ${veredicto.motivo}.`
+      );
+      return res.json({
+        ok: true,
+        automatico: false,
+        mensaje: "Tu solicitud qued\xF3 registrada. Te avisamos por WhatsApp en cuanto la revisemos."
+      });
+    } catch (error) {
+      console.error("[portal] Error registrando la solicitud de plazo:", error);
+      return res.status(500).json({ error: "No se pudo registrar tu solicitud. Int\xE9ntalo otra vez." });
+    }
+  });
+  app2.get("/api/portal-admin/link/:id", async (req, res) => {
+    try {
+      const db2 = deps.getDb();
+      const registro = await db2.collection(COL_FINANCING2).findOne({ id: req.params.id });
+      if (!registro) return res.status(404).json({ error: "Financiamiento no encontrado" });
+      const url = linkPortal(deps.baseUrl(), deps.secreto(), registro);
+      if (!url) return res.status(500).json({ error: "No se pudo generar el link del portal." });
+      return res.json({ url, version: Number(registro.portalVersion || 0) });
+    } catch (error) {
+      console.error("[portal] Error generando el link:", error);
+      return res.status(500).json({ error: "No se pudo generar el link." });
+    }
+  });
+  app2.post("/api/portal-admin/link/:id/rotar", async (req, res) => {
+    try {
+      const db2 = deps.getDb();
+      const registro = await db2.collection(COL_FINANCING2).findOne({ id: req.params.id });
+      if (!registro) return res.status(404).json({ error: "Financiamiento no encontrado" });
+      const version4 = Number(registro.portalVersion || 0) + 1;
+      await db2.collection(COL_FINANCING2).updateOne({ id: req.params.id }, { $set: { portalVersion: version4 } });
+      const url = linkPortal(deps.baseUrl(), deps.secreto(), { ...registro, portalVersion: version4 });
+      console.log(`[portal] Link rotado para ${registro.nombre} (versi\xF3n ${version4}).`);
+      return res.json({ url, version: version4 });
+    } catch (error) {
+      console.error("[portal] Error rotando el link:", error);
+      return res.status(500).json({ error: "No se pudo rotar el link." });
+    }
+  });
+  app2.get("/api/portal-admin/solicitudes", async (_req, res) => {
+    try {
+      const db2 = deps.getDb();
+      const registros = await db2.collection(COL_FINANCING2).find({ "solicitudesPlazo.estado": "pendiente" }).toArray();
+      const pendientes = registros.map((r) => {
+        const s = solicitudPendienteDe(r);
+        if (!s) return null;
+        return {
+          financingId: r.id,
+          cliente: r.nombre,
+          telefono: r.telefono,
+          valorCuota: r.valorCuota,
+          plazosPrevios: Number(r.prorrogasOtorgadas || 0),
+          ...s,
+          hastaLargo: fechaLarga(s.hasta)
+        };
+      }).filter(Boolean).sort((a, b) => String(a.pedidaEn).localeCompare(String(b.pedidaEn)));
+      return res.json(pendientes);
+    } catch (error) {
+      console.error("[portal] Error listando solicitudes:", error);
+      return res.status(500).json({ error: "No se pudieron cargar las solicitudes." });
+    }
+  });
+  app2.post("/api/portal-admin/solicitudes/:id/rechazar", async (req, res) => {
+    try {
+      const solicitudId = String(req.params.id || "");
+      const db2 = deps.getDb();
+      const registro = await db2.collection(COL_FINANCING2).findOne({ "solicitudesPlazo.id": solicitudId });
+      if (!registro) return res.status(404).json({ error: "Solicitud no encontrada" });
+      const solicitud = solicitudesDe(registro).find((s) => s.id === solicitudId);
+      if (!solicitud || solicitud.estado !== "pendiente") {
+        return res.status(409).json({ error: "Esa solicitud ya estaba resuelta." });
+      }
+      await marcarSolicitud(
+        deps,
+        registro.id,
+        solicitudId,
+        "rechazada",
+        req.sesion?.usuario || "admin"
+      );
+      const nota = String(req.body?.nota || "").trim().slice(0, 300);
+      await enviarAlCliente(
+        deps,
+        registro,
+        `\u23F3 *Sobre tu solicitud de plazo*
+
+Hola *${deps.nombreBonito(registro.nombre)}*, revisamos tu solicitud para la cuota #${solicitud.cuotaNumber} y por ahora no podemos darte plazo hasta el ${fechaLarga(
+          solicitud.hasta
+        )}.${nota ? `
+
+${nota}` : ""}
+
+Escr\xEDbenos al 302 287 5280 y buscamos una soluci\xF3n juntos.
+
+_CREDILOCK \u2014 Sistema de financiamiento_`
+      );
+      console.log(`[portal] Solicitud ${solicitudId} de ${registro.nombre} rechazada.`);
+      deps.emitir("financingUpdated", { id: registro.id, motivo: "solicitud-rechazada" });
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error("[portal] Error rechazando la solicitud:", error);
+      return res.status(500).json({ error: "No se pudo rechazar la solicitud." });
+    }
+  });
+  app2.get("/api/portal-admin/reglas", async (_req, res) => {
+    return res.json(await leerReglas(deps));
+  });
+  app2.put("/api/portal-admin/reglas", async (req, res) => {
+    try {
+      const reglas = normalizarReglasPlazo(req.body);
+      const db2 = deps.getDb();
+      await db2.collection(COL_SETTINGS).updateOne(
+        { key: CLAVE_REGLAS },
+        { $set: { key: CLAVE_REGLAS, value: reglas, actualizadoEn: (/* @__PURE__ */ new Date()).toISOString() } },
+        { upsert: true }
+      );
+      console.log(
+        `[portal] Plazo autom\xE1tico ${reglas.activo ? "ACTIVADO" : "desactivado"} (m\xE1x ${reglas.maxDias} d\xEDas, ${reglas.maxPorContrato} por contrato).`
+      );
+      return res.json(reglas);
+    } catch (error) {
+      console.error("[portal] Error guardando las reglas:", error);
+      return res.status(500).json({ error: "No se pudieron guardar las reglas." });
+    }
+  });
+  app2.get("/api/portal-admin/pagos", async (req, res) => {
+    try {
+      const db2 = deps.getDb();
+      const filtro = {};
+      if (req.query.financingId) filtro.financingId = String(req.query.financingId);
+      if (req.query.estado) filtro.estado = String(req.query.estado);
+      const pagos = await db2.collection(COL_PAGOS_CUOTA).find(filtro).sort({ creadoEn: -1 }).limit(300).toArray();
+      return res.json(pagos);
+    } catch (error) {
+      console.error("[portal] Error listando pagos en l\xEDnea:", error);
+      return res.status(500).json({ error: "No se pudieron cargar los pagos." });
+    }
+  });
+}
+async function marcarSolicitud(deps, financingId, solicitudId, estado, porQuien) {
+  try {
+    const db2 = deps.getDb();
+    if (!db2) return;
+    await db2.collection(COL_FINANCING2).updateOne(
+      { id: financingId, "solicitudesPlazo.id": solicitudId },
+      {
+        $set: {
+          "solicitudesPlazo.$.estado": estado,
+          "solicitudesPlazo.$.resueltaEn": (/* @__PURE__ */ new Date()).toISOString(),
+          "solicitudesPlazo.$.resueltaPor": porQuien
+        }
+      }
+    );
+  } catch (err) {
+    console.error("[portal] No se pudo marcar la solicitud:", err);
+  }
+}
+async function cerrarSolicitudAlConceder(deps, registro, cuotaNumber, porQuien) {
+  const pendiente = solicitudesDe(registro).find(
+    (s) => s.estado === "pendiente" && Number(s.cuotaNumber) === Number(cuotaNumber)
+  );
+  if (!pendiente) return;
+  await marcarSolicitud(deps, registro.id, pendiente.id, "concedida", porQuien);
+}
+
+// server/bold-link.ts
+var BOLD_API_LINKS = "https://integrations.api.bold.co";
+var BOLD_API_PAGOS = "https://payments.api.bold.co";
+var METODOS_CUOTA = ["PSE", "NEQUI", "BOTON_BANCOLOMBIA"];
+function clienteHttp(cfg) {
+  return cfg.fetchImpl ?? globalThis.fetch;
+}
+async function pedir(cfg, url, init) {
+  const fetchFn = clienteHttp(cfg);
+  if (typeof fetchFn !== "function") {
+    throw new Error("No hay fetch disponible en este entorno.");
+  }
+  const control = new AbortController();
+  const corte = setTimeout(() => control.abort(), cfg.timeoutMs ?? 15e3);
+  try {
+    const r = await fetchFn(url, { ...init, signal: control.signal });
+    const texto = await r.text();
+    let cuerpo = null;
+    try {
+      cuerpo = texto ? JSON.parse(texto) : null;
+    } catch {
+      cuerpo = { _crudo: texto.slice(0, 500) };
+    }
+    return { status: r.status, cuerpo };
+  } finally {
+    clearTimeout(corte);
+  }
+}
+function cabeceras(cfg) {
+  return {
+    Authorization: `x-api-key ${cfg.apiKey}`,
+    "Content-Type": "application/json"
+  };
+}
+function primerError(cuerpo) {
+  const lista = cuerpo?.errors;
+  if (Array.isArray(lista) && lista.length) {
+    const m = lista[0]?.message ?? lista[0];
+    return typeof m === "string" ? m : JSON.stringify(m);
+  }
+  return "";
+}
+function aNanosegundos(fecha) {
+  return Math.round(fecha.getTime()) * 1e6;
+}
+async function crearLinkDePago(cfg, o) {
+  const monto = Math.round(Number(o.montoCOP));
+  if (!Number.isFinite(monto) || monto <= 0) {
+    throw new Error(`Monto inv\xE1lido para el link de pago: ${o.montoCOP}`);
+  }
+  const horas = o.validoHoras && o.validoHoras > 0 ? o.validoHoras : 48;
+  const vence = new Date(Date.now() + horas * 36e5);
+  const cuerpoPeticion = {
+    amount_type: "CLOSE",
+    amount: { currency: "COP", total_amount: monto },
+    reference: o.referencia,
+    description: o.descripcion.slice(0, 100),
+    payment_methods: [...o.metodos ?? METODOS_CUOTA],
+    expiration_date: aNanosegundos(vence),
+    ...o.callbackUrl ? { callback_url: o.callbackUrl } : {}
+  };
+  const { status, cuerpo } = await pedir(cfg, `${BOLD_API_LINKS}/online/link/v1`, {
+    method: "POST",
+    headers: cabeceras(cfg),
+    body: JSON.stringify(cuerpoPeticion)
+  });
+  const url = cuerpo?.payload?.url;
+  const id = cuerpo?.payload?.payment_link;
+  if (status !== 200 || !url || !id) {
+    const detalle = primerError(cuerpo) || `HTTP ${status}`;
+    throw new Error(`Bold no cre\xF3 el link de pago: ${detalle}`);
+  }
+  return { id: String(id), url: String(url), venceEn: vence.toISOString() };
+}
+function traducirEstado(valor) {
+  const s = String(valor ?? "").trim().toUpperCase();
+  if (s === "APPROVED") return "aprobada";
+  if (s === "REJECTED" || s === "FAILED" || s === "VOIDED") return "rechazada";
+  if (s === "PROCESSING" || s === "PENDING") return "en_proceso";
+  if (s === "NO_TRANSACTION_FOUND") return "sin_datos";
+  return "error";
+}
+async function consultarTransaccion(cfg, referencia) {
+  const ref = String(referencia || "").trim();
+  if (!ref) return { estado: "error" };
+  let status;
+  let cuerpo;
+  try {
+    ({ status, cuerpo } = await pedir(
+      cfg,
+      `${BOLD_API_PAGOS}/v2/payment-voucher/${encodeURIComponent(ref)}`,
+      { method: "GET", headers: cabeceras(cfg) }
+    ));
+  } catch (err) {
+    return { estado: "error", crudo: String(err?.message || err) };
+  }
+  if (status === 404) return { estado: "sin_datos", crudo: cuerpo };
+  if (status !== 200) return { estado: "error", crudo: cuerpo };
+  const p = cuerpo?.payload ?? cuerpo;
+  return {
+    estado: traducirEstado(p?.payment_status),
+    paymentId: p?.transaction_id ? String(p.transaction_id) : void 0,
+    metodo: p?.payment_method ? String(p.payment_method) : void 0,
+    total: Number.isFinite(Number(p?.total)) ? Number(p.total) : void 0,
+    crudo: cuerpo
+  };
+}
+function pagoConfirmado(t, montoEsperado) {
+  if (t.estado !== "aprobada") return false;
+  if (t.total === void 0) return true;
+  return Math.round(t.total) === Math.round(montoEsperado);
+}
+
+// server/conciliador.ts
+var COL_PAGOS_CUOTA2 = "pagos_cuota";
+var COL_ORDERS = "orders";
+var MINUTOS_DE_GRACIA = 4;
+var HORAS_VENTANA = 24;
+var MAX_POR_VUELTA = 40;
+function vacio() {
+  return { revisadas: 0, rescatadas: 0, rechazadas: 0, sinDatos: 0, errores: 0 };
+}
+function sumar(a, b) {
+  return {
+    revisadas: a.revisadas + b.revisadas,
+    rescatadas: a.rescatadas + b.rescatadas,
+    rechazadas: a.rechazadas + b.rechazadas,
+    sinDatos: a.sinDatos + b.sinDatos,
+    errores: a.errores + b.errores
+  };
+}
+function pesos4(valor) {
+  return `$${Math.round(Number(valor) || 0).toLocaleString("es-CO")}`;
+}
+async function conciliarCuotas(deps, cfg, ahora) {
+  const r = vacio();
+  const db2 = deps.getDb();
+  if (!db2) return r;
+  const desde = new Date(ahora.getTime() - HORAS_VENTANA * 36e5).toISOString();
+  const hasta = new Date(ahora.getTime() - MINUTOS_DE_GRACIA * 6e4).toISOString();
+  const pendientes = await db2.collection(COL_PAGOS_CUOTA2).find({ estado: "pendiente", creadoEn: { $gte: desde, $lte: hasta } }).limit(MAX_POR_VUELTA).toArray();
+  for (const intencion of pendientes) {
+    r.revisadas++;
+    let t;
+    try {
+      t = await consultarTransaccion(cfg, intencion.referencia);
+    } catch (err) {
+      r.errores++;
+      console.error("[conciliador] Fall\xF3 la consulta de", intencion.referencia, err);
+      continue;
+    }
+    if (t.estado === "aprobada") {
+      if (!pagoConfirmado(t, intencion.monto)) {
+        r.errores++;
+        console.error(
+          `[conciliador] ${intencion.referencia} aprobada por ${pesos4(t.total ?? 0)} pero la intenci\xF3n era de ${pesos4(intencion.monto)}. No se aplica.`
+        );
+        await deps.avisarAlDueno(
+          `\u26A0\uFE0F Pago con importe que no cuadra
+
+Referencia: ${intencion.referencia}
+Esperado: ${pesos4(intencion.monto)}
+Pagado: ${pesos4(t.total ?? 0)}
+
+No se aplic\xF3 ni se desbloque\xF3 nada. Rev\xEDsalo a mano.`
+        );
+        continue;
+      }
+      try {
+        await deps.confirmarCuotas(intencion.referencia, {
+          paymentId: t.paymentId,
+          metodo: t.metodo
+        });
+      } catch (err) {
+        r.errores++;
+        console.error("[conciliador] No se pudo aplicar", intencion.referencia, err);
+        continue;
+      }
+      r.rescatadas++;
+      console.log(`[conciliador] Rescatado el pago ${intencion.referencia} (${pesos4(intencion.monto)}).`);
+      try {
+        await deps.avisarAlDueno(
+          `\u{1F514} Un pago entr\xF3 por el conciliador, no por el webhook
+
+Referencia: ${intencion.referencia}
+Monto: ${pesos4(intencion.monto)}
+Cliente: ${intencion.cliente || "\u2014"}
+
+El pago ya qued\xF3 aplicado y el equipo desbloqueado. Pero que haga falta el conciliador significa que el webhook de Bold no est\xE1 llegando: revisa que est\xE9 registrado en el panel de Bold.`
+        );
+      } catch (err) {
+        console.error("[conciliador] Rescate aplicado, pero el aviso fall\xF3:", err);
+      }
+      continue;
+    }
+    if (t.estado === "rechazada") {
+      await db2.collection(COL_PAGOS_CUOTA2).updateOne(
+        { referencia: intencion.referencia, estado: "pendiente" },
+        { $set: { estado: "rechazado", cerradoEn: ahora.toISOString(), cerradoPor: "conciliador" } }
+      );
+      r.rechazadas++;
+      continue;
+    }
+    if (t.estado === "sin_datos") r.sinDatos++;
+    else if (t.estado === "error") r.errores++;
+  }
+  return r;
+}
+async function conciliarPedidos(deps, cfg, ahora) {
+  const r = vacio();
+  const db2 = deps.getDb();
+  if (!db2) return r;
+  const desde = new Date(ahora.getTime() - HORAS_VENTANA * 36e5).toISOString();
+  const hasta = new Date(ahora.getTime() - MINUTOS_DE_GRACIA * 6e4).toISOString();
+  const pendientes = await db2.collection(COL_ORDERS).find({ status: "pending_bold", createdAt: { $gte: desde, $lte: hasta } }).limit(MAX_POR_VUELTA).toArray();
+  for (const pedido of pendientes) {
+    r.revisadas++;
+    let t;
+    try {
+      t = await consultarTransaccion(cfg, pedido.orderNumber);
+    } catch (err) {
+      r.errores++;
+      console.error("[conciliador] Fall\xF3 la consulta del pedido", pedido.orderNumber, err);
+      continue;
+    }
+    if (t.estado !== "aprobada") {
+      if (t.estado === "sin_datos") r.sinDatos++;
+      else if (t.estado === "error") r.errores++;
+      else if (t.estado === "rechazada") r.rechazadas++;
+      continue;
+    }
+    if (!pagoConfirmado(t, pedido.total)) {
+      r.errores++;
+      console.error(
+        `[conciliador] Pedido ${pedido.orderNumber} aprobado por ${pesos4(t.total ?? 0)} y el pedido es de ${pesos4(pedido.total)}. No se aplica.`
+      );
+      continue;
+    }
+    try {
+      await deps.confirmarPedido(pedido, `BOLD (${t.metodo || "en l\xEDnea"})`);
+    } catch (err) {
+      r.errores++;
+      console.error("[conciliador] No se pudo aplicar el pedido", pedido.orderNumber, err);
+      continue;
+    }
+    r.rescatadas++;
+    console.log(`[conciliador] Rescatado el pedido ${pedido.orderNumber} (${pesos4(pedido.total)}).`);
+    try {
+      await deps.avisarAlDueno(
+        `\u{1F514} Pedido pagado que el webhook no report\xF3
+
+Pedido: ${pedido.orderNumber}
+Monto: ${pesos4(pedido.total)}
+
+Ya qued\xF3 marcado como pagado. Revisa que el webhook de Bold est\xE9 registrado en el panel.`
+      );
+    } catch (err) {
+      console.error("[conciliador] Rescate aplicado, pero el aviso fall\xF3:", err);
+    }
+  }
+  return r;
+}
+async function conciliarPagos(deps) {
+  const cfg = deps.bold();
+  if (!cfg?.apiKey) return vacio();
+  const ahora = deps.ahora?.() ?? /* @__PURE__ */ new Date();
+  let total = vacio();
+  try {
+    total = sumar(total, await conciliarCuotas(deps, cfg, ahora));
+  } catch (err) {
+    console.error("[conciliador] Error conciliando cuotas:", err);
+  }
+  try {
+    total = sumar(total, await conciliarPedidos(deps, cfg, ahora));
+  } catch (err) {
+    console.error("[conciliador] Error conciliando pedidos:", err);
+  }
+  if (total.revisadas) {
+    console.log(
+      `[conciliador] Revisadas ${total.revisadas} \xB7 rescatadas ${total.rescatadas} \xB7 rechazadas ${total.rechazadas} \xB7 sin datos ${total.sinDatos} \xB7 errores ${total.errores}`
+    );
+  }
+  return total;
+}
+
+// server/recordatorios.ts
+var DIAS_DE_ANTICIPO = [7, 3];
+function tipoDeAviso(diasVencido) {
+  if (!Number.isFinite(diasVencido)) return null;
+  if (diasVencido >= 1) return "mora";
+  if (diasVencido === 0) return "hoy";
+  if (diasVencido === -1) return "previo";
+  if (DIAS_DE_ANTICIPO.includes(-diasVencido)) return "anticipo";
+  return null;
+}
+function diasQueFaltan(diasVencido) {
+  return diasVencido < 0 ? -diasVencido : 0;
+}
+
+// server/index.ts
 import_dns.default.setDefaultResultOrder("ipv4first");
 import_dotenv.default.config();
+var ORIGENES_PERMITIDOS = /* @__PURE__ */ new Set([
+  "https://xiaomicartagena.com",
+  "https://www.xiaomicartagena.com",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  ...(process.env.ORIGENES_EXTRA || "").split(",").map((o) => o.trim()).filter(Boolean)
+]);
+var BASE_PUBLICA = (() => {
+  const explicita = (process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (explicita) return explicita;
+  const railway = (process.env.RAILWAY_PUBLIC_DOMAIN || "").trim();
+  if (railway) return `https://${railway}`;
+  return `http://localhost:${process.env.PORT || 3001}`;
+})();
+var PORTAL_DOMINIO_CORTO = (() => {
+  const explicito = (process.env.PORTAL_DOMINIO_CORTO || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return explicito || BASE_PUBLICA.replace(/^https?:\/\//i, "");
+})();
+var secretoPortal = "";
+function esOrigenPermitido(origin) {
+  if (!origin) return true;
+  return ORIGENES_PERMITIDOS.has(origin);
+}
 var app = (0, import_express.default)();
 var httpServer = (0, import_http.createServer)(app);
 var io2 = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: (origin, cb) => cb(null, esOrigenPermitido(origin || void 0)),
     methods: ["GET", "POST"]
   }
 });
@@ -299059,8 +302595,19 @@ async function connectDB() {
     await setupIndexes();
     await seedData();
     await fixCorruptedCuotas();
+    try {
+      secretoPortal = await asegurarSecretoPortal(db);
+    } catch (err) {
+      console.error("[portal] No se pudo resolver el secreto del portal:", err);
+    }
     console.log("[server] MongoDB ready");
     whatsappService.init(db, io2).catch((err) => console.error("[WA] Error en init:", err));
+    credilockService.tieneCredenciales(db).then((emparejada) => {
+      if (emparejada) {
+        return credilockService.init(db, io2);
+      }
+      console.warn("[CREDILOCK-WA] \u26A0\uFE0F Sin sesi\xF3n emparejada. Los recordatorios de cuotas NO se enviar\xE1n hasta que se escanee el QR en Admin \u2192 Financiamiento.");
+    }).catch((err) => console.error("[CREDILOCK-WA] Error en init:", err));
   } catch (error) {
     console.error("MongoDB connection error:", error);
     db = void 0;
@@ -299072,6 +302619,7 @@ async function connectDB() {
 async function setupIndexes() {
   await db.collection("products").createIndex({ id: 1 }, { unique: true });
   await db.collection("orders").createIndex({ createdAt: -1 });
+  await asegurarIndiceCodigo(db);
 }
 var initialProducts = [
   {
@@ -299262,8 +302810,8 @@ async function seedData() {
     console.log("Banners seeded");
   }
 }
-async function useMongoAuthState(dbRef, logger) {
-  const col = dbRef.collection("whatsappAuth");
+async function useMongoAuthState(dbRef, logger, coleccion) {
+  const col = dbRef.collection(coleccion);
   const write2 = async (data, id) => {
     const value = JSON.stringify(data, BufferJSON.replacer);
     await col.replaceOne({ _id: id }, { _id: id, value }, { upsert: true });
@@ -299315,29 +302863,120 @@ async function useMongoAuthState(dbRef, logger) {
     saveCreds: () => write2(creds, "creds")
   };
 }
-var WhatsAppService = class {
+function credencialesEmparejadas(creds) {
+  return Boolean(creds?.me?.id || creds?.account);
+}
+function normalizarTelefonoCo(phone) {
+  const sinAdornos = String(phone ?? "").replace(/[\s\-\+\(\)\.]/g, "");
+  for (let trozo of sinAdornos.split(/\D+/).filter(Boolean)) {
+    if (trozo.startsWith("0")) trozo = trozo.slice(1);
+    if (trozo.length === 12 && trozo.startsWith("57")) return trozo;
+    if (trozo.length === 10 && trozo.startsWith("3")) return "57" + trozo;
+  }
+  return null;
+}
+var WhatsAppService = class _WhatsAppService {
   sock = null;
   status = "disconnected";
   qrDataUrl = null;
   ioRef = null;
   dbRef = null;
   reconnecting = false;
+  fatalRetries = 0;
+  /** Número emparejado, en formato '57XXXXXXXXXX'. Null mientras no haya sesión. */
+  numero = null;
+  cfg;
+  /**
+   * Temporizador de reconexión pendiente.
+   *
+   * Lo guardamos para poder CANCELARLO en disconnect(). Antes no se guardaba, así
+   * que al desconectar quedaba un setTimeout en vuelo que volvía a llamar a
+   * _connect() unos segundos después: la sesión «desconectada» revivía sola y
+   * seguía pidiendo QR. disconnect() no era realmente definitivo.
+   */
+  reconnectTimer = null;
+  /**
+   * QRs emitidos desde el último emparejamiento correcto.
+   *
+   * Sirve para cortar el bucle de QR sin escanear: Baileys regenera un QR cada
+   * ~20 s indefinidamente, así que si alguien pulsa Conectar y se marcha, el
+   * servidor se queda pidiendo QR a WhatsApp para siempre desde una IP de centro
+   * de datos. Eso es justo lo que acaba en un rechazo por IP (el estado
+   * 'blocked_' que ya contempla este código). Tras MAX_QR_SIN_ESCANEAR paramos y
+   * dejamos que el admin pulse Conectar otra vez.
+   */
+  qrEmitidos = 0;
+  static MAX_QR_SIN_ESCANEAR = 10;
+  constructor(cfg) {
+    this.cfg = cfg;
+  }
   getStatus() {
     return this.status;
   }
   getQRDataUrl() {
     return this.qrDataUrl;
   }
+  getNumero() {
+    return this.numero;
+  }
+  getConfig() {
+    return this.cfg;
+  }
+  /**
+   * Resumen para /api/health, que NO lleva autenticación.
+   *
+   * A propósito sin el número completo: el de cobranza es un número interno y no
+   * hay por qué publicarlo en un endpoint que cualquiera puede consultar. Para
+   * monitorizar basta con saber si está vivo; los 4 últimos dígitos permiten
+   * confirmar cuál es sin exponerlo entero.
+   */
+  getInfoSalud() {
+    return {
+      id: this.cfg.id,
+      status: this.status,
+      conectado: this.status === "connected",
+      numeroParcial: this.numero ? `***${this.numero.slice(-4)}` : null
+    };
+  }
+  /**
+   * ¿Existen credenciales guardadas para esta sesión?
+   *
+   * Hace falta para el arranque de CREDILOCK: si la sesión nunca se ha emparejado
+   * no queremos levantarla sola, porque Baileys se pondría a regenerar QR cada pocos
+   * segundos contra el servidor de WhatsApp sin que nadie lo vaya a escanear. Mejor
+   * quedarse quieto hasta que el admin pulse Conectar en el panel.
+   */
+  async tieneCredenciales(dbInstance) {
+    try {
+      const doc = await dbInstance.collection(this.cfg.coleccionAuth).findOne({ _id: "creds" });
+      if (!doc?.value) return false;
+      return credencialesEmparejadas(JSON.parse(doc.value, BufferJSON.reviver));
+    } catch {
+      return false;
+    }
+  }
   async init(dbInstance, ioInstance) {
     this.dbRef = dbInstance;
     this.ioRef = ioInstance;
     if (this.reconnecting) return;
+    this.fatalRetries = 0;
+    this.qrEmitidos = 0;
     await this._connect();
+  }
+  /** Programa un reintento, guardando el temporizador para poder cancelarlo. */
+  _reintentarEn(ms) {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnecting = true;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.reconnecting = false;
+      this._connect();
+    }, ms);
   }
   async _connect() {
     try {
       this.status = "loading";
-      this.ioRef?.emit("whatsapp-status", { status: "loading" });
+      this.ioRef?.emit(this.cfg.eventoEstado, { status: "loading" });
       if (this.sock) {
         try {
           this.sock.ev.removeAllListeners();
@@ -299362,67 +303001,111 @@ var WhatsAppService = class {
         },
         child: () => silentLogger
       };
-      const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger);
+      const { state, saveCreds } = await useMongoAuthState(this.dbRef, silentLogger, this.cfg.coleccionAuth);
+      let waVersion;
+      try {
+        const fetchVersion = fetchLatestBaileysVersion.default || fetchLatestBaileysVersion;
+        const { version: version4, isLatest } = await fetchVersion();
+        waVersion = version4;
+        console.log(this.cfg.tagLog, "Versi\xF3n de protocolo WA:", version4.join("."), "| \xFAltima:", isLatest);
+      } catch (e) {
+        console.warn(this.cfg.tagLog, "No se pudo obtener la versi\xF3n m\xE1s reciente, se usa la interna de Baileys:", e?.message);
+      }
       const makeSocket2 = lib_default.default || lib_default;
       this.sock = makeSocket2({
+        ...waVersion ? { version: waVersion } : {},
         auth: { creds: state.creds, keys: state.keys },
         logger: silentLogger,
         printQRInTerminal: false,
-        browser: ["Xiaomi Cartagena", "Chrome", "126.0"],
-        connectTimeoutMs: 3e4
+        browser: ["Ubuntu", "Chrome", "120.0.0.0"],
+        connectTimeoutMs: 6e4,
+        keepAliveIntervalMs: 25e3,
+        generateHighQualityLinkPreview: false,
+        markOnlineOnConnect: false,
+        syncFullHistory: false
       });
       this.sock.ev.on("creds.update", saveCreds);
       this.sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
         if (qr) {
+          this.qrEmitidos++;
+          if (this.qrEmitidos > _WhatsAppService.MAX_QR_SIN_ESCANEAR) {
+            console.warn(this.cfg.tagLog, `\u23F9\uFE0F ${this.qrEmitidos - 1} QR emitidos sin que nadie los escanee. Se detiene el bucle; hay que pulsar Conectar de nuevo.`);
+            this.status = "disconnected";
+            this.qrDataUrl = null;
+            this.ioRef?.emit(this.cfg.eventoEstado, { status: "disconnected", error: "qr_sin_escanear" });
+            if (this.reconnectTimer) {
+              clearTimeout(this.reconnectTimer);
+              this.reconnectTimer = null;
+            }
+            this.reconnecting = false;
+            try {
+              this.sock?.ev.removeAllListeners();
+              if (this.sock?.ws) this.sock.ws.close();
+            } catch {
+            }
+            this.sock = null;
+            return;
+          }
           try {
             const dataUrl = await import_qrcode.default.toDataURL(qr, { margin: 2, width: 280 });
             this.qrDataUrl = dataUrl;
             this.status = "qr_ready";
-            this.ioRef?.emit("whatsapp-qr", { qr: dataUrl });
-            console.log("[WA] QR generado y emitido");
+            this.ioRef?.emit(this.cfg.eventoQR, { qr: dataUrl });
+            console.log(this.cfg.tagLog, `QR generado y emitido (${this.qrEmitidos}/${_WhatsAppService.MAX_QR_SIN_ESCANEAR})`);
           } catch (e) {
-            console.error("[WA] Error generando QR:", e);
+            console.error(this.cfg.tagLog, "Error generando QR:", e);
           }
         }
         if (connection === "open") {
           this.status = "connected";
           this.qrDataUrl = null;
           this.reconnecting = false;
-          this.ioRef?.emit("whatsapp-status", { status: "connected" });
-          console.log("[WA] \u2705 Conectado exitosamente");
+          this.fatalRetries = 0;
+          this.qrEmitidos = 0;
+          this.numero = String(this.sock?.user?.id || "").split(":")[0].split("@")[0] || null;
+          this.ioRef?.emit(this.cfg.eventoEstado, { status: "connected", numero: this.numero });
+          console.log(this.cfg.tagLog, "\u2705 Conectado exitosamente", this.numero ? `como ${this.numero}` : "");
         }
         if (connection === "close") {
           const code = lastDisconnect?.error?.output?.statusCode;
-          const isLogout = code === DisconnectReason.loggedOut;
+          const DEAD_SESSION_CODES = [401, 403, 405, 411, 500];
+          const isDeadSession = DEAD_SESSION_CODES.includes(code);
+          const hadCreds = credencialesEmparejadas(state?.creds);
           this.status = "disconnected";
           this.qrDataUrl = null;
-          this.ioRef?.emit("whatsapp-status", { status: "disconnected" });
-          console.log("[WA] Conexi\xF3n cerrada \u2014 c\xF3digo:", code, "| logout:", isLogout);
-          if (isLogout) {
-            console.log("[WA] \u{1F9F9} Sesi\xF3n caducada o inv\xE1lida. Limpiando credenciales en base de datos...");
+          this.numero = null;
+          this.ioRef?.emit(this.cfg.eventoEstado, { status: "disconnected" });
+          console.log(this.cfg.tagLog, "Conexi\xF3n cerrada \u2014 c\xF3digo:", code, "| sesi\xF3n muerta:", isDeadSession, "| registrada:", hadCreds);
+          if (isDeadSession && hadCreds) {
+            console.log(this.cfg.tagLog, "\u{1F9F9} Sesi\xF3n caducada o inv\xE1lida. Limpiando credenciales en base de datos...");
             try {
-              if (this.dbRef) await this.dbRef.collection("whatsappAuth").deleteMany({});
+              if (this.dbRef) await this.dbRef.collection(this.cfg.coleccionAuth).deleteMany({});
             } catch (err) {
-              console.error("[WA] Error limpiando credenciales:", err);
+              console.error(this.cfg.tagLog, "Error limpiando credenciales:", err);
             }
-          } else {
-            this.reconnecting = true;
-            setTimeout(() => {
-              this.reconnecting = false;
-              this._connect();
-            }, 8e3);
+            this._reintentarEn(5e3);
+            return;
           }
+          if (isDeadSession && !hadCreds) {
+            this.fatalRetries++;
+            if (this.fatalRetries >= 5) {
+              console.error(this.cfg.tagLog + " \u26D4 WhatsApp rechaza la conexi\xF3n (c\xF3digo " + code + ") con credenciales limpias tras " + this.fatalRetries + " intentos. Se detiene el bucle. Causa probable: versi\xF3n de protocolo o IP bloqueada.");
+              this.ioRef?.emit(this.cfg.eventoEstado, { status: "disconnected", error: "blocked_" + code });
+              return;
+            }
+          }
+          this._reintentarEn(8e3);
         }
       });
     } catch (err) {
-      console.error("[WA] Error fatal al inicializar Baileys:", err);
+      console.error(this.cfg.tagLog, "Error fatal al inicializar Baileys:", err);
       try {
         if (this.dbRef) {
-          await this.dbRef.collection("whatsappAuth").deleteMany({});
-          console.log("[WA] \u{1F9F9} Colecci\xF3n whatsappAuth limpiada autom\xE1ticamente por credenciales corruptas.");
+          await this.dbRef.collection(this.cfg.coleccionAuth).deleteMany({});
+          console.log(this.cfg.tagLog, `\u{1F9F9} Colecci\xF3n ${this.cfg.coleccionAuth} limpiada autom\xE1ticamente por credenciales corruptas.`);
         }
       } catch (cleanErr) {
-        console.error("[WA] Error al limpiar colecci\xF3n tras fallo:", cleanErr);
+        console.error(this.cfg.tagLog, "Error al limpiar colecci\xF3n tras fallo:", cleanErr);
       }
       this.status = "disconnected";
     }
@@ -299439,22 +303122,26 @@ var WhatsAppService = class {
       } else {
         await this.sock.sendMessage(jid, { text });
       }
-      console.log("[WA] Mensaje enviado a", phone, imageUrl ? "con imagen" : "");
+      console.log(this.cfg.tagLog, "Mensaje enviado a", phone, imageUrl ? "con imagen" : "");
       return true;
     } catch (err) {
-      console.error("[WA] Error al enviar mensaje:", err);
+      console.error(this.cfg.tagLog, "Error al enviar mensaje:", err);
       return false;
     }
   }
   _formatPhone(phone) {
+    const normalizado = normalizarTelefonoCo(phone);
+    if (normalizado) return normalizado + "@s.whatsapp.net";
     let clean = String(phone).replace(/[\s\-\+\(\)\.]/g, "");
     if (clean.startsWith("0")) clean = clean.slice(1);
     if (clean.length === 10 && !clean.startsWith("57")) clean = "57" + clean;
-    if (clean.length === 12 && clean.startsWith("57")) {
-    }
     return clean + "@s.whatsapp.net";
   }
   async disconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     try {
       if (this.sock) {
         this.sock.ev.removeAllListeners();
@@ -299463,18 +303150,36 @@ var WhatsAppService = class {
         this.sock = null;
       }
       if (this.dbRef) {
-        await this.dbRef.collection("whatsappAuth").deleteMany({});
+        await this.dbRef.collection(this.cfg.coleccionAuth).deleteMany({});
       }
     } catch (e) {
-      console.error("[WA] Error al desconectar:", e);
+      console.error(this.cfg.tagLog, "Error al desconectar:", e);
     }
     this.status = "disconnected";
     this.qrDataUrl = null;
+    this.numero = null;
     this.reconnecting = false;
-    this.ioRef?.emit("whatsapp-status", { status: "disconnected" });
+    this.fatalRetries = 0;
+    this.qrEmitidos = 0;
+    this.ioRef?.emit(this.cfg.eventoEstado, { status: "disconnected" });
   }
 };
-var whatsappService = new WhatsAppService();
+var whatsappService = new WhatsAppService({
+  id: "tienda",
+  etiqueta: "WhatsApp de la tienda",
+  coleccionAuth: "whatsappAuth",
+  tagLog: "[WA]",
+  eventoQR: "whatsapp-qr",
+  eventoEstado: "whatsapp-status"
+});
+var credilockService = new WhatsAppService({
+  id: "credilock",
+  etiqueta: "WhatsApp de CREDILOCK",
+  coleccionAuth: "credilockAuth",
+  tagLog: "[CREDILOCK-WA]",
+  eventoQR: "credilock-qr",
+  eventoEstado: "credilock-status"
+});
 var DEFAULT_CUSTOMER_TEMPLATE = `\u{1F389} *\xA1Pedido Confirmado!* \u2014 Xiaomi Cartagena
 
 Hola *{{nombre}}*, gracias por tu compra. \u{1F9E1}
@@ -299499,7 +303204,7 @@ Hola *{{nombre}}*, gracias por visitarnos en nuestra tienda f\xEDsica. \u{1F9E1}
 \u{1F6CD}\uFE0F *Tu compra:*
 \u2022 {{producto}}
 
-\u{1F4B0} *Total:* ${{ total }} COP
+\u{1F4B0} *Total:* \${{total}} COP
 \u{1F4B3} *M\xE9todo de pago:* {{metodoPago}}
 \u{1F4C4} *Facturado a:* {{cedula}}
 
@@ -299617,30 +303322,27 @@ async function sendWhatsAppNotifications(order) {
     const customerTemplate = config.whatsappCustomerTemplate || DEFAULT_CUSTOMER_TEMPLATE;
     const ownerTemplate = config.whatsappOwnerTemplate || DEFAULT_OWNER_TEMPLATE;
     const customerPhone = order.customerInfo?.phone || "";
-    if (customerPhone) {
-      const msg = processWhatsAppTemplate(customerTemplate, order);
-      console.log(`[WA] Intentando enviar al cliente: ${customerPhone}`);
-      const success = await Promise.race([
-        whatsappService.sendMessage(customerPhone, msg),
-        new Promise((resolve) => setTimeout(() => {
-          console.error("[WA] Timeout al enviar mensaje al cliente");
-          resolve(false);
-        }, 1e4))
-      ]);
-      console.log(`[WA] Resultado env\xEDo cliente: ${success}`);
-      await new Promise((resolve) => setTimeout(resolve, 3e3));
-    }
+    const TIMEOUT_AVISO_MS = 3e4;
     if (ownerPhone) {
       const msg = processWhatsAppTemplate(ownerTemplate, order);
-      console.log(`[WA] Intentando enviar al administrador: ${ownerPhone}`);
+      console.log(`[WA] Enviando al administrador: ${ownerPhone}`);
       const success = await Promise.race([
         whatsappService.sendMessage(ownerPhone, msg),
-        new Promise((resolve) => setTimeout(() => {
-          console.error("[WA] Timeout al enviar mensaje al admin");
-          resolve(false);
-        }, 1e4))
+        new Promise((resolve) => setTimeout(() => resolve(false), TIMEOUT_AVISO_MS))
       ]);
-      console.log(`[WA] Resultado env\xEDo admin: ${success}`);
+      console.log(`[WA] Admin ${ownerPhone}: ${success ? "confirmado" : "despachado SIN confirmar (Baileys lo entregar\xE1)"}`);
+      if (customerPhone) {
+        await new Promise((resolve) => setTimeout(resolve, 3e3));
+      }
+    }
+    if (customerPhone) {
+      const msg = processWhatsAppTemplate(customerTemplate, order);
+      console.log(`[WA] Enviando al cliente: ${customerPhone}`);
+      const success = await Promise.race([
+        whatsappService.sendMessage(customerPhone, msg),
+        new Promise((resolve) => setTimeout(() => resolve(false), TIMEOUT_AVISO_MS))
+      ]);
+      console.log(`[WA] Cliente ${customerPhone}: ${success ? "confirmado" : "despachado SIN confirmar (Baileys lo entregar\xE1)"}`);
     }
   } catch (err) {
     console.error("[WA] Error al enviar notificaciones:", err);
@@ -299981,7 +303683,22 @@ async function sendInvoiceEmail(order) {
     console.error("[server] Error sending invoice email:", error);
   }
 }
-app.use((0, import_cors.default)());
+app.use((0, import_cors.default)({
+  // cb(null, false) simplemente no añade las cabeceras CORS y el navegador
+  // bloquea la respuesta. Devolver un Error aquí daría un 500 y ensuciaría
+  // los logs con algo que no es un fallo del servidor.
+  origin: (origin, cb) => cb(null, esOrigenPermitido(origin)),
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+}));
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 app.use((0, import_compression.default)());
 app.use(import_express.default.json({
   limit: "50mb",
@@ -299994,7 +303711,15 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     dbReady: Boolean(db),
-    uptimeSeconds: Math.round(process.uptime())
+    uptimeSeconds: Math.round(process.uptime()),
+    // Las dos sesiones de WhatsApp van aquí para poder comprobar de un curl si los
+    // recordatorios de CREDILOCK están vivos. La de la tienda cayéndose se nota
+    // enseguida (no salen las confirmaciones de pedido); la de CREDILOCK puede estar
+    // muerta meses sin que nadie lo vea, que es justo lo que pasó.
+    whatsapp: {
+      tienda: whatsappService.getInfoSalud(),
+      credilock: credilockService.getInfoSalud()
+    }
   });
 });
 function requireDb(req, res, next) {
@@ -300005,9 +303730,136 @@ function requireDb(req, res, next) {
   });
 }
 function hashPassword(plain) {
-  return (0, import_crypto23.createHash)("sha256").update(plain).digest("hex");
+  return (0, import_crypto26.createHash)("sha256").update(plain).digest("hex");
 }
+var AUTH_SECRET = (() => {
+  const explicito = (process.env.AUTH_SECRET || "").trim();
+  if (explicito.length >= 32) return explicito;
+  if (explicito) {
+    console.warn("[auth] AUTH_SECRET es demasiado corto (m\xEDnimo 32 caracteres); se ignora.");
+  }
+  if (ADMIN_USER && ADMIN_PASSWORD) {
+    console.warn("[auth] AUTH_SECRET no est\xE1 configurada: se deriva de las credenciales de admin. Define AUTH_SECRET en Railway.");
+    return (0, import_crypto26.createHash)("sha256").update(`${ADMIN_USER}:${ADMIN_PASSWORD}:xiaomictg`).digest("hex");
+  }
+  console.error("[auth] No hay AUTH_SECRET ni credenciales de admin: las sesiones se invalidar\xE1n en cada reinicio.");
+  return (0, import_crypto26.randomBytes)(32).toString("hex");
+})();
+var TOKEN_VIGENCIA_MS = 12 * 60 * 60 * 1e3;
+function base64url2(valor) {
+  return Buffer.from(valor).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function desdeBase64url(valor) {
+  return Buffer.from(valor.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+}
+function firmarToken(usuario, rol) {
+  const cuerpo = { usuario, rol, exp: Date.now() + TOKEN_VIGENCIA_MS };
+  const cuerpoCodificado = base64url2(JSON.stringify(cuerpo));
+  const firma = base64url2((0, import_crypto26.createHmac)("sha256", AUTH_SECRET).update(cuerpoCodificado).digest());
+  return `${cuerpoCodificado}.${firma}`;
+}
+function verificarToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const partes = token.split(".");
+  if (partes.length !== 2) return null;
+  const [cuerpoCodificado, firmaRecibida] = partes;
+  const firmaEsperada = base64url2((0, import_crypto26.createHmac)("sha256", AUTH_SECRET).update(cuerpoCodificado).digest());
+  const bufRecibida = Buffer.from(firmaRecibida, "utf8");
+  const bufEsperada = Buffer.from(firmaEsperada, "utf8");
+  if (bufRecibida.length !== bufEsperada.length) return null;
+  if (!(0, import_crypto26.timingSafeEqual)(bufRecibida, bufEsperada)) return null;
+  try {
+    const cuerpo = JSON.parse(desdeBase64url(cuerpoCodificado).toString("utf8"));
+    if (!cuerpo?.usuario || typeof cuerpo.exp !== "number") return null;
+    if (Date.now() > cuerpo.exp) return null;
+    return cuerpo;
+  } catch {
+    return null;
+  }
+}
+io2.use((socket, next) => {
+  const token = socket.handshake.auth?.token || "";
+  if (verificarToken(String(token))) return next();
+  console.warn(`[socket] Conexi\xF3n rechazada sin sesi\xF3n v\xE1lida (${socket.handshake.address}).`);
+  next(new Error("No autorizado"));
+});
+function igualSeguro(a, b) {
+  const ha = (0, import_crypto26.createHash)("sha256").update(a).digest();
+  const hb = (0, import_crypto26.createHash)("sha256").update(b).digest();
+  return (0, import_crypto26.timingSafeEqual)(ha, hb);
+}
+function hashPasswordScrypt(plain, sal) {
+  const salUsada = sal || (0, import_crypto26.randomBytes)(16).toString("hex");
+  const derivada = (0, import_crypto26.scryptSync)(plain, salUsada, 64).toString("hex");
+  return `scrypt$${salUsada}$${derivada}`;
+}
+function verificarPassword(plain, almacenada) {
+  if (typeof almacenada !== "string" || !almacenada) return false;
+  if (almacenada.startsWith("scrypt$")) {
+    const [, sal, hash2] = almacenada.split("$");
+    if (!sal || !hash2) return false;
+    try {
+      const derivada = (0, import_crypto26.scryptSync)(plain, sal, 64).toString("hex");
+      return igualSeguro(derivada, hash2);
+    } catch {
+      return false;
+    }
+  }
+  if (/^[a-f\d]{64}$/i.test(almacenada)) {
+    return igualSeguro(hashPassword(plain), almacenada);
+  }
+  console.error("[login] El usuario tiene la contrase\xF1a sin cifrar en la base de datos; se rechaza el acceso.");
+  return false;
+}
+var INTENTOS_MAX = 8;
+var VENTANA_INTENTOS_MS = 15 * 60 * 1e3;
+var BLOQUEO_MS = 15 * 60 * 1e3;
+var intentosLogin = /* @__PURE__ */ new Map();
+function ipDe(req) {
+  const reenviada = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return reenviada || req.ip || "desconocida";
+}
+function loginBloqueado(ip) {
+  const registro = intentosLogin.get(ip);
+  if (!registro) return 0;
+  if (registro.bloqueadoHasta > Date.now()) return registro.bloqueadoHasta - Date.now();
+  return 0;
+}
+function anotarFalloLogin(ip) {
+  const ahora = Date.now();
+  const registro = intentosLogin.get(ip);
+  if (!registro || ahora - registro.primero > VENTANA_INTENTOS_MS) {
+    intentosLogin.set(ip, { fallos: 1, primero: ahora, bloqueadoHasta: 0 });
+    return;
+  }
+  registro.fallos += 1;
+  if (registro.fallos >= INTENTOS_MAX) {
+    registro.bloqueadoHasta = ahora + BLOQUEO_MS;
+    registro.fallos = 0;
+    registro.primero = ahora;
+    console.warn(`[login] IP ${ip} bloqueada ${BLOQUEO_MS / 6e4} minutos por intentos fallidos.`);
+  }
+}
+function limpiarIntentos(ip) {
+  intentosLogin.delete(ip);
+}
+setInterval(() => {
+  const ahora = Date.now();
+  for (const [ip, registro] of intentosLogin) {
+    if (registro.bloqueadoHasta < ahora && ahora - registro.primero > VENTANA_INTENTOS_MS) {
+      intentosLogin.delete(ip);
+    }
+  }
+}, 10 * 60 * 1e3).unref();
 app.post("/api/login", async (req, res) => {
+  const ip = ipDe(req);
+  const restante = loginBloqueado(ip);
+  if (restante > 0) {
+    return res.status(429).json({
+      success: false,
+      message: `Demasiados intentos fallidos. Espera ${Math.ceil(restante / 6e4)} minutos.`
+    });
+  }
   const { username, password } = req.body || {};
   if (!username || !password || typeof username !== "string" || typeof password !== "string") {
     return res.status(400).json({ success: false, message: "Usuario y contrase\xF1a requeridos" });
@@ -300015,23 +303867,29 @@ app.post("/api/login", async (req, res) => {
   const user = username.trim();
   const pass = password;
   if (ADMIN_USER && ADMIN_PASSWORD) {
-    if (user === ADMIN_USER.trim() && pass === ADMIN_PASSWORD.trim()) {
-      return res.json({ success: true, token: "admin-token-" + Date.now() });
+    if (igualSeguro(user, ADMIN_USER.trim()) && igualSeguro(pass, ADMIN_PASSWORD.trim())) {
+      limpiarIntentos(ip);
+      return res.json({
+        success: true,
+        token: firmarToken(user, "admin"),
+        user: { username: user, role: "admin" }
+      });
     }
   }
   if (!db) {
+    anotarFalloLogin(ip);
     return res.status(401).json({ success: false, message: "Credenciales incorrectas" });
   }
   try {
-    const hashedPwd = hashPassword(pass);
-    const dbUser = await db.collection("users").findOne({
-      username: user,
-      $or: [{ password: pass }, { password: hashedPwd }]
-    });
-    if (dbUser) {
+    const dbUser = await db.collection("users").findOne({ username: user });
+    if (dbUser && verificarPassword(pass, dbUser.password)) {
+      if (!String(dbUser.password || "").startsWith("scrypt$")) {
+        db.collection("users").updateOne({ _id: dbUser._id }, { $set: { password: hashPasswordScrypt(pass) } }).catch((err) => console.error("[login] No se pudo migrar la contrase\xF1a a scrypt:", err));
+      }
+      limpiarIntentos(ip);
       return res.json({
         success: true,
-        token: "admin-token-" + Date.now(),
+        token: firmarToken(dbUser.username, dbUser.role || "admin"),
         user: { username: dbUser.username, role: dbUser.role || "admin" }
       });
     }
@@ -300039,9 +303897,93 @@ app.post("/api/login", async (req, res) => {
     console.error("[login] Error:", error);
     return res.status(500).json({ success: false, message: "Error del servidor" });
   }
+  anotarFalloLogin(ip);
   return res.status(401).json({ success: false, message: "Credenciales incorrectas" });
 });
+function limitadorPorIp(nombre, maximo, ventanaMs) {
+  const registro = /* @__PURE__ */ new Map();
+  setInterval(() => {
+    const ahora = Date.now();
+    for (const [ip, dato] of registro) {
+      if (ahora - dato.desde > ventanaMs) registro.delete(ip);
+    }
+  }, ventanaMs).unref();
+  return (req, res, next) => {
+    const ip = ipDe(req);
+    const ahora = Date.now();
+    const dato = registro.get(ip);
+    if (!dato || ahora - dato.desde > ventanaMs) {
+      registro.set(ip, { usos: 1, desde: ahora });
+      return next();
+    }
+    dato.usos += 1;
+    if (dato.usos > maximo) {
+      console.warn(`[${nombre}] IP ${ip} ha excedido el l\xEDmite (${dato.usos} en ${Math.round(ventanaMs / 6e4)} min).`);
+      return res.status(429).json({ error: "Demasiadas peticiones", message: "Has hecho demasiadas peticiones. Espera unos minutos." });
+    }
+    return next();
+  };
+}
+var limitarEscrituraPublica = limitadorPorIp("escritura-publica", 20, 10 * 60 * 1e3);
+var RUTAS_PUBLICAS = [
+  { metodo: "GET", patron: /^\/health$/ },
+  { metodo: "POST", patron: /^\/login$/ },
+  // Imágenes de productos y banners servidas desde Mongo.
+  { metodo: "GET", patron: /^\/media\/[^/]+$/ },
+  // Catálogo de la tienda.
+  { metodo: "GET", patron: /^\/products$/ },
+  { metodo: "GET", patron: /^\/products\/[^/]+$/ },
+  { metodo: "GET", patron: /^\/banners$/ },
+  // Reseñas: el cliente las lee y las escribe (quedan pendientes de aprobar).
+  { metodo: "GET", patron: /^\/products\/[^/]+\/reviews$/ },
+  { metodo: "POST", patron: /^\/products\/[^/]+\/reviews$/ },
+  // Avisos de "notifícame cuando haya stock".
+  { metodo: "POST", patron: /^\/stock-alerts$/ },
+  { metodo: "GET", patron: /^\/stock-alerts\/[^/]+\/count$/ },
+  // Pasarela de pago: la página del SDK y el webhook de Bold, que llega desde
+  // los servidores de Bold y se valida con su propia firma HMAC.
+  { metodo: "GET", patron: /^\/bold-checkout$/ },
+  { metodo: "POST", patron: /^\/bold\/webhook$/ },
+  // Portal del cliente. El token firmado que va en la ruta ES la autenticación:
+  // lo verifica cada handler contra el secreto del portal y sólo abre la ficha de
+  // ese contrato. Las tres acciones van listadas una por una, no con un comodín,
+  // para que añadir mañana una ruta bajo /portal/ no la publique sin querer.
+  //
+  // Ojo: /portal-admin/* NO entra aquí y por tanto sigue exigiendo sesión de
+  // administrador. El patrón pide la barra después de "portal" justamente para
+  // que no se cuele.
+  { metodo: "GET", patron: /^\/portal\/[^/]+$/ },
+  { metodo: "POST", patron: /^\/portal\/[^/]+\/pagar$/ },
+  { metodo: "POST", patron: /^\/portal\/[^/]+\/comprobante$/ },
+  { metodo: "POST", patron: /^\/portal\/[^/]+\/plazo$/ },
+  // Creación del pedido al terminar la compra. Ojo: sólo POST /orders.
+  // El GET /orders (listado completo con datos de clientes) es de admin.
+  { metodo: "POST", patron: /^\/orders$/ },
+  // Webhook de Trustonic: lo llaman los servidores del proveedor, que no
+  // tienen sesión de administrador. Se autentica con el secreto compartido que
+  // va en la propia ruta y que compara el handler; además el evento no se cree
+  // tal cual, sólo dispara una reconsulta. El resto de /api/blocking/* sigue
+  // exigiendo token.
+  { metodo: "POST", patron: /^\/blocking\/webhook\/[^/]+$/ }
+];
+function esRutaPublica(metodo, ruta) {
+  if (metodo === "OPTIONS") return true;
+  const limpia = ruta.length > 1 ? ruta.replace(/\/+$/, "") : ruta;
+  return RUTAS_PUBLICAS.some((r) => r.metodo === metodo && r.patron.test(limpia));
+}
 app.use("/api", (req, res, next) => {
+  if (!esRutaPublica(req.method, req.path)) {
+    const cabecera = req.headers.authorization || "";
+    const token = cabecera.startsWith("Bearer ") ? cabecera.slice(7).trim() : "";
+    const sesion = verificarToken(token);
+    if (!sesion) {
+      return res.status(401).json({
+        error: "No autorizado",
+        message: "Sesi\xF3n no v\xE1lida o caducada. Vuelve a iniciar sesi\xF3n."
+      });
+    }
+    req.sesion = sesion;
+  }
   if (req.path === "/login" || req.path === "/health") return next();
   return requireDb(req, res, next);
 });
@@ -300351,11 +304293,14 @@ app.delete("/api/products/:id", async (req, res) => {
     res.status(500).json({ error: "Error deleting product" });
   }
 });
-app.post("/api/stock-alerts", async (req, res) => {
+app.post("/api/stock-alerts", limitarEscrituraPublica, async (req, res) => {
   try {
-    const { productId, productName, phone } = req.body;
+    const { productId, productName, phone } = req.body || {};
     if (!productId || !phone) {
       return res.status(400).json({ error: "productId y phone son requeridos" });
+    }
+    if (String(productId).length > 120 || String(phone).length > 25 || String(productName || "").length > 200) {
+      return res.status(400).json({ error: "Datos demasiado largos" });
     }
     const existing = await db.collection("stock_alerts").findOne({ productId, phone, notified: false });
     if (existing) {
@@ -300410,9 +304355,9 @@ app.get("/api/banners", async (req, res) => {
 app.post("/api/banners", async (req, res) => {
   try {
     const { title, subtitle, description, buttonText, buttonLink, backgroundImage } = req.body;
-    const banner = { title, subtitle, description, buttonText, buttonLink, backgroundImage };
-    const result = await db.collection("banners").insertOne(banner);
-    res.json({ id: result.insertedId, ...banner });
+    const banner2 = { title, subtitle, description, buttonText, buttonLink, backgroundImage };
+    const result = await db.collection("banners").insertOne(banner2);
+    res.json({ id: result.insertedId, ...banner2 });
   } catch (error) {
     res.status(500).json({ error: "Error creating banner" });
   }
@@ -300445,117 +304390,44 @@ app.get("/api/orders", async (req, res) => {
     res.status(500).json({ error: "Error fetching orders" });
   }
 });
-app.post("/api/addi/create-transaction", async (req, res) => {
-  try {
-    const { orderId, totalAmount, items, client, shippingAddress } = req.body;
-    const tokenRes = await fetch("https://auth.addi.com/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: "upT8WKxtMzHHtFI9SrWThPjjghzHkATy",
-        client_secret: "1YB3cFJDfFyeEAxhKBGjPfvLeto1NIKygCPlKmDGCG1YD4eQG0rkLrH_DMFep_MP",
-        grant_type: "client_credentials",
-        audience: "https://api.addi.com"
-      })
-    });
-    const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) {
-      console.error("Addi Token Error:", tokenData);
-      return res.status(500).json({ error: "Error de autenticaci\xF3n con Addi" });
-    }
-    const transactionRes = await fetch("https://api.addi.com/v1/online-applications", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${tokenData.access_token}`,
-        "Content-Type": "application/json"
-      },
-      redirect: "manual",
-      // Importante para capturar el header Location
-      body: JSON.stringify({
-        orderId,
-        totalAmount: Number(totalAmount),
-        shippingAmount: 0,
-        currency: "COP",
-        items,
-        client,
-        shippingAddress: shippingAddress || {
-          lineOne: client.address.lineOne,
-          city: client.address.city,
-          country: "CO"
-        },
-        allyUrlRedirection: {
-          logoUrl: "https://xiaomicartagena.com/favicon.ico",
-          callbackUrl: "https://xiaomictg-production.up.railway.app/api/addi/callback",
-          redirectionUrl: "https://xiaomicartagena.com/?addi_success=true"
-        }
-      })
-    });
-    if (transactionRes.status === 301 || transactionRes.status === 302) {
-      const addiUrl = transactionRes.headers.get("location");
-      return res.json({ success: true, redirectUrl: addiUrl });
-    } else {
-      const errorText = await transactionRes.text();
-      console.error("Addi Transaction Error:", transactionRes.status, errorText);
-      return res.status(500).json({ error: "Error al crear la transacci\xF3n en Addi" });
-    }
-  } catch (error) {
-    console.error("Addi API Error:", error);
-    res.status(500).json({ error: "Error interno conectando con Addi" });
-  }
-});
-app.post("/api/addi/callback", async (req, res) => {
-  try {
-    const addiPayload = req.body;
-    console.log("Addi Callback Payload:", JSON.stringify(addiPayload));
-    const { orderId, status } = addiPayload;
-    if (orderId && status === "APPROVED") {
-      const order = await db.collection("orders").findOne({ orderNumber: orderId });
-      if (order && order.status === "pending_addi") {
-        await db.collection("orders").updateOne(
-          { orderNumber: orderId },
-          { $set: { status: "paid" } }
-        );
-        const ventasOrden = await db.collection("daily_sales").find({ orderId: order.id }).toArray();
-        for (const v of ventasOrden) {
-          if (v.estadoPago !== "recibido") {
-            await db.collection("daily_sales").updateOne({ id: v.id }, { $set: { estadoPago: "recibido" } });
-            await crearMovimientosCajaDesdeVenta(
-              v.metodoPago || "efectivo",
-              v.precioVenta,
-              `Venta Addi: ${v.producto} \u2014 ${v.cliente}`
-            );
-          }
-        }
-        const [hydratedOrder] = await hydrateOrdersWithProductImages([{ ...order, status: "paid" }]);
-        sendOrderEmail(hydratedOrder).catch((err) => console.error("Error sending email:", err));
-        sendWhatsAppNotifications(hydratedOrder).catch((err) => console.error("[WA] Error notificaciones:", err));
-        io2.emit("orderUpdated", { id: order.id, status: "paid" });
-      }
-    }
-    res.status(200).send("OK");
-  } catch (error) {
-    console.error("Addi Callback Error:", error);
-    res.status(500).send("Error");
-  }
-});
-app.get("/api/addi/callback", async (req, res) => {
-  res.redirect("/?addi_success=true");
-});
 app.get("/api/bold-checkout", async (req, res) => {
   const BOLD_API_KEY = process.env.BOLD_API_KEY;
   const BOLD_SECRET_KEY = process.env.BOLD_SECRET_KEY;
   if (!BOLD_API_KEY || !BOLD_SECRET_KEY) {
     return res.status(500).send("<h1>Error de configuraci\xF3n: claves de pago no disponibles</h1>");
   }
-  const { orderId, amount, currency = "COP", redirectionUrl, description } = req.query;
+  const { orderId, amount, currency = "COP", redirectionUrl, description, titulo, etiqueta } = req.query;
   if (!orderId || !amount) {
     return res.status(400).send("<h1>Par\xE1metros faltantes</h1>");
   }
   const amountInt = Math.round(Number(amount));
-  const integrityMsg = `${orderId}${amountInt}${currency}${BOLD_SECRET_KEY}`;
-  const integrity = (0, import_crypto23.createHash)("sha256").update(integrityMsg).digest("hex");
-  const safeRedirect = redirectionUrl || `${req.protocol}://${req.get("host")}/?bold_status=success`;
+  if (!Number.isFinite(amountInt) || amountInt <= 0) {
+    return res.status(400).send("<h1>Importe no v\xE1lido</h1>");
+  }
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(orderId)) {
+    return res.status(400).send("<h1>Referencia no v\xE1lida</h1>");
+  }
+  const moneda = /^[A-Z]{3}$/.test(String(currency)) ? String(currency) : "COP";
+  const integrityMsg = `${orderId}${amountInt}${moneda}${BOLD_SECRET_KEY}`;
+  const integrity = (0, import_crypto26.createHash)("sha256").update(integrityMsg).digest("hex");
+  const vueltaPorDefecto = `${BASE_PUBLICA}/?bold_status=success`;
+  const safeRedirect = (() => {
+    if (!redirectionUrl) return vueltaPorDefecto;
+    try {
+      const destino = new URL(redirectionUrl);
+      const propio = new URL(BASE_PUBLICA);
+      if (destino.origin === propio.origin) return destino.toString();
+      if (ORIGENES_PERMITIDOS.has(destino.origin)) return destino.toString();
+      console.warn(`[bold-checkout] URL de vuelta no permitida: ${destino.origin}. Se usa la de siempre.`);
+    } catch {
+      console.warn("[bold-checkout] URL de vuelta ilegible. Se usa la de siempre.");
+    }
+    return vueltaPorDefecto;
+  })();
   const desc = description || `Pedido Xiaomi Cartagena ${orderId}`;
+  const esc2 = (valor) => String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  const tituloPagina = titulo ? String(titulo).slice(0, 80) : "Resumen de tu pedido";
+  const etiquetaRef = etiqueta ? String(etiqueta).slice(0, 30) : "Pedido";
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -300588,24 +304460,24 @@ app.get("/api/bold-checkout", async (req, res) => {
 <body>
   <div class="wrap">
     <div class="brand">XIAOMI <span>Cartagena</span></div>
-    <p class="title">Resumen de tu pedido</p>
+    <p class="title">${esc2(tituloPagina)}</p>
     <p class="sub">Haz clic en el bot&oacute;n de abajo para pagar de forma segura</p>
     <div class="info">
       <div class="label">Total a pagar</div>
-      <div class="val">$${amountInt.toLocaleString("es-CO")} COP</div>
-      <div class="oid">Pedido ${orderId}</div>
+      <div class="val">$${amountInt.toLocaleString("es-CO")} ${esc2(moneda)}</div>
+      <div class="oid">${esc2(etiquetaRef)} ${esc2(orderId)}</div>
     </div>
     <div id="bold-btn-wrap">
       <script
         src="https://checkout.bold.co/library/boldPaymentButton.js"
         data-bold-button="dark-L"
-        data-order-id="${orderId}"
+        data-order-id="${esc2(orderId)}"
         data-amount="${amountInt}"
-        data-currency="${currency}"
-        data-api-key="${BOLD_API_KEY}"
-        data-integrity-signature="${integrity}"
-        data-redirection-url="${safeRedirect}"
-        data-description="${desc}"
+        data-currency="${esc2(moneda)}"
+        data-api-key="${esc2(BOLD_API_KEY)}"
+        data-integrity-signature="${esc2(integrity)}"
+        data-redirection-url="${esc2(safeRedirect)}"
+        data-description="${esc2(desc)}"
       ></script>
     </div>
     <a href="/" class="back">&larr; Volver a la tienda</a>
@@ -300649,33 +304521,70 @@ async function transitionOrderAndNotify(order, newStatus, metodoPago) {
 app.post("/api/bold/webhook", async (req, res) => {
   try {
     const payload = req.body;
-    console.log("[bold-webhook] Payload recibido:", JSON.stringify(payload));
+    console.log("[bold-webhook] Evento recibido:", JSON.stringify({
+      id: payload?.id,
+      type: payload?.type,
+      subject: payload?.subject,
+      referencia: payload?.data?.metadata?.reference || payload?.data?.reference || payload?.subject
+    }));
     res.status(200).send("OK");
     const signature = req.headers["x-bold-signature"];
     const secret = process.env.BOLD_SECRET_KEY;
-    if (signature && secret && req.rawBody) {
-      const computedSignature = (0, import_crypto23.createHmac)("sha256", secret).update(req.rawBody).digest("hex");
-      let isSignatureValid = false;
+    if (!secret) {
+      console.error("[bold-webhook] BOLD_SECRET_KEY no est\xE1 configurada: se descarta el evento por seguridad.");
+      return;
+    }
+    if (!signature || typeof signature !== "string") {
+      console.error("[bold-webhook] Evento sin cabecera x-bold-signature: se descarta.");
+      return;
+    }
+    if (!req.rawBody) {
+      console.error("[bold-webhook] No se conserv\xF3 el cuerpo crudo de la petici\xF3n: no se puede verificar la firma, se descarta.");
+      return;
+    }
+    const rawBodyBase64 = req.rawBody.toString("base64");
+    let cuerpoReserializadoBase64 = "";
+    try {
+      cuerpoReserializadoBase64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
+    } catch {
+    }
+    const candidatos = [
+      (0, import_crypto26.createHmac)("sha256", secret).update(rawBodyBase64).digest("hex"),
+      (0, import_crypto26.createHmac)("sha256", secret).update(rawBodyBase64).digest("base64"),
+      (0, import_crypto26.createHmac)("sha256", secret).update(req.rawBody).digest("hex"),
+      (0, import_crypto26.createHmac)("sha256", secret).update(req.rawBody).digest("base64"),
+      ...cuerpoReserializadoBase64 && cuerpoReserializadoBase64 !== rawBodyBase64 ? [
+        (0, import_crypto26.createHmac)("sha256", secret).update(cuerpoReserializadoBase64).digest("hex"),
+        (0, import_crypto26.createHmac)("sha256", secret).update(cuerpoReserializadoBase64).digest("base64")
+      ] : []
+    ];
+    const firmaRecibida = Buffer.from(signature.trim(), "utf8");
+    let isSignatureValid = false;
+    for (const candidato of candidatos) {
       try {
-        const bufferSignature = Buffer.from(signature, "utf8");
-        const bufferComputed = Buffer.from(computedSignature, "utf8");
-        if (bufferSignature.length === bufferComputed.length) {
-          isSignatureValid = (0, import_crypto23.timingSafeEqual)(bufferSignature, bufferComputed);
+        const esperada = Buffer.from(candidato, "utf8");
+        if (esperada.length === firmaRecibida.length && (0, import_crypto26.timingSafeEqual)(esperada, firmaRecibida)) {
+          isSignatureValid = true;
+          break;
         }
       } catch (err) {
         console.error("[bold-webhook] Error verificando firma:", err);
       }
-      if (!isSignatureValid) {
-        console.error(`[bold-webhook] Firma de seguridad inv\xE1lida. Recibida: ${signature}, Calculada: ${computedSignature}`);
-        return;
-      }
-      console.log("[bold-webhook] Firma de seguridad validada con \xE9xito.");
     }
+    if (!isSignatureValid) {
+      console.error("[bold-webhook] Firma de seguridad inv\xE1lida: se descarta el evento.");
+      return;
+    }
+    console.log("[bold-webhook] Firma de seguridad validada con \xE9xito.");
     const { type, data } = payload;
     if (type !== "SALE_APPROVED") {
       console.log(`[bold-webhook] Tipo de evento no manejado o no es SALE_APPROVED: ${type}`);
       if (type === "SALE_REJECTED") {
         const orderNumber2 = data?.metadata?.reference || data?.reference || payload.subject;
+        if (esReferenciaDeCuota(orderNumber2)) {
+          await rechazarPagoDeCuotas(depsPortal, String(orderNumber2));
+          return;
+        }
         if (orderNumber2) {
           const order2 = await db.collection("orders").findOne({ orderNumber: orderNumber2 });
           if (order2 && order2.status === "pending_bold") {
@@ -300690,6 +304599,13 @@ app.post("/api/bold/webhook", async (req, res) => {
     const orderNumber = data?.metadata?.reference || data?.reference || payload.subject || payload.reference || payload.orderId || payload.order_id;
     if (!orderNumber) {
       console.error("[bold-webhook] No se encontr\xF3 ninguna referencia de pedido en el payload.");
+      return;
+    }
+    if (esReferenciaDeCuota(orderNumber)) {
+      await confirmarPagoDeCuotas(depsPortal, String(orderNumber), {
+        paymentId: data?.payment_id || data?.paymentId || payload?.id,
+        metodo: data?.payment_method || data?.paymentMethod || data?.method
+      });
       return;
     }
     console.log(`[bold-webhook] Procesando pago aprobado para orden: ${orderNumber}`);
@@ -300715,7 +304631,7 @@ app.post("/api/bold/webhook", async (req, res) => {
     console.error("[bold-webhook] Error cr\xEDtico procesando webhook:", error);
   }
 });
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", limitarEscrituraPublica, async (req, res) => {
   try {
     const { action, order: invoiceOrder } = req.body;
     if (action === "send-invoice") {
@@ -300725,11 +304641,11 @@ app.post("/api/orders", async (req, res) => {
       await sendInvoiceEmail(invoiceOrder);
       return res.json({ success: true });
     }
-    const { orderNumber: clientOrderNumber, date, createdAt, items, total: total2, status, customerInfo, paymentMethod } = req.body;
+    const { orderNumber: clientOrderNumber, date, createdAt, items, total, status, customerInfo, paymentMethod } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "La orden debe tener al menos un producto" });
     }
-    if (total2 === void 0 || total2 === null || isNaN(Number(total2)) || Number(total2) < 0) {
+    if (total === void 0 || total === null || isNaN(Number(total)) || Number(total) < 0) {
       return res.status(400).json({ error: "Total inv\xE1lido" });
     }
     const id = Date.now().toString();
@@ -300741,7 +304657,7 @@ app.post("/api/orders", async (req, res) => {
       date: date || now,
       createdAt: createdAt || now,
       items,
-      total: total2,
+      total,
       status: status || "pending",
       customerInfo,
       paymentMethod
@@ -300908,7 +304824,7 @@ app.post("/api/orders", async (req, res) => {
     const notification = {
       orderId: id,
       orderNumber,
-      total: total2,
+      total,
       message: `Nuevo pedido recibido: ${orderNumber}`,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       read: false
@@ -300927,12 +304843,12 @@ app.post("/api/orders", async (req, res) => {
 });
 app.put("/api/orders/:id", async (req, res) => {
   try {
-    const { status, items, customerInfo, total: total2 } = req.body;
+    const { status, items, customerInfo, total } = req.body;
     const $set = {};
     if (status !== void 0) $set.status = status;
     if (items !== void 0) $set.items = items;
     if (customerInfo !== void 0) $set.customerInfo = customerInfo;
-    if (total2 !== void 0) $set.total = total2;
+    if (total !== void 0) $set.total = total;
     if (Object.keys($set).length === 0) {
       return res.status(400).json({ error: "No hay campos para actualizar" });
     }
@@ -301081,34 +304997,39 @@ app.put("/api/ticket-config", async (req, res) => {
     res.status(500).json({ error: "Error updating ticket config" });
   }
 });
-app.get("/api/whatsapp/status", (_req, res) => {
-  const status = whatsappService.getStatus();
-  const result = { status };
-  if (status === "qr_ready") result.qr = whatsappService.getQRDataUrl();
-  res.json(result);
-});
-app.post("/api/whatsapp/connect", async (_req, res) => {
-  if (!db) return res.status(503).json({ error: "Base de datos no disponible" });
-  try {
-    await whatsappService.init(db, io2);
-    const status = whatsappService.getStatus();
-    const result = { success: true, status };
-    if (status === "qr_ready") result.qr = whatsappService.getQRDataUrl();
+function registrarRutasWhatsApp(base, servicio) {
+  const tag = servicio.getConfig().tagLog;
+  app.get(`${base}/status`, (_req, res) => {
+    const status = servicio.getStatus();
+    const result = { status, numero: servicio.getNumero() };
+    if (status === "qr_ready") result.qr = servicio.getQRDataUrl();
     res.json(result);
-  } catch (err) {
-    console.error("[WA] Error al conectar:", err);
-    res.status(500).json({ error: "Error al inicializar WhatsApp" });
-  }
-});
-app.post("/api/whatsapp/disconnect", async (_req, res) => {
-  try {
-    await whatsappService.disconnect();
-    res.json({ success: true });
-  } catch (err) {
-    console.error("[WA] Error al desconectar:", err);
-    res.status(500).json({ error: "Error al desconectar WhatsApp" });
-  }
-});
+  });
+  app.post(`${base}/connect`, async (_req, res) => {
+    if (!db) return res.status(503).json({ error: "Base de datos no disponible" });
+    try {
+      await servicio.init(db, io2);
+      const status = servicio.getStatus();
+      const result = { success: true, status, numero: servicio.getNumero() };
+      if (status === "qr_ready") result.qr = servicio.getQRDataUrl();
+      res.json(result);
+    } catch (err) {
+      console.error(tag, "Error al conectar:", err);
+      res.status(500).json({ error: "Error al inicializar WhatsApp" });
+    }
+  });
+  app.post(`${base}/disconnect`, async (_req, res) => {
+    try {
+      await servicio.disconnect();
+      res.json({ success: true });
+    } catch (err) {
+      console.error(tag, "Error al desconectar:", err);
+      res.status(500).json({ error: "Error al desconectar WhatsApp" });
+    }
+  });
+}
+registrarRutasWhatsApp("/api/whatsapp", whatsappService);
+registrarRutasWhatsApp("/api/credilock", credilockService);
 app.get("/api/whatsapp/templates", async (_req, res) => {
   try {
     const config = await db.collection("ticketConfig").findOne({ type: "config" }) || {};
@@ -301290,14 +305211,26 @@ app.get("/api/products/:id/reviews", async (req, res) => {
     res.status(500).json({ error: "Error fetching reviews" });
   }
 });
-app.post("/api/products/:id/reviews", async (req, res) => {
+app.post("/api/products/:id/reviews", limitarEscrituraPublica, async (req, res) => {
   try {
-    const { author, rating, comment } = req.body;
+    const { author, rating, comment } = req.body || {};
+    const autorLimpio = String(author ?? "").trim();
+    const comentarioLimpio = String(comment ?? "").trim();
+    const notaNumero = Number(rating);
+    if (!autorLimpio || !comentarioLimpio) {
+      return res.status(400).json({ error: "El nombre y el comentario son obligatorios" });
+    }
+    if (!Number.isInteger(notaNumero) || notaNumero < 1 || notaNumero > 5) {
+      return res.status(400).json({ error: "La valoraci\xF3n debe ser un n\xFAmero entero del 1 al 5" });
+    }
+    if (autorLimpio.length > 60 || comentarioLimpio.length > 1e3) {
+      return res.status(400).json({ error: "El nombre o el comentario son demasiado largos" });
+    }
     const review = {
-      productId: req.params.id,
-      author,
-      rating: Number(rating),
-      comment,
+      productId: String(req.params.id).slice(0, 120),
+      author: autorLimpio,
+      rating: notaNumero,
+      comment: comentarioLimpio,
       status: "pending",
       verifiedPurchase: false,
       date: (/* @__PURE__ */ new Date()).toISOString()
@@ -301379,7 +305312,7 @@ function refreshOverdueStatus(cuotas, horaBloqueo = "08:00") {
   const [bH, bM] = horaBloqueo.split(":").map(Number);
   return cuotas.map((c) => {
     if (c.status !== "pending") return c;
-    const dueDateStr = c.dueDate.slice(0, 10);
+    const dueDateStr = fechaLimite(c);
     if (dueDateStr < todayStr) {
       return { ...c, status: "overdue" };
     }
@@ -301485,16 +305418,32 @@ app.put("/api/financing/:id", async (req, res) => {
       const unpaidCount = newNumCuotas - previas - paidCuotas.length;
       if (unpaidCount > 0) {
         const nextNumber = paidCuotas.length > 0 ? paidCuotas[paidCuotas.length - 1].number + 1 : previas + 1;
+        const comprobantesPorNumero = new Map(
+          oldCuotas.filter((c) => c.comprobante?.mediaId).map((c) => [c.number, c.comprobante])
+        );
+        const prorrogasDescartadas = oldCuotas.filter(
+          (c) => c.status !== "paid" && c.prorroga?.hasta
+        ).length;
         const unpaidCuotas = [];
         const start = new Date(newFechaInicio);
         for (let i = 0; i < unpaidCount; i++) {
           const d = new Date(start);
           d.setUTCDate(d.getUTCDate() + i * 15);
+          const numero = nextNumber + i;
+          const comprobante = comprobantesPorNumero.get(numero);
+          comprobantesPorNumero.delete(numero);
           unpaidCuotas.push({
-            number: nextNumber + i,
+            number: numero,
             dueDate: d.toISOString(),
-            status: "pending"
+            status: "pending",
+            ...comprobante ? { comprobante } : {}
           });
+        }
+        for (const sobrante of comprobantesPorNumero.values()) {
+          await borrarMediaComprobante(sobrante);
+        }
+        if (prorrogasDescartadas > 0) {
+          console.log(`[financing] ${existing.nombre}: se descartaron ${prorrogasDescartadas} pr\xF3rroga(s) al regenerar las cuotas.`);
         }
         $set.cuotas = [...paidCuotas, ...unpaidCuotas];
       } else {
@@ -301562,6 +305511,178 @@ app.delete("/api/financing/:id", async (req, res) => {
     res.status(500).json({ error: "Error al eliminar financiamiento" });
   }
 });
+var MAX_COMPROBANTE_BYTES = 700 * 1024;
+async function buscarCuota(id, numero) {
+  const record = await db.collection("financing").findOne({ id });
+  if (!record) return { error: "Financiamiento no encontrado", status: 404 };
+  const cuotas = record.cuotas || [];
+  const idx = cuotas.findIndex((c) => c.number === Number(numero));
+  if (idx === -1) return { error: "Cuota no encontrada", status: 404 };
+  return { record, cuotas, idx };
+}
+async function borrarMediaComprobante(comprobante) {
+  if (!comprobante?.mediaId) return;
+  await db.collection("media").deleteOne({ mediaId: comprobante.mediaId }).catch(() => {
+  });
+}
+app.post("/api/financing/:id/comprobante/:cuotaNumber", async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ("error" in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { cuotas, idx } = encontrado;
+    const { image, filename } = req.body || {};
+    if (!image || typeof image !== "string") {
+      return res.status(400).json({ error: "Falta la imagen del comprobante" });
+    }
+    const parsed = parseBase64Image(image);
+    if (!parsed) return res.status(400).json({ error: "La imagen no es v\xE1lida" });
+    if (parsed.buffer.length > MAX_COMPROBANTE_BYTES) {
+      return res.status(413).json({
+        error: `El comprobante pesa ${Math.round(parsed.buffer.length / 1024)}KB y el m\xE1ximo son ${Math.round(
+          MAX_COMPROBANTE_BYTES / 1024
+        )}KB.`
+      });
+    }
+    const mediaId = `comprobante-${(0, import_crypto26.randomBytes)(16).toString("hex")}`;
+    await db.collection("media").insertOne({
+      mediaId,
+      mime: parsed.mime,
+      data: parsed.buffer,
+      folder: "comprobantes",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    await borrarMediaComprobante(cuotas[idx].comprobante);
+    cuotas[idx].comprobante = {
+      mediaId,
+      mime: parsed.mime,
+      bytes: parsed.buffer.length,
+      nombreArchivo: String(filename || "comprobante.jpg").slice(0, 120),
+      subidoEn: (/* @__PURE__ */ new Date()).toISOString(),
+      subidoPor: req.sesion?.usuario || "admin"
+    };
+    await db.collection("financing").updateOne({ id: req.params.id }, { $set: { cuotas } });
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    return res.json(updated);
+  } catch (error) {
+    console.error("[financing] Error subiendo comprobante:", error);
+    return res.status(500).json({ error: "No se pudo guardar el comprobante" });
+  }
+});
+app.get("/api/financing/:id/comprobante/:cuotaNumber/imagen", async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ("error" in encontrado) return res.status(encontrado.status).end();
+    const comprobante = encontrado.cuotas[encontrado.idx].comprobante;
+    if (!comprobante?.mediaId) return res.status(404).end();
+    const doc = await db.collection("media").findOne({ mediaId: comprobante.mediaId });
+    if (!doc) return res.status(404).end();
+    res.setHeader("Content-Type", doc.mime || comprobante.mime || "image/jpeg");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    if (Buffer.isBuffer(doc.data)) return res.send(doc.data);
+    if (doc.data?.buffer) return res.send(Buffer.from(doc.data.buffer));
+    return res.send(Buffer.from(doc.data));
+  } catch (error) {
+    console.error("[financing] Error sirviendo comprobante:", error);
+    return res.status(500).end();
+  }
+});
+app.delete("/api/financing/:id/comprobante/:cuotaNumber", async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ("error" in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { cuotas, idx } = encontrado;
+    if (cuotas[idx].status === "paid") {
+      return res.status(409).json({
+        error: "La cuota est\xE1 pagada y el comprobante es su respaldo. Desm\xE1rcala primero, o sube otra captura para reemplazarla."
+      });
+    }
+    await borrarMediaComprobante(cuotas[idx].comprobante);
+    cuotas[idx].comprobante = null;
+    await db.collection("financing").updateOne({ id: req.params.id }, { $set: { cuotas } });
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    return res.json(updated);
+  } catch (error) {
+    console.error("[financing] Error eliminando comprobante:", error);
+    return res.status(500).json({ error: "No se pudo eliminar el comprobante" });
+  }
+});
+app.post("/api/financing/:id/prorroga/:cuotaNumber", async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ("error" in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { record, cuotas, idx } = encontrado;
+    const hoy = getColombiaDate().dateStr;
+    const revision = validarProrroga(req.body?.hasta, cuotas[idx], hoy);
+    if ("error" in revision) return res.status(400).json({ error: revision.error });
+    const anterior = cuotas[idx].prorroga || null;
+    const motivo = String(req.body?.motivo || "").trim().slice(0, 300);
+    cuotas[idx].prorroga = {
+      hasta: revision.hasta,
+      otorgadaEn: (/* @__PURE__ */ new Date()).toISOString(),
+      otorgadaPor: req.sesion?.usuario || "admin",
+      fechaOriginal: String(cuotas[idx].dueDate).slice(0, 10),
+      ...motivo ? { motivo } : {}
+    };
+    const vecesPedidas = Number(record.prorrogasOtorgadas || 0) + 1;
+    await db.collection("financing").updateOne(
+      { id: req.params.id },
+      { $set: { cuotas, prorrogasOtorgadas: vecesPedidas } }
+    );
+    const equipo = await alOtorgarProrroga(
+      depsBloqueo,
+      req.params.id,
+      revision.hasta,
+      cuotas[idx].number
+    );
+    await cerrarSolicitudAlConceder(
+      depsPortal,
+      record,
+      cuotas[idx].number,
+      req.sesion?.usuario || "admin"
+    );
+    console.log(
+      `[financing] Pr\xF3rroga para ${record.nombre} cuota #${cuotas[idx].number}: ${cuotas[idx].dueDate.slice(0, 10)} \u2192 ${revision.hasta}${anterior ? ` (ampliaba la de ${anterior.hasta})` : ""}. Equipo: ${equipo.liberado ? "desbloqueado" : equipo.detalle || "sin cambios"}`
+    );
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    return res.json({
+      record: updated,
+      prorroga: cuotas[idx].prorroga,
+      equipoLiberado: equipo.liberado,
+      detalleEquipo: equipo.detalle,
+      vecesPedidas,
+      /** Para que el panel avise si el plazo se pasa de la cuota siguiente. */
+      pisaCuotaSiguiente: cuotas.some(
+        (c) => c.number > cuotas[idx].number && c.status !== "paid" && fechaLimite(c) < revision.hasta
+      )
+    });
+  } catch (error) {
+    console.error("[financing] Error otorgando pr\xF3rroga:", error);
+    return res.status(500).json({ error: "No se pudo registrar la pr\xF3rroga" });
+  }
+});
+app.delete("/api/financing/:id/prorroga/:cuotaNumber", async (req, res) => {
+  try {
+    const encontrado = await buscarCuota(req.params.id, req.params.cuotaNumber);
+    if ("error" in encontrado) return res.status(encontrado.status).json({ error: encontrado.error });
+    const { record, cuotas, idx } = encontrado;
+    if (!cuotas[idx].prorroga) {
+      return res.status(409).json({ error: "Esta cuota no tiene ninguna pr\xF3rroga." });
+    }
+    const volveriaAMora = fechaLimite({ dueDate: cuotas[idx].dueDate }) < getColombiaDate().dateStr;
+    const anulada = cuotas[idx].prorroga;
+    cuotas[idx].prorroga = null;
+    await db.collection("financing").updateOne({ id: req.params.id }, { $set: { cuotas } });
+    await alAnularProrroga(depsBloqueo, req.params.id);
+    console.log(
+      `[financing] Pr\xF3rroga anulada para ${record.nombre} cuota #${cuotas[idx].number} (era hasta ${anulada.hasta}). Vuelve a mora: ${volveriaAMora}`
+    );
+    const updated = await db.collection("financing").findOne({ id: req.params.id });
+    return res.json({ record: updated, volveriaAMora });
+  } catch (error) {
+    console.error("[financing] Error anulando pr\xF3rroga:", error);
+    return res.status(500).json({ error: "No se pudo anular la pr\xF3rroga" });
+  }
+});
 app.post("/api/financing/:id/pay/:cuotaNumber", async (req, res) => {
   try {
     const record = await db.collection("financing").findOne({ id: req.params.id });
@@ -301570,6 +305691,12 @@ app.post("/api/financing/:id/pay/:cuotaNumber", async (req, res) => {
     const cuotas = record.cuotas || [];
     const idx = cuotas.findIndex((c) => c.number === cuotaNum);
     if (idx === -1) return res.status(404).json({ error: "Cuota no encontrada" });
+    if (!cuotas[idx].comprobante?.mediaId && !cuotas[idx].pagoEnLinea?.referencia) {
+      return res.status(409).json({
+        error: "Sube primero la captura del pago. Es el respaldo de la cuota.",
+        faltaComprobante: true
+      });
+    }
     cuotas[idx].status = "paid";
     cuotas[idx].paidDate = (/* @__PURE__ */ new Date()).toISOString();
     const { nextDate } = req.body || {};
@@ -301592,6 +305719,7 @@ app.post("/api/financing/:id/pay/:cuotaNumber", async (req, res) => {
     await db.collection("financing").updateOne({ id: req.params.id }, { $set });
     const updated = await db.collection("financing").findOne({ id: req.params.id });
     res.json(updated);
+    void alRegistrarPago(depsBloqueo, req.params.id);
   } catch (error) {
     console.error("[financing] Error paying:", error);
     res.status(500).json({ error: "Error al registrar pago" });
@@ -301618,40 +305746,45 @@ app.post("/api/financing/:id/unpay/:cuotaNumber", async (req, res) => {
     res.status(500).json({ error: "Error al desmarcar pago" });
   }
 });
+var FIRMA_CREDILOCK = "_CREDILOCK \u2014 Sistema de financiamiento_";
+function conLinkDelPortal(msg, record) {
+  const link = linkPortal(BASE_PUBLICA, secretoPortal, record);
+  if (!link) return msg;
+  const bloque = `\u{1F449} *Mira tus cuotas y paga en l\xEDnea:*
+${link}
+
+Ah\xED ves cu\xE1nto debes, tu pr\xF3xima fecha, puedes pagar con Nequi, PSE o el bot\xF3n de Bancolombia, subir el comprobante o pedir un plazo. Es tu link privado, no lo compartas.`;
+  return msg.includes(FIRMA_CREDILOCK) ? msg.replace(FIRMA_CREDILOCK, `${bloque}
+
+${FIRMA_CREDILOCK}`) : `${msg}
+
+${bloque}`;
+}
 app.post("/api/financing/:id/remind", async (req, res) => {
   try {
     const record = await db.collection("financing").findOne({ id: req.params.id });
     if (!record) return res.status(404).json({ error: "No encontrado" });
-    if (whatsappService.getStatus() !== "connected") {
-      return res.status(400).json({ error: "WhatsApp no est\xE1 conectado" });
+    if (credilockService.getStatus() !== "connected") {
+      return res.status(400).json({ error: "El WhatsApp de CREDILOCK no est\xE1 conectado. Escanea el QR en Financiamiento." });
     }
     const cuotas = refreshOverdueStatus(record.cuotas || [], record.horaBloqueo || "08:00");
     const nextPending = cuotas.find((c) => c.status === "pending" || c.status === "overdue");
     if (!nextPending) {
       return res.status(400).json({ error: "No hay cuotas pendientes" });
     }
-    const dueDate = new Date(nextPending.dueDate);
-    const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Bogota" });
+    const hoy = getColombiaDate().dateStr;
+    const fechaStr = fechaLarga(fechaLimite(nextPending));
+    const prorroga = prorrogaVigente(nextPending, hoy);
     const isOverdue = nextPending.status === "overdue";
     const valorStr = record.valorCuota.toLocaleString("es-CO");
     const previas = record.cuotasPrevias || 0;
     const paidCountStr = previas + cuotas.filter((c) => c.status === "paid").length;
     const hora = record.horaBloqueo || "08:00";
-    const msg = isOverdue ? `\u{1F512} *CREDILOCK \u2014 Pago Vencido*
+    let msg;
+    if (prorroga) {
+      msg = `\u23F3 *CREDILOCK \u2014 Tienes plazo*
 
-Hola *${record.nombre}*, tu cuota #${nextPending.number} de *$${valorStr} COP* venci\xF3 el *${fechaStr}*.
-
-\u26A0\uFE0F *Tu equipo ser\xE1 bloqueado a las ${hora} si no realizas el pago.*
-
-Evita el bloqueo realizando tu pago lo antes posible.
-
-\u{1F4F1} IMEI: ${record.imei}
-Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
-\u{1F4DE} Contacto: 302 287 5280
-
-_CREDILOCK \u2014 Sistema de financiamiento_` : `\u{1F4C5} *CREDILOCK \u2014 Recordatorio de Pago*
-
-Hola *${record.nombre}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.
+Hola *${nombreBonito2(record.nombre)}*, te recordamos que tienes plazo hasta el *${fechaStr}* para pagar tu cuota #${nextPending.number} de *$${valorStr} COP*.
 
 \u23F0 *Si no se realiza el pago, el equipo ser\xE1 bloqueado a las ${hora}.*
 
@@ -301661,7 +305794,36 @@ Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
 \u{1F4DE} Contacto: 302 287 5280
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
-    const success = await whatsappService.sendMessage(record.telefono, msg);
+    } else if (isOverdue) {
+      const queVencio = tieneProrroga(nextPending) ? `el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* se cumpli\xF3 el *${fechaStr}*` : `tu cuota #${nextPending.number} de *$${valorStr} COP* venci\xF3 el *${fechaStr}*`;
+      msg = `\u{1F512} *CREDILOCK \u2014 Pago Vencido*
+
+Hola *${nombreBonito2(record.nombre)}*, ${queVencio}.
+
+\u26A0\uFE0F *Tu equipo ser\xE1 bloqueado a las ${hora} si no realizas el pago.*
+
+Evita el bloqueo realizando tu pago lo antes posible.
+
+\u{1F4F1} IMEI: ${record.imei}
+Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+    } else {
+      msg = `\u{1F4C5} *CREDILOCK \u2014 Recordatorio de Pago*
+
+Hola *${nombreBonito2(record.nombre)}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.
+
+\u23F0 *Si no se realiza el pago, el equipo ser\xE1 bloqueado a las ${hora}.*
+
+Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+    }
+    const success = await credilockService.sendMessage(record.telefono, conLinkDelPortal(msg, record));
     if (success) {
       const colombia = getColombiaDate();
       await db.collection("financing").updateOne(
@@ -301684,35 +305846,127 @@ function getColombiaDate() {
   const hour = parseInt(timePart.split(":")[0], 10);
   return { dateStr, hour };
 }
+var financingReminderRunning = false;
+function diasEntreFechas2(desdeStr, hastaStr) {
+  const a = Date.parse(desdeStr + "T00:00:00Z");
+  const b = Date.parse(hastaStr + "T00:00:00Z");
+  if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
+  return Math.round((b - a) / 864e5);
+}
+var CADA_CUANTOS_DIAS_MORA = 3;
+var MAX_DIAS_MORA_AVISO = 60;
+var MAX_AVISOS_MORA_POR_CICLO = 12;
+function nombreBonito2(nombre) {
+  return String(nombre ?? "").trim().replace(/\s+/g, " ").replace(/(^|\s)(\p{Ll})/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase("es-CO"));
+}
+var ultimoAvisoCredilockCaido = 0;
 async function checkFinancingReminders() {
-  if (!db || whatsappService.getStatus() !== "connected") return;
+  if (!db) return;
   const colombia = getColombiaDate();
   if (colombia.hour < 11 || colombia.hour > 13) return;
+  if (credilockService.getStatus() !== "connected") {
+    if (Date.now() - ultimoAvisoCredilockCaido > 36e5) {
+      ultimoAvisoCredilockCaido = Date.now();
+      console.error(`[financing] \u26D4 RECORDATORIOS PAUSADOS: el WhatsApp de CREDILOCK no est\xE1 conectado (estado: ${credilockService.getStatus()}). Hay que escanear el QR en Admin \u2192 Financiamiento.`);
+    }
+    return;
+  }
+  if (financingReminderRunning) {
+    console.log("[financing] La vuelta anterior sigue en curso; se omite este turno.");
+    return;
+  }
+  financingReminderRunning = true;
   try {
     const records = await db.collection("financing").find({ status: "active" }).toArray();
     const todayStr = colombia.dateStr;
+    let avisosMoraEnviados = 0;
     for (const record of records) {
       const cuotas = record.cuotas || [];
       const nextPending = cuotas.find((c) => c.status === "pending" || c.status === "overdue");
       if (!nextPending) continue;
-      const dueDate = new Date(nextPending.dueDate);
-      const dueDateStr = dueDate.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
-      const dayBefore = new Date(dueDate);
-      dayBefore.setDate(dayBefore.getDate() - 1);
-      const dayBeforeStr = dayBefore.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
-      const shouldRemind = todayStr === dayBeforeStr || todayStr === dueDateStr;
-      if (!shouldRemind) continue;
+      const dueDateStr = fechaLimite(nextPending);
+      const prorroga = prorrogaVigente(nextPending, todayStr);
+      const diasVencido = diasEntreFechas2(dueDateStr, todayStr);
+      if (Number.isNaN(diasVencido)) {
+        console.warn(`[financing] Fecha ilegible en ${record.nombre} (${record.id}); se omite.`);
+        continue;
+      }
+      const tipoAviso = tipoDeAviso(diasVencido);
+      if (!tipoAviso) continue;
+      const faltan = diasQueFaltan(diasVencido);
       const lastSent = record.lastReminderSent ? record.lastReminderSent.slice(0, 10) : "";
       if (lastSent === todayStr) continue;
-      const fechaStr = dueDate.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Bogota" });
-      const isToday = todayStr === dueDateStr;
+      if (tipoAviso === "mora") {
+        if (avisosMoraEnviados >= MAX_AVISOS_MORA_POR_CICLO) continue;
+        if (diasVencido > MAX_DIAS_MORA_AVISO) {
+          console.log(`[financing] ${record.nombre} lleva ${diasVencido} d\xEDas de mora (> ${MAX_DIAS_MORA_AVISO}); requiere gesti\xF3n manual, no se env\xEDa aviso autom\xE1tico.`);
+          continue;
+        }
+        const ultimoMora = record.lastOverdueReminderSent ? String(record.lastOverdueReminderSent).slice(0, 10) : "";
+        if (ultimoMora) {
+          const desdeUltimo = diasEntreFechas2(ultimoMora, todayStr);
+          if (!Number.isNaN(desdeUltimo) && desdeUltimo < CADA_CUANTOS_DIAS_MORA) continue;
+        }
+      }
+      const telefonoOk = normalizarTelefonoCo(record.telefono);
+      if (!telefonoOk) {
+        console.warn(`[financing] Tel\xE9fono inutilizable en ${record.nombre} (${record.id}): "${record.telefono}". Se omite; corregir a mano.`);
+        continue;
+      }
+      const fechaStr = fechaLarga(dueDateStr);
       const hora = record.horaBloqueo || "08:00";
       const previas = record.cuotasPrevias || 0;
       const paidCount = previas + cuotas.filter((c) => c.status === "paid").length;
       const valorStr = record.valorCuota.toLocaleString("es-CO");
-      const msg = isToday ? `\u{1F512} *CREDILOCK \u2014 \xA1Hoy vence tu cuota!*
+      let msg;
+      if (prorroga) {
+        msg = tipoAviso === "hoy" ? `\u23F3 *CREDILOCK \u2014 Hoy vence tu plazo*
 
-Hola *${record.nombre}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.
+Hola *${nombreBonito2(record.nombre)}*, hoy *${fechaStr}* se cumple el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP*.
+
+\u26A0\uFE0F *Si no pagas antes de las ${hora}, el equipo ser\xE1 bloqueado.*
+
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_` : tipoAviso === "previo" ? `\u23F3 *CREDILOCK \u2014 Tienes plazo hasta ma\xF1ana*
+
+Hola *${nombreBonito2(record.nombre)}*, te recordamos que tienes plazo hasta ma\xF1ana *${fechaStr}* para tu cuota #${nextPending.number} de *$${valorStr} COP*.
+
+\u23F0 *Si no se realiza el pago, el equipo ser\xE1 bloqueado a las ${hora}.*
+
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
+
+\u{1F4F1} IMEI: ${record.imei}
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_` : `\u23F3 *Xiaomi Cartagena*
+
+Hola *${nombreBonito2(record.nombre)}*, te recordamos que el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} d\xEDas.
+
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
+
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+      } else if (tipoAviso === "anticipo") {
+        msg = `\u{1F49A} *Xiaomi Cartagena*
+
+Hola *${nombreBonito2(record.nombre)}*, te contamos con tiempo: tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} d\xEDas.
+
+Si ya la tienes lista puedes pagarla desde ahora y queda registrada al instante.
+
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
+
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+      } else if (tipoAviso === "hoy") {
+        msg = `\u{1F512} *CREDILOCK \u2014 \xA1Hoy vence tu cuota!*
+
+Hola *${nombreBonito2(record.nombre)}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.
 
 \u26A0\uFE0F *Si no pagas antes de las ${hora}, tu equipo ser\xE1 bloqueado.*
 
@@ -301721,9 +305975,11 @@ Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 \u{1F4F1} IMEI: ${record.imei}
 \u{1F4DE} Contacto: 302 287 5280
 
-_CREDILOCK \u2014 Sistema de financiamiento_` : `\u{1F514} *CREDILOCK \u2014 Recordatorio de Pago*
+_CREDILOCK \u2014 Sistema de financiamiento_`;
+      } else if (tipoAviso === "previo") {
+        msg = `\u{1F514} *CREDILOCK \u2014 Recordatorio de Pago*
 
-Hola *${record.nombre}*, ma\xF1ana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.
+Hola *${nombreBonito2(record.nombre)}*, ma\xF1ana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.
 
 \u23F0 *Si no se realiza el pago, el equipo ser\xE1 bloqueado a las ${hora}.*
 
@@ -301733,58 +305989,128 @@ Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 \u{1F4DE} Contacto: 302 287 5280
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
-      const success = await whatsappService.sendMessage(record.telefono, msg);
-      if (success) {
-        await db.collection("financing").updateOne(
-          { id: record.id },
-          { $set: { lastReminderSent: todayStr } }
-        );
-        console.log(`[financing] Recordatorio enviado a ${record.nombre} (${record.telefono})`);
+      } else {
+        const vencidas = cuotas.filter((c) => {
+          if (c.status !== "pending" && c.status !== "overdue") return false;
+          return diasEntreFechas2(fechaLimite(c), todayStr) >= 1;
+        }).length;
+        const cuantoHace = diasVencido === 1 ? "ayer" : `hace ${diasVencido} d\xEDas`;
+        const seVencioElPlazo = tieneProrroga(nextPending);
+        const detalle = vencidas > 1 ? `tienes *${vencidas} cuotas* pendientes por un total de *$${(record.valorCuota * vencidas).toLocaleString("es-CO")} COP*. La m\xE1s antigua es la #${nextPending.number}, que venci\xF3 ${cuantoHace}` : seVencioElPlazo ? `tienes pendiente la cuota #${nextPending.number} de *$${valorStr} COP*. El plazo que acordamos se cumpli\xF3 ${cuantoHace} (${fechaStr})` : `tienes pendiente la cuota #${nextPending.number} de *$${valorStr} COP*, que venci\xF3 ${cuantoHace} (${fechaStr})`;
+        msg = `\u{1F44B} *Xiaomi Cartagena*
+
+Hola *${nombreBonito2(record.nombre)}*, seg\xFAn nuestros registros ${detalle}.
+
+\u2705 Si ya realizaste el pago, av\xEDsanos y lo verificamos de inmediato.
+\u{1F91D} Si a\xFAn no has podido, escr\xEDbenos y buscamos una soluci\xF3n juntos.
+
+Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
+
+\u{1F4DE} Contacto: 302 287 5280
+
+_CREDILOCK \u2014 Sistema de financiamiento_`;
       }
+      let success = false;
+      try {
+        success = await Promise.race([
+          credilockService.sendMessage(record.telefono, conLinkDelPortal(msg, record)),
+          new Promise((r) => setTimeout(() => r(false), 2e4))
+        ]);
+      } catch (e) {
+        console.error(`[financing] Error enviando a ${record.nombre}:`, e);
+      }
+      await db.collection("financing").updateOne(
+        { id: record.id },
+        {
+          $set: {
+            lastReminderSent: todayStr,
+            // Campo aparte para el tope de 3 días: si reusáramos lastReminderSent
+            // no podríamos distinguir "ya le escribí hoy" de "ya le insistí por mora".
+            ...tipoAviso === "mora" ? { lastOverdueReminderSent: todayStr } : {},
+            ...success ? {} : { ultimoAvisoSinConfirmar: true }
+          }
+        }
+      );
+      if (tipoAviso === "mora") avisosMoraEnviados++;
+      console.log(`[financing] Aviso (${tipoAviso}) ${success ? "enviado" : "despachado SIN confirmar"} a ${record.nombre} (${record.telefono})`);
       await new Promise((resolve) => setTimeout(resolve, 3e3));
     }
   } catch (err) {
     console.error("[financing] Error en cron de recordatorios:", err);
+  } finally {
+    financingReminderRunning = false;
   }
 }
 var scheduledNotificationsInterval = null;
+var scheduledNotificationsRunning = false;
+var ENVIO_PROGRAMADO_TIMEOUT_MS = 2e4;
+var MAX_PROGRAMADOS_POR_CICLO = 25;
+var RECLAMO_PROGRAMADOS_MS = 5 * 60 * 1e3;
 async function checkScheduledNotifications() {
+  if (scheduledNotificationsRunning) {
+    console.log("[Scheduled-WA] La vuelta anterior sigue en curso; se omite este turno.");
+    return;
+  }
+  scheduledNotificationsRunning = true;
   try {
-    const now = (/* @__PURE__ */ new Date()).toISOString();
-    const pending = await db.collection("scheduled_notifications").find({ status: "pending", sendAt: { $lte: now } }).toArray();
-    if (pending.length === 0) return;
-    console.log(`[Scheduled-WA] Procesando ${pending.length} mensajes de WhatsApp programados...`);
-    for (const notif of pending) {
-      try {
-        if (whatsappService.getStatus() === "connected") {
-          const success = await whatsappService.sendMessage(notif.phone, notif.message);
-          if (success) {
-            await db.collection("scheduled_notifications").updateOne(
-              { _id: notif._id },
-              { $set: { status: "sent", sentAt: (/* @__PURE__ */ new Date()).toISOString() } }
-            );
-            console.log(`[Scheduled-WA] Mensaje enviado a ${notif.phone}`);
-          } else {
-            console.warn(`[Scheduled-WA] Fall\xF3 el env\xEDo del mensaje a ${notif.phone}`);
-            await db.collection("scheduled_notifications").updateOne(
-              { _id: notif._id },
-              { $set: { status: "failed", lastError: "Env\xEDo fallido (retorno false)", updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
-            );
-          }
-        } else {
-          console.log(`[Scheduled-WA] WhatsApp no conectado. Reintento en el pr\xF3ximo ciclo.`);
-        }
-      } catch (err) {
-        console.error(`[Scheduled-WA] Error al enviar a ${notif.phone}:`, err);
+    const limite = new Date(Date.now() - RECLAMO_PROGRAMADOS_MS).toISOString();
+    const rescatados = await db.collection("scheduled_notifications").updateMany(
+      { status: "processing", claimedAt: { $lt: limite } },
+      { $set: { status: "pending" }, $unset: { claimedAt: "" } }
+    );
+    if (rescatados.modifiedCount > 0) {
+      console.log(`[Scheduled-WA] ${rescatados.modifiedCount} mensajes atascados devueltos a la cola.`);
+    }
+    if (whatsappService.getStatus() !== "connected") return;
+    let procesados = 0;
+    while (procesados < MAX_PROGRAMADOS_POR_CICLO) {
+      const ahora = (/* @__PURE__ */ new Date()).toISOString();
+      const tomado = await db.collection("scheduled_notifications").findOneAndUpdate(
+        { status: "pending", sendAt: { $lte: ahora } },
+        { $set: { status: "processing", claimedAt: ahora } },
+        { returnDocument: "after" }
+      );
+      const notif = tomado && tomado.value !== void 0 ? tomado.value : tomado;
+      if (!notif || !notif._id) break;
+      if (whatsappService.getStatus() !== "connected") {
         await db.collection("scheduled_notifications").updateOne(
           { _id: notif._id },
-          { $set: { status: "failed", lastError: String(err), updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+          { $set: { status: "pending" }, $unset: { claimedAt: "" } }
         );
+        console.log("[Scheduled-WA] WhatsApp se desconect\xF3; se reanuda en el pr\xF3ximo ciclo.");
+        break;
       }
+      let enviado = false;
+      try {
+        enviado = await Promise.race([
+          whatsappService.sendMessage(notif.phone, notif.message),
+          new Promise((r) => setTimeout(() => r(false), ENVIO_PROGRAMADO_TIMEOUT_MS))
+        ]);
+      } catch (err) {
+        console.error(`[Scheduled-WA] Error al enviar a ${notif.phone}:`, err);
+      }
+      await db.collection("scheduled_notifications").updateOne(
+        { _id: notif._id },
+        {
+          $set: {
+            status: "sent",
+            sentAt: (/* @__PURE__ */ new Date()).toISOString(),
+            ...enviado ? {} : { sinConfirmar: true, lastError: "Sin confirmaci\xF3n dentro del timeout" }
+          },
+          $unset: { claimedAt: "" }
+        }
+      );
+      console.log(`[Scheduled-WA] Mensaje ${enviado ? "enviado" : "despachado SIN confirmar"} a ${notif.phone}`);
+      procesados++;
       await new Promise((resolve) => setTimeout(resolve, 3e3));
+    }
+    if (procesados > 0) {
+      console.log(`[Scheduled-WA] Vuelta terminada: ${procesados} mensajes procesados.`);
     }
   } catch (error) {
     console.error("[Scheduled-WA] Error en cron de mensajes programados:", error);
+  } finally {
+    scheduledNotificationsRunning = false;
   }
 }
 financingReminderInterval = setInterval(checkFinancingReminders, 60 * 60 * 1e3);
@@ -302837,6 +307163,112 @@ io2.on("connection", (socket) => {
     console.log("Client disconnected:", socket.id);
   });
 });
+var depsBloqueo = {
+  getDb: () => db,
+  // Los avisos de cobro salen SIEMPRE por el número de CREDILOCK, nunca por el
+  // comercial, igual que los recordatorios de financiamiento.
+  enviarWhatsApp: (telefono, texto) => credilockService.sendMessage(telefono, texto),
+  whatsappListo: () => credilockService.getStatus() === "connected",
+  nombreBonito: nombreBonito2,
+  // Para que el aviso de bloqueo traiga el botón de pagar: el cliente al que se
+  // le acaba de apagar el teléfono es el que más necesita poder resolverlo solo,
+  // y pasa a la madrugada o un domingo, cuando no hay nadie en la tienda.
+  linkPortal: (registro) => linkPortal(BASE_PUBLICA, secretoPortal, registro),
+  // El de la pantalla de bloqueo. Asigna el código la primera vez que a ese
+  // cliente se le bloquea el equipo, y a partir de ahí es siempre el mismo:
+  // puede leerlo hoy, apuntarlo, y volver a usarlo en el siguiente bloqueo.
+  linkCortoPortal: async (registro) => {
+    const codigo = await asegurarCodigoCorto(db, String(registro?.id || ""));
+    return codigo ? `${PORTAL_DOMINIO_CORTO}/p/${codigo}` : null;
+  }
+};
+registrarBloqueo(app, depsBloqueo);
+var limitarPortal = limitadorPorIp("portal-cliente", 40, 10 * 60 * 1e3);
+async function avisarAlDueno(texto) {
+  const mensaje = String(texto || "").trim();
+  if (!mensaje) return;
+  console.log("[portal][aviso-due\xF1o]", mensaje.replace(/\n+/g, " | "));
+  try {
+    io2.emit("portalAviso", { texto: mensaje, en: (/* @__PURE__ */ new Date()).toISOString() });
+  } catch {
+  }
+  let crudo = (process.env.DUENO_WHATSAPP || "").trim();
+  if (!crudo && db) {
+    try {
+      const doc = await db.collection("settings").findOne({ key: "dueno_whatsapp" });
+      crudo = String(doc?.value || "").trim();
+    } catch {
+    }
+  }
+  if (!crudo) return;
+  const telefono = normalizarTelefonoCo(crudo);
+  if (!telefono) {
+    console.warn("[portal][aviso-due\xF1o] El n\xFAmero configurado no es un m\xF3vil colombiano v\xE1lido:", crudo);
+    return;
+  }
+  if (!depsBloqueo.whatsappListo()) return;
+  try {
+    await depsBloqueo.enviarWhatsApp(telefono, mensaje);
+  } catch (err) {
+    console.error("[portal][aviso-due\xF1o] No se pudo enviar:", err);
+  }
+}
+function configBold() {
+  const apiKey = (process.env.BOLD_API_KEY || "").trim();
+  return apiKey ? { apiKey } : null;
+}
+var depsPortal = {
+  getDb: () => db,
+  secreto: () => secretoPortal,
+  baseUrl: () => BASE_PUBLICA,
+  // Sin llaves de Bold el portal no muestra un botón de pago muerto: ofrece
+  // escribir por WhatsApp. Se consulta en caliente porque las variables de
+  // entorno pueden aparecer en un redeploy sin tocar este código.
+  boldConfigurado: () => Boolean(process.env.BOLD_API_KEY && process.env.BOLD_SECRET_KEY),
+  // El link lo crea la API de Link de Pagos y no el botón embebido, porque es la
+  // única de las dos que acepta `payment_methods`: aquí se cobra sin tarjeta a
+  // propósito. El motivo largo está en la cabecera de portal-rutas.ts.
+  crearLinkPago: (o) => crearLinkDePago(configBold(), o),
+  // Todo lo de cartera sale por el número de CREDILOCK, nunca por el comercial.
+  enviarWhatsApp: (telefono, texto) => credilockService.sendMessage(telefono, texto),
+  whatsappListo: () => credilockService.getStatus() === "connected",
+  nombreBonito: nombreBonito2,
+  hoy: () => getColombiaDate().dateStr,
+  parsearImagen: parseBase64Image,
+  maxBytesComprobante: MAX_COMPROBANTE_BYTES,
+  // Un pago o un plazo del portal sueltan el equipo por el MISMO camino que el
+  // panel. Si el portal tuviera su propia lógica de desbloqueo, un día una de
+  // las dos se quedaría sin el arreglo que se le hizo a la otra.
+  alRegistrarPago: (financingId) => alRegistrarPago(depsBloqueo, financingId),
+  alOtorgarProrroga: (financingId, hasta, cuotaNumber) => alOtorgarProrroga(depsBloqueo, financingId, hasta, cuotaNumber),
+  avisarAlDueno,
+  emitir: (evento, datos) => io2.emit(evento, datos),
+  limitador: limitarPortal
+};
+registrarPortal(app, depsPortal);
+var depsConciliador = {
+  getDb: () => db,
+  bold: configBold,
+  // Exactamente los mismos caminos que usa el webhook. Si el conciliador
+  // tuviera los suyos, un arreglo hecho en uno dejaría el otro atrás.
+  confirmarCuotas: (referencia, extra) => confirmarPagoDeCuotas(depsPortal, referencia, extra),
+  confirmarPedido: (pedido, metodo) => transitionOrderAndNotify(pedido, "paid", metodo),
+  avisarAlDueno
+};
+var MINUTOS_CONCILIACION = 4;
+var conciliacionEnCurso = false;
+async function vueltaDeConciliacion() {
+  if (conciliacionEnCurso || !db) return;
+  conciliacionEnCurso = true;
+  try {
+    await conciliarPagos(depsConciliador);
+  } catch (err) {
+    console.error("[conciliador] Vuelta fallida:", err);
+  } finally {
+    conciliacionEnCurso = false;
+  }
+}
+setInterval(vueltaDeConciliacion, MINUTOS_CONCILIACION * 60 * 1e3);
 httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

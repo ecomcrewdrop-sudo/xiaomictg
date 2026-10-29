@@ -5,9 +5,10 @@ import { Button } from '../ui/button';
 import { Zap, Store, Truck, CreditCard, Loader2, ShoppingBag, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ThermalTicket } from '../ThermalTicket';
+import { FinanciacionDisponible } from '../FinanciacionDisponible';
 import { API_ORIGIN } from '../../lib/api-base';
+import { calcularDomicilio, etiquetaDomicilio } from '../../lib/domicilio';
 
-const DELIVERY_FEE = 0; // Domicilio GRATIS en Cartagena
 type DeliveryMethod = 'delivery' | 'pickup';
 type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'nequi' | 'bold';
 
@@ -68,9 +69,9 @@ export function DirectCheckoutPage() {
   }, [loading, products, productId, initialColor, initialStorage, navigate]);
 
   // Cálculos de precio
-  const { unitPrice, availableStock, grandTotal, cardSurcharge, deliveryFee, addiSurcharge } = useMemo(() => {
-    if (!product) return { unitPrice: 0, availableStock: 0, grandTotal: 0, cardSurcharge: 0, deliveryFee: 0, addiSurcharge: 0 };
-    
+  const { unitPrice, availableStock, grandTotal, cardSurcharge, deliveryFee, costoDomicilio } = useMemo(() => {
+    if (!product) return { unitPrice: 0, availableStock: 0, grandTotal: 0, cardSurcharge: 0, deliveryFee: 0, costoDomicilio: 0 };
+
     let currentPrice = product.price;
     let currentStock = product.stock;
 
@@ -82,27 +83,31 @@ export function DirectCheckoutPage() {
       if (v) currentStock = v.stock;
     }
 
-    const dFee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
+    // $10.000 de domicilio, gratis si el producto es un celular. Ver lib/domicilio.ts.
+    // `costoDomicilio` rotula el botón, que hay que poder leer antes de elegirlo.
+    const costoDom = calcularDomicilio([product], 'delivery');
+    const dFee = calcularDomicilio([product], deliveryMethod);
     const baseTotal = currentPrice * quantity;
-    const addiSurchargeCalculated = paymentMethod === 'addi' ? Math.round(baseTotal * 0.20) : 0;
-    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : addiSurchargeCalculated;
-    
+    const surcharge = (paymentMethod === 'tarjeta' || paymentMethod === 'bold') ? Math.round(baseTotal * 0.05) : 0;
+
     return {
       unitPrice: currentPrice,
       availableStock: currentStock,
       deliveryFee: dFee,
+      costoDomicilio: costoDom,
       cardSurcharge: surcharge,
       grandTotal: baseTotal + dFee + surcharge,
-      addiSurcharge: addiSurchargeCalculated
     };
-  }, [product, selectedStorage, selectedColor, deliveryMethod, paymentMethod]);
+    // `quantity` FALTABA en estas dependencias: el total se calcula con él
+    // (baseTotal = precio * quantity) pero al cambiar la cantidad el memo no se
+    // recalculaba, así que el cliente veía el total de 1 unidad. Bug previo.
+  }, [product, selectedStorage, selectedColor, deliveryMethod, paymentMethod, quantity]);
 
   const paymentMethodText =
     paymentMethod === 'efectivo' ? 'Efectivo' :
     paymentMethod === 'transferencia' ? 'Transferencia bancaria' :
     paymentMethod === 'nequi' ? 'Nequi' :
     paymentMethod === 'bold' ? 'BOLD (Tarjeta)' :
-    paymentMethod === 'addi' ? 'Addi (Crédito a cuotas)' :
     'Tarjeta';
 
   // Utils para orden
@@ -203,107 +208,12 @@ export function DirectCheckoutPage() {
     }
   };
 
-  // Enviar Orden (Addi)
-  const handleAddiPayment = async () => {
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-    try {
-      const newOrder = await addOrder({
-        items: [buildCartItem()],
-        total: unitPrice * quantity,
-        status: 'pending_addi',
-        createdAt: new Date().toISOString(),
-        customerInfo: {
-          email: customerEmail, name: customerName, idNumber: customerIdNumber, phone, deliveryMethod,
-          address: deliveryMethod === 'delivery' ? address : 'Retiro en tienda',
-          paymentMethod: 'Addi (Crédito a cuotas)', deliveryFee,
-        },
-        paymentMethod: 'Addi (Crédito a cuotas)',
-      });
-
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'InitiateCheckout', { content_ids: [product!.id], value: grandTotal, currency: 'COP' });
-      }
-
-      // Separar nombre y apellido (Aproximación simple)
-      const nameParts = customerName.trim().split(' ');
-      const firstName = nameParts[0] || 'Cliente';
-      const lastName = nameParts.slice(1).join(' ') || 'Xiaomi';
-
-      if (ticketConfig.addiMode === 'whatsapp') {
-        const text = `Hola, acabo de realizar el pedido *#${newOrder.orderNumber}*
-        
-*🛍️ PRODUCTOS:*
-• ${product!.name} x${quantity} ${selectedStorage ? `[${selectedStorage}]` : ''} ${selectedColor ? `(${selectedColor})` : ''}
-  *Financiado por Addi:* $${(unitPrice * quantity + addiSurcharge).toLocaleString()} COP
-
-*📍 DATOS DE ENVÍO:*
-*Nombre:* ${customerName}
-*Cédula:* ${customerIdNumber}
-*Teléfono:* ${phone}
-*Dirección:* ${deliveryMethod === 'delivery' ? address : 'Retiro en Tienda'}
-
-*💳 PAGO CON ADDI A CUOTAS:*
-*Subtotal:* $${(unitPrice * quantity + addiSurcharge).toLocaleString()} COP
-*Envío:* $${deliveryFee.toLocaleString()} COP
-
-💰 *TOTAL A PAGAR: $${grandTotal.toLocaleString()} COP* 💰
-
-Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame el link de pago.`;
-        window.location.href = `https://wa.me/57${ticketConfig.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
-        return;
-      }
-
-      // Llamar al endpoint de Addi
-      const addiRes = await fetch(`${API_ORIGIN}/api/addi/create-transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: newOrder.orderNumber,
-          totalAmount: grandTotal,
-          items: [{
-            sku: product!.id || 'XM-01',
-            name: `${product!.name} ${selectedStorage || ''}`.trim(),
-            quantity: Number(quantity),
-            unitPrice: unitPrice
-          }],
-          client: {
-            idType: "CC",
-            idNumber: customerIdNumber,
-            firstName,
-            lastName,
-            email: customerEmail,
-            cellphone: phone.replace(/[^0-9]/g, ''),
-            cellphoneCountryCode: "+57",
-            address: {
-              lineOne: deliveryMethod === 'delivery' ? address : 'Tienda Fisica',
-              city: "Cartagena",
-              country: "CO"
-            }
-          }
-        })
-      });
-
-      const addiData = await addiRes.json();
-      if (addiData.success && addiData.redirectUrl) {
-        window.location.href = addiData.redirectUrl;
-      } else {
-        throw new Error(addiData.error || 'Error conectando con Addi');
-      }
-
-    } catch (err: any) {
-      toast.error(err.message || 'Error al iniciar pago con Addi.');
-      setIsSubmitting(false);
-    }
-  };
-
   const paymentMethods = [
     { value: 'efectivo', label: 'Efectivo', sub: 'Contra entrega', icon: '💵' },
     { value: 'nequi', label: 'Nequi', sub: 'Contra entrega', icon: '📱' },
     { value: 'transferencia', label: 'Transferencia', sub: 'Bancaria Directa', icon: '🏦' },
     { value: 'tarjeta', label: 'Datáfono físico', sub: 'Contra entrega (+5%)', icon: '💳' },
     { value: 'bold', label: 'Pago Seguro Online', sub: 'Bold (+5%)', icon: '🌐' },
-    { value: 'addi', label: 'Paga con Addi', sub: 'Crédito a cuotas', icon: '🛍️' },
   ];
 
   if (loading || !product) {
@@ -326,23 +236,9 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
           <p className="text-slate-500 text-base md:text-lg">Tu número de orden es <strong className="text-slate-900 bg-slate-100 px-2 py-1 rounded">{orderSuccess.orderNumber}</strong></p>
           <p className="text-slate-400 text-sm">Hemos enviado los detalles a <b className="text-slate-700">{customerEmail}</b></p>
           
-          {paymentMethod === 'addi' ? (
-            <div className="mt-8">
-              <p className="text-sm text-slate-600 mb-4">Para finalizar tu pago con Addi, haz clic en el botón de abajo para que un asesor te envíe el link de aprobación a tu WhatsApp.</p>
-              <a 
-                href={`https://wa.me/573022875280?text=Hola%21%20Acabo%20de%20hacer%20el%20pedido%20%23${orderSuccess.orderNumber}%20por%20${grandTotal.toLocaleString('es-CO')}%20COP%20y%20quiero%20pagarlo%20con%20Addi.%20Me%20env%C3%ADan%20el%20link%20de%20pago%3F`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center h-14 text-base font-black bg-[#4A3BFA] hover:bg-[#392CD1] text-white rounded-2xl shadow-lg transition-all cursor-pointer"
-              >
-                Solicitar link de Addi
-              </a>
-            </div>
-          ) : (
-            <Button onClick={() => navigate('/')} className="mt-8 w-full h-14 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white rounded-2xl shadow-lg transition-all cursor-pointer">
-              Volver a la tienda
-            </Button>
-          )}
+          <Button onClick={() => navigate('/')} className="mt-8 w-full h-14 text-base font-black bg-gradient-to-r from-slate-900 to-slate-950 hover:from-black hover:to-slate-900 text-white rounded-2xl shadow-lg transition-all cursor-pointer">
+            Volver a la tienda
+          </Button>
         </div>
         <div id="quick-thermal-ticket" className="hidden">
           <ThermalTicket order={orderSuccess} finalTotal={grandTotal} cardFee={cardSurcharge} totalCOP={unitPrice} finalTotalCOP={grandTotal} config={ticketConfig} preview={true} />
@@ -435,7 +331,7 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
               </h3>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 {([
-                  { value: 'delivery', label: 'A Domicilio', sub: 'GRATIS', Icon: Truck },
+                  { value: 'delivery', label: 'A Domicilio', sub: etiquetaDomicilio(costoDomicilio), Icon: Truck },
                   { value: 'pickup', label: 'Retiro Tienda', sub: '¡Gratis!', Icon: Store },
                 ] as const).map(opt => (
                   <button key={opt.value} type="button" onClick={() => setDeliveryMethod(opt.value)}
@@ -493,6 +389,9 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                   );
                 })}
               </div>
+
+              {/* Aliados de financiación (informativo, el trámite va por fuera del checkout) */}
+              <FinanciacionDisponible className="mt-5" />
             </div>
 
           </div>
@@ -529,12 +428,12 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
               <div className="p-6 space-y-4">
                 <div className="flex justify-between text-slate-600 font-bold text-sm">
                   <span>Subtotal ({quantity}x)</span>
-                  <span>${(unitPrice * quantity + addiSurcharge).toLocaleString('es-CO')}</span>
+                  <span>${(unitPrice * quantity).toLocaleString('es-CO')}</span>
                 </div>
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-slate-600 font-bold text-sm">
                     <span>Envío a Domicilio</span>
-                    <span>+${DELIVERY_FEE.toLocaleString('es-CO')}</span>
+                    <span>+${deliveryFee.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 {(paymentMethod === 'tarjeta' || paymentMethod === 'bold') && (
@@ -561,12 +460,6 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
                     className="w-full h-15 text-base font-black bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg shadow-blue-500/10 rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 animate-in fade-in duration-300">
                     {boldLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
                     Pagar Seguro con BOLD
-                  </Button>
-                ) : paymentMethod === 'addi' ? (
-                  <Button onClick={handleAddiPayment} disabled={isSubmitting || availableStock === 0}
-                    className="w-full h-15 text-base font-black bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-lg rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 animate-in fade-in duration-300">
-                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
-                    Pagar con Addi
                   </Button>
                 ) : (
                   <Button onClick={handleCompleteOrder} disabled={isSubmitting || availableStock === 0}
@@ -610,15 +503,6 @@ Seleccioné *Addi* como método de pago para pagar a cuotas. Por favor envíame 
             >
               {boldLoading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <CreditCard className="w-4.5 h-4.5" />}
               Pagar con BOLD
-            </Button>
-          ) : paymentMethod === 'addi' ? (
-            <Button 
-              onClick={handleAddiPayment} 
-              disabled={isSubmitting}
-              className="w-full h-13 text-sm font-black bg-[#4A3BFA] hover:bg-[#392CD1] text-white shadow-md rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-in fade-in duration-300"
-            >
-              {isSubmitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ShoppingBag className="w-4.5 h-4.5" />}
-              Pagar con Addi
             </Button>
           ) : (
             <Button 

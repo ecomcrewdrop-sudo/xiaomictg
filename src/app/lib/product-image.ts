@@ -17,10 +17,19 @@ export async function compressImageDataUrl(imageString: string): Promise<string>
   return imageCompression.getDataUrlFromFile(compressedFile);
 }
 
-export async function compressImageFile(file: File): Promise<string> {
+/**
+ * Los valores por defecto son los del catálogo. Se pueden subir porque no todo
+ * lo que se sube es una foto de producto: un comprobante de pago se guarda para
+ * leerle el valor y la referencia, y a 1000px / 0.35MB esos números quedan
+ * ilegibles.
+ */
+export async function compressImageFile(
+  file: File,
+  options: { maxSizeMB?: number; maxWidthOrHeight?: number } = {}
+): Promise<string> {
   const compressedFile = await imageCompression(file, {
-    maxSizeMB: 0.35,
-    maxWidthOrHeight: 1000,
+    maxSizeMB: options.maxSizeMB ?? 0.35,
+    maxWidthOrHeight: options.maxWidthOrHeight ?? 1000,
     useWebWorker: true,
   });
   return imageCompression.getDataUrlFromFile(compressedFile);

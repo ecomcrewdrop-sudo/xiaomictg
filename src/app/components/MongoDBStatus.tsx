@@ -2,29 +2,31 @@ import { Database, Wifi, WifiOff } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { useDeviceStore } from '../lib/blocking/store';
-import { useAuthStore } from '../lib/blocking/auth-store';
 
+/**
+ * Antes este aviso leía un flag `isUsingMockData` del store, y decía "Conectado
+ * a MongoDB Atlas" simplemente porque el flag estaba en false — sin haber
+ * comprobado nada. Ahora se apoya en lo único verificable desde el navegador:
+ * si la última carga de equipos trajo datos o falló.
+ */
 export function MongoDBStatus() {
-  const isUsingMockData = useDeviceStore((state) => state.isUsingMockData);
-  const isUsingMockAuth = useAuthStore((state) => state.isUsingMockAuth);
-  
-  const isFullyConnected = !isUsingMockData && !isUsingMockAuth;
-  const isPartiallyConnected = isUsingMockAuth !== isUsingMockData;
-  const isDisconnected = isUsingMockData && isUsingMockAuth;
+  const error = useDeviceStore((s) => s.error);
+  const isLoading = useDeviceStore((s) => s.isLoading);
+  const devices = useDeviceStore((s) => s.devices);
 
-  if (isFullyConnected) {
+  if (error) {
     return (
-      <Alert className="border border-green-200 bg-green-50">
-        <Wifi className="h-5 w-5 text-green-600" />
-        <AlertDescription className="text-green-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-medium">Conectado a MongoDB Atlas</span>
-              <p className="text-xs mt-1 text-green-700">Todos los datos se están sincronizando con la base de datos</p>
+      <Alert className="border border-red-200 bg-red-50">
+        <WifiOff className="h-5 w-5 text-red-600" />
+        <AlertDescription className="text-red-800">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="font-medium">Sin conexión con el servidor</span>
+              <p className="mt-1 text-xs text-red-700">{error}</p>
             </div>
-            <Badge variant="default" className="bg-green-600 border-0">
-              <Database className="h-3 w-3 mr-1" />
-              Online
+            <Badge variant="secondary" className="shrink-0 border-0 bg-red-600 text-white">
+              <Database className="mr-1 h-3 w-3" />
+              Offline
             </Badge>
           </div>
         </AlertDescription>
@@ -32,43 +34,35 @@ export function MongoDBStatus() {
     );
   }
 
-  if (isPartiallyConnected) {
+  if (isLoading && devices.length === 0) {
     return (
-      <Alert className="border border-yellow-200 bg-yellow-50">
-        <Wifi className="h-5 w-5 text-yellow-600" />
-        <AlertDescription className="text-yellow-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-medium">Conexión parcial</span>
-              <p className="text-xs mt-1 text-yellow-700">
-                {isUsingMockAuth ? 'Auth: Local' : 'Auth: MongoDB'} • 
-                {isUsingMockData ? ' Data: Local' : ' Data: MongoDB'}
-              </p>
-            </div>
-            <Badge variant="secondary" className="bg-yellow-600 text-white border-0">
-              <Database className="h-3 w-3 mr-1" />
-              Híbrido
-            </Badge>
-          </div>
+      <Alert className="border border-gray-200 bg-gray-50">
+        <Wifi className="h-5 w-5 text-gray-500" />
+        <AlertDescription className="text-gray-700">
+          <span className="font-medium">Consultando el servidor...</span>
         </AlertDescription>
       </Alert>
     );
   }
 
   return (
-    <Alert className="border border-gray-300 bg-gray-50">
-      <WifiOff className="h-5 w-5 text-gray-600" />
-      <AlertDescription className="text-gray-800">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-medium">Modo local (Mock Data)</span>
-            <p className="text-xs mt-1 text-gray-600">
-              Backend no disponible. Usando datos de demostración. Los cambios no se persistirán.
+    <Alert className="border border-green-200 bg-green-50">
+      <Wifi className="h-5 w-5 text-green-600" />
+      <AlertDescription className="text-green-800">
+        {/* min-w-0 + shrink-0: el texto explicativo y la insignia comparten
+            fila, y en el móvil el texto —que es largo— empujaba la insignia
+            fuera del aviso en vez de partirse en varias líneas. */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <span className="font-medium">Datos en vivo</span>
+            <p className="mt-1 text-xs text-green-700">
+              {devices.length} equipos leídos de la base de datos. El estado de bloqueo lo
+              confirma el proveedor, no este panel.
             </p>
           </div>
-          <Badge variant="secondary" className="bg-gray-600 text-white border-0">
-            <Database className="h-3 w-3 mr-1" />
-            Local
+          <Badge variant="default" className="shrink-0 border-0 bg-green-600">
+            <Database className="mr-1 h-3 w-3" />
+            Online
           </Badge>
         </div>
       </AlertDescription>
