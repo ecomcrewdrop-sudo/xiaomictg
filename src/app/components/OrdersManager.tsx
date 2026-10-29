@@ -587,6 +587,14 @@ export function OrdersManager() {
                       Marcar como Procesando
                     </Button>
                     <Button
+                      onClick={() => updateOrderStatus(order.id, 'completed')}
+                      className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      Marcar como Completada
+                    </Button>
+                    <Button
                       onClick={() => {
                         toast('¿Cancelar esta orden?', {
                           action: {
@@ -648,6 +656,14 @@ export function OrdersManager() {
                       size="sm"
                     >
                       ✅ Aprobar Pago Bold
+                    </Button>
+                    <Button
+                      onClick={() => updateOrderStatus(order.id, 'completed')}
+                      className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      Completar Directo
                     </Button>
                     <Button
                       onClick={() => {

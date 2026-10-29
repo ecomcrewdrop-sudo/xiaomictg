@@ -463,6 +463,7 @@ export function PointOfSale() {
           cedula: saleForm.cedula,
           producto: saleForm.producto,
           imei: saleForm.imei,
+          inventarioId: inventoryItems.find(i => (saleForm.imei && i.imei && i.imei.trim() === saleForm.imei.trim()) || (i.producto && i.producto.trim().toLowerCase() === saleForm.producto.trim().toLowerCase()))?.id || undefined,
           esPropio: true,
           proveedor: '',
           precioCompra: Number(saleForm.precioCompra) || 0,

@@ -302374,6 +302374,203 @@ function diasQueFaltan(diasVencido) {
   return diasVencido < 0 ? -diasVencido : 0;
 }
 
+// server/inventory-matcher.ts
+var ACCESSORY_WORDS = [
+  "buds",
+  "audifonos",
+  "audifono",
+  "auricular",
+  "auriculares",
+  "reloj",
+  "watch",
+  "band",
+  "parlante",
+  "sound",
+  "cargador",
+  "cable",
+  "vidrio",
+  "forro",
+  "forros",
+  "power bank",
+  "soporte"
+];
+var PHONE_SERIES = [
+  "note",
+  "poco",
+  "redmi 12",
+  "redmi 13",
+  "redmi 14",
+  "redmi 15",
+  "redmi 16",
+  "redmi 17",
+  "redmi a",
+  "redmi pad",
+  "xiaomi 12",
+  "xiaomi 13",
+  "xiaomi 14",
+  "xiaomi 15",
+  "celular",
+  "telefono",
+  "movil"
+];
+function normalizeInventoryText(text) {
+  if (!text) return "";
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/(\d+)\s+([a-z])\b/gi, "$1$2").replace(/(\d+)\s*(gb|tb|ram)/gi, "$1$2").replace(/(\d+)\s*\/\s*(\d+)/g, "$1 $2").replace(/[+(),\-_/]/g, " ").replace(/\s+/g, " ").trim();
+}
+function parseCombo(fullProductName) {
+  if (!fullProductName) return { mainPart: "", giftPart: "" };
+  let mainPart = fullProductName.trim();
+  let giftPart = "";
+  if (fullProductName.includes("+")) {
+    const parts = fullProductName.split("+");
+    mainPart = parts[0].trim();
+    giftPart = parts.slice(1).join(" ").trim();
+  } else if (/\bcombo\b/i.test(fullProductName)) {
+    const parts = fullProductName.split(/\bcombo\b/i);
+    mainPart = parts[0].trim();
+    giftPart = parts.slice(1).join(" ").trim();
+  }
+  const storageMatch = giftPart.match(/\b\d+\s*(?:gb|tb)(?:\s*\/\s*\d+\s*(?:gb|ram))?\b/i);
+  if (storageMatch) {
+    mainPart = `${mainPart} ${storageMatch[0]}`;
+    giftPart = giftPart.replace(storageMatch[0], "").trim();
+  }
+  giftPart = giftPart.replace(/\((?:obsequio|regalo|incluido)\)/gi, "").trim();
+  return { mainPart, giftPart };
+}
+function isPhone(text) {
+  const norm = normalizeInventoryText(text);
+  const hasAccessory = ACCESSORY_WORDS.some((w) => norm.includes(w));
+  if (hasAccessory) return false;
+  return PHONE_SERIES.some((s) => norm.includes(s)) || /\b(celular|telefono|movil|tablet)\b/i.test(norm);
+}
+function isAudio(text) {
+  const norm = normalizeInventoryText(text);
+  return ["buds", "audifonos", "audifono", "auricular", "auriculares", "sound", "parlante"].some((w) => norm.includes(w));
+}
+function findBestInventoryMatch(availableItems, searchTerm, kind = "any", excludeId = null) {
+  if (!searchTerm || searchTerm.trim().length < 2) return null;
+  const normalized = normalizeInventoryText(searchTerm);
+  const words = normalized.split(" ").filter((w) => w.length >= 2 && !["con", "para", "del", "las", "los", "de", "el", "la"].includes(w));
+  let bestMatch = null;
+  let bestScore = 0;
+  for (const item of availableItems) {
+    if (excludeId && item.id === excludeId) continue;
+    if ((item.cantidad || 0) < 1) continue;
+    if (item.estado && item.estado !== "disponible") continue;
+    const itemNorm = normalizeInventoryText(item.producto);
+    const itemWords = itemNorm.split(" ");
+    if (kind === "phone") {
+      if (ACCESSORY_WORDS.some((w) => itemNorm.includes(w))) continue;
+      if (normalized.includes("note") && !itemNorm.includes("note")) continue;
+      if (!normalized.includes("note") && itemNorm.includes("note")) continue;
+      if (normalized.includes("poco") && !itemNorm.includes("poco")) continue;
+      if (!normalized.includes("poco") && itemNorm.includes("poco")) continue;
+    } else if (kind === "audio") {
+      if (!isAudio(itemNorm)) continue;
+    }
+    const searchModels = normalized.match(/\b([a-z]?\d+[a-z]?)\b/g)?.filter((m) => !m.endsWith("gb") && !m.endsWith("ram") && !m.endsWith("w") && !m.endsWith("mah")) || [];
+    const itemModels = itemNorm.match(/\b([a-z]?\d+[a-z]?)\b/g)?.filter((m) => !m.endsWith("gb") && !m.endsWith("ram") && !m.endsWith("w") && !m.endsWith("mah")) || [];
+    if (searchModels.length > 0 && itemModels.length > 0) {
+      const sharesModel = searchModels.some((sm) => itemModels.includes(sm));
+      if (!sharesModel) continue;
+    }
+    let score = 0;
+    for (const w of words) {
+      if (itemWords.includes(w)) {
+        score += 3;
+      } else if (itemNorm.includes(w)) {
+        score += 1;
+      }
+    }
+    const searchStorage = searchTerm.match(/\b\d+\s*(?:gb|tb)\b/i);
+    const itemStorage = item.producto.match(/\b\d+\s*(?:gb|tb)\b/i);
+    if (searchStorage && itemStorage) {
+      const s1 = normalizeInventoryText(searchStorage[0]);
+      const s2 = normalizeInventoryText(itemStorage[0]);
+      if (s1 === s2) {
+        score += 5;
+      } else {
+        continue;
+      }
+    }
+    const searchRam = searchTerm.match(/\b\d+\s*ram\b/i);
+    const itemRam = item.producto.match(/\b\d+\s*ram\b/i);
+    if (searchRam && itemRam) {
+      const r1 = normalizeInventoryText(searchRam[0]);
+      const r2 = normalizeInventoryText(itemRam[0]);
+      if (r1 === r2) score += 3;
+    }
+    if (score > bestScore && score >= 3) {
+      bestScore = score;
+      bestMatch = item;
+    }
+  }
+  return bestMatch;
+}
+async function descontarItemInventario(db2, invItemId, qty = 1, ventaId) {
+  if (!db2 || !invItemId) return { success: false, newQty: 0 };
+  const item = await db2.collection("inventory").findOne({ id: invItemId });
+  if (!item) return { success: false, newQty: 0 };
+  const currentCant = Number(item.cantidad || 1);
+  const newCant = Math.max(0, currentCant - qty);
+  if (newCant <= 0) {
+    await db2.collection("inventory").updateOne(
+      { id: invItemId },
+      {
+        $set: {
+          cantidad: 0,
+          estado: "vendido",
+          ventaId: ventaId || item.ventaId || null,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      }
+    );
+  } else {
+    await db2.collection("inventory").updateOne(
+      { id: invItemId },
+      {
+        $set: {
+          cantidad: newCant,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      }
+    );
+  }
+  return { success: true, newQty: newCant };
+}
+async function descontarStockCatalogo(db2, productNameOrId, qty = 1) {
+  if (!db2 || !productNameOrId) return;
+  try {
+    const byId = await db2.collection("products").findOne({ id: productNameOrId });
+    if (byId) {
+      await db2.collection("products").updateOne(
+        { id: productNameOrId, stock: { $gte: qty } },
+        { $inc: { stock: -qty } }
+      );
+      return;
+    }
+    const { mainPart } = parseCombo(productNameOrId);
+    const norm = normalizeInventoryText(mainPart);
+    const words = norm.split(" ").filter((w) => w.length > 2);
+    if (words.length > 0) {
+      const regex = words.slice(0, 3).map((w) => `(?=.*${w})`).join("");
+      const prod = await db2.collection("products").findOne({
+        name: { $regex: regex, $options: "i" },
+        stock: { $gte: qty }
+      });
+      if (prod) {
+        await db2.collection("products").updateOne(
+          { id: prod.id },
+          { $inc: { stock: -qty } }
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[descontarStockCatalogo] Error:", err);
+  }
+}
+
 // server/index.ts
 import_dns.default.setDefaultResultOrder("ipv4first");
 import_dotenv.default.config();
@@ -304491,6 +304688,123 @@ app.get("/api/bold-checkout", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.status(200).send(html);
 });
+async function registrarVentaDesdeOrden(order) {
+  if (!db || !order) return;
+  const existingSales = await db.collection("daily_sales").find({ orderId: order.id }).toArray();
+  if (existingSales.length > 0) {
+    for (const v of existingSales) {
+      if (v.estadoPago !== "recibido") {
+        await db.collection("daily_sales").updateOne({ id: v.id }, { $set: { estadoPago: "recibido" } });
+        await crearMovimientosCajaDesdeVenta(
+          v.metodoPago || order.paymentMethod || "efectivo",
+          v.precioVenta,
+          `Venta web: ${v.producto} \u2014 ${v.cliente}`
+        );
+      }
+    }
+    return;
+  }
+  const items = order.items;
+  if (!items || !Array.isArray(items) || items.length === 0) return;
+  const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const allAvailableInventory = await db.collection("inventory").find({
+    estado: "disponible",
+    cantidad: { $gte: 1 }
+  }).toArray();
+  for (const item of items) {
+    const precioVenta = Number(item.product?.price || item.price || item.total || 0);
+    const storage = item.selectedStorage ? ` ${item.selectedStorage}` : "";
+    const nombreCompleto = (item.product?.name || item.name || item.productName || "Producto") + storage;
+    const qty = Number(item.quantity || 1);
+    const { mainPart, giftPart } = parseCombo(nombreCompleto);
+    const mainKind = isPhone(mainPart) ? "phone" : "any";
+    const invPhone = findBestInventoryMatch(allAvailableInventory, mainPart, mainKind);
+    let invGift = null;
+    if (giftPart) {
+      const giftKind = isAudio(giftPart) ? "audio" : "any";
+      invGift = findBestInventoryMatch(allAvailableInventory, giftPart, giftKind, invPhone?.id || null);
+    }
+    const costoPrincipal = Number(invPhone?.precioCompra || 0);
+    const costoObsequio = Number(invGift?.precioCompra || 0);
+    const costoTotal = (costoPrincipal + costoObsequio) * qty;
+    const precioTotal = precioVenta * qty;
+    const ventaId = crypto.randomUUID();
+    const venta_record = {
+      id: ventaId,
+      fecha: hoy,
+      orderId: order.id,
+      inventarioId: invPhone?.id || null,
+      cliente: order.customerInfo?.name || "Cliente web",
+      producto: nombreCompleto,
+      imei: invPhone?.imei || "",
+      esPropio: invPhone ? Boolean(invPhone.esPropio) : true,
+      proveedor: invPhone?.proveedor || "",
+      precioCompra: costoTotal,
+      precioVenta: precioTotal,
+      ganancia: precioTotal - costoTotal,
+      metodoPago: order.paymentMethod || "efectivo",
+      estadoPago: "recibido",
+      fechaEsperada: null,
+      notas: invPhone ? `Auto - Orden ${order.orderNumber} (inv: ${invPhone.producto})` : `Auto - Orden ${order.orderNumber}`,
+      creadoPor: "web",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      telefono: order.customerInfo?.phone || "",
+      cedula: order.customerInfo?.idNumber || order.customerInfo?.cedula || ""
+    };
+    if (invGift) {
+      venta_record.obsequioNombre = invGift.producto;
+      venta_record.obsequioCosto = costoObsequio;
+      venta_record.obsequioInventarioId = invGift.id;
+    } else if (giftPart) {
+      venta_record.obsequioNombre = giftPart;
+    }
+    await db.collection("daily_sales").insertOne(venta_record);
+    if (invPhone) {
+      await descontarItemInventario(db, invPhone.id, qty, ventaId);
+      const idx = allAvailableInventory.findIndex((i) => i.id === invPhone.id);
+      if (idx !== -1) {
+        allAvailableInventory[idx].cantidad = Math.max(0, (allAvailableInventory[idx].cantidad || 1) - qty);
+      }
+      console.log(`[orden-completada] Descontado producto principal "${invPhone.producto}" (quedan ${Math.max(0, (invPhone.cantidad || 1) - qty)})`);
+    }
+    if (invGift) {
+      await descontarItemInventario(db, invGift.id, qty, ventaId);
+      const gIdx = allAvailableInventory.findIndex((i) => i.id === invGift.id);
+      if (gIdx !== -1) {
+        allAvailableInventory[gIdx].cantidad = Math.max(0, (allAvailableInventory[gIdx].cantidad || 1) - qty);
+      }
+      console.log(`[orden-completada] Descontado combo/obsequio "${invGift.producto}" (quedan ${Math.max(0, (invGift.cantidad || 1) - qty)})`);
+    }
+    await descontarStockCatalogo(db, mainPart, qty);
+    if (invGift?.producto || giftPart) {
+      await descontarStockCatalogo(db, invGift?.producto || giftPart, qty);
+    }
+    await crearMovimientosCajaDesdeVenta(
+      venta_record.metodoPago,
+      precioTotal,
+      `Venta web: ${nombreCompleto} \u2014 ${order.customerInfo?.name || "Cliente web"}`
+    );
+  }
+}
+async function revertirVentaDeOrden(orderId) {
+  if (!db || !orderId) return;
+  const ventas = await db.collection("daily_sales").find({ orderId }).toArray();
+  for (const v of ventas) {
+    if (v.inventarioId) {
+      await db.collection("inventory").updateOne(
+        { id: v.inventarioId },
+        { $inc: { cantidad: 1 }, $set: { estado: "disponible", ventaId: null, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
+    if (v.obsequioInventarioId) {
+      await db.collection("inventory").updateOne(
+        { id: v.obsequioInventarioId },
+        { $inc: { cantidad: 1 }, $set: { estado: "disponible", ventaId: null, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
+      );
+    }
+  }
+  await db.collection("daily_sales").deleteMany({ orderId });
+}
 async function transitionOrderAndNotify(order, newStatus, metodoPago) {
   if (!db) return;
   console.log(`[transition-order] Iniciando transici\xF3n de orden ${order.orderNumber} (${order.status} -> ${newStatus})`);
@@ -304499,6 +304813,9 @@ async function transitionOrderAndNotify(order, newStatus, metodoPago) {
     { $set: { status: newStatus } }
   );
   console.log(`[transition-order] Estado de orden ${order.orderNumber} actualizado a ${newStatus}`);
+  if (newStatus === "completed" || newStatus === "paid") {
+    await registrarVentaDesdeOrden({ ...order, status: newStatus });
+  }
   const ventasOrden = await db.collection("daily_sales").find({ orderId: order.id }).toArray();
   for (const v of ventasOrden) {
     if (v.estadoPago !== "recibido") {
@@ -304686,142 +305003,10 @@ app.post("/api/orders", limitarEscrituraPublica, async (req, res) => {
         );
       }
     }
-    const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    for (const item of items) {
-      console.log("[auto-venta] item keys:", Object.keys(item), "product keys:", item.product ? Object.keys(item.product) : "NO PRODUCT", "name:", item.product?.name || item.name || "NONE");
-      const precioVenta = Number(item.product?.price || item.price || item.total || 0);
-      const storage = item.selectedStorage ? ` ${item.selectedStorage}` : "";
-      const nombreProducto = (item.product?.name || item.name || item.productName || "Producto") + storage;
-      const qty = Number(item.quantity || 1);
-      const productId = item.product?.id || item.productId;
-      const stopWords = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con", "pro", "plus", "max"];
-      let invItem = productId ? await db.collection("inventory").findOne({
-        estado: "disponible",
-        cantidad: { $gte: 1 },
-        productoId: productId
-      }) : null;
-      if (!invItem) {
-        const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        invItem = await db.collection("inventory").findOne({
-          estado: "disponible",
-          cantidad: { $gte: 1 },
-          producto: { $regex: escapedName, $options: "i" }
-        });
-      }
-      if (!invItem) {
-        const keywords = nombreProducto.split(/[\s+()]/g).filter((w) => w.length > 2 && !stopWords.includes(w.toLowerCase())).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-        if (keywords.length > 0) {
-          let regexPattern = keywords.map((w) => `(?=.*${w})`).join("");
-          invItem = await db.collection("inventory").findOne({
-            estado: "disponible",
-            cantidad: { $gte: 1 },
-            producto: { $regex: regexPattern, $options: "i" }
-          });
-          if (!invItem && keywords.length > 2) {
-            const coreKeys = keywords.slice(0, 3);
-            regexPattern = coreKeys.map((w) => `(?=.*${w})`).join("");
-            invItem = await db.collection("inventory").findOne({
-              estado: "disponible",
-              cantidad: { $gte: 1 },
-              producto: { $regex: regexPattern, $options: "i" }
-            });
-          }
-        }
-      }
-      const venta_auto = {
-        id: crypto.randomUUID(),
-        fecha: hoy,
-        orderId: id,
-        inventarioId: invItem?.id || null,
-        cliente: customerInfo?.name || "Cliente web",
-        producto: nombreProducto,
-        imei: invItem?.imei || "",
-        esPropio: invItem ? Boolean(invItem.esPropio) : true,
-        proveedor: invItem?.proveedor || "",
-        precioCompra: invItem?.precioCompra || 0,
-        precioVenta: precioVenta * qty,
-        ganancia: (precioVenta - (invItem?.precioCompra || 0)) * qty,
-        metodoPago: paymentMethod || "efectivo",
-        estadoPago: status === "paid" ? "recibido" : "pendiente",
-        fechaEsperada: null,
-        notas: invItem ? `Auto - Orden ${orderNumber} (inv: ${invItem.producto})` : `Auto - Orden ${orderNumber}`,
-        creadoPor: "web",
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      await db.collection("daily_sales").insertOne(venta_auto);
-      if (venta_auto.estadoPago === "recibido") {
-        await crearMovimientosCajaDesdeVenta(
-          venta_auto.metodoPago,
-          precioVenta * qty,
-          `Venta web: ${nombreProducto} \u2014 ${customerInfo?.name || "Cliente web"}`
-        );
-      }
-      if (invItem) {
-        const newCantidad = (invItem.cantidad || 1) - qty;
-        if (newCantidad <= 0) {
-          await db.collection("inventory").updateOne(
-            { id: invItem.id },
-            { $set: { cantidad: 0, estado: "vendido", ventaId: venta_auto.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
-          );
-        } else {
-          await db.collection("inventory").updateOne(
-            { id: invItem.id },
-            { $set: { cantidad: newCantidad, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
-          );
-        }
-      }
-      if (nombreProducto.includes("+")) {
-        const partes = nombreProducto.split("+");
-        if (partes.length > 1) {
-          let parteObsequio = partes[1].split("-")[0];
-          parteObsequio = parteObsequio.replace(/\((?:regalo|obsequio)\)/gi, "");
-          parteObsequio = parteObsequio.trim();
-          if (parteObsequio && parteObsequio.toLowerCase() !== "obsequio") {
-            const escapedGift = makeMatchFriendlyPattern(parteObsequio);
-            let giftItem = await db.collection("inventory").findOne({
-              estado: "disponible",
-              cantidad: { $gte: 1 },
-              producto: { $regex: escapedGift, $options: "i" }
-            });
-            if (!giftItem) {
-              const giftKw = parteObsequio.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
-              if (giftKw.length > 0) {
-                const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
-                giftItem = await db.collection("inventory").findOne({
-                  estado: "disponible",
-                  cantidad: { $gte: 1 },
-                  producto: { $regex: giftRegex, $options: "i" }
-                });
-              }
-            }
-            if (giftItem) {
-              const newQty = (giftItem.cantidad || 1) - qty;
-              if (newQty <= 0) {
-                await db.collection("inventory").updateOne(
-                  { id: giftItem.id },
-                  { $set: { cantidad: 0, estado: "vendido", ventaId: venta_auto.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
-                );
-              } else {
-                await db.collection("inventory").updateOne(
-                  { id: giftItem.id },
-                  { $set: { cantidad: newQty, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } }
-                );
-              }
-              await db.collection("daily_sales").updateOne(
-                { id: venta_auto.id },
-                {
-                  $set: {
-                    obsequioNombre: giftItem.producto,
-                    obsequioCosto: Number(giftItem.precioCompra || 0),
-                    obsequioInventarioId: giftItem.id
-                  }
-                }
-              );
-              console.log(`[auto-venta-obsequio] Descontado obsequio "${giftItem.producto}" para orden web ${orderNumber} (quedan ${newQty})`);
-            }
-          }
-        }
-      }
+    if (status === "completed" || status === "paid") {
+      await registrarVentaDesdeOrden(order);
+    } else {
+      console.log(`[orders] Orden ${orderNumber} creada en estado "${order.status}". Se registrar\xE1 en ventas diarias e inventario \xFAnicamente al ser completada.`);
     }
     const notification = {
       orderId: id,
@@ -304891,11 +305076,22 @@ app.put("/api/orders", async (req, res) => {
     const orderId = String(id);
     const oldOrder = await db.collection("orders").findOne({ id: orderId });
     if (oldOrder && updates.status && oldOrder.status !== updates.status) {
-      const isTransitioningFromPending = oldOrder.status?.startsWith("pending_");
-      const isNewStatusActive = updates.status === "paid" || updates.status === "processing" || updates.status === "completed";
-      if (isTransitioningFromPending && isNewStatusActive) {
-        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || "tarjeta";
-        await transitionOrderAndNotify(oldOrder, updates.status, metodoPago);
+      const newStatus = updates.status;
+      const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || "tarjeta";
+      if (newStatus === "completed" || newStatus === "paid") {
+        await transitionOrderAndNotify(oldOrder, newStatus, metodoPago);
+        await registrarVentaDesdeOrden({ ...oldOrder, ...updates, status: newStatus });
+        console.log(`[orders] Orden ${oldOrder.orderNumber} (${oldOrder.id}) marcada como ${newStatus} -> Registrada en ventas diarias e inventario.`);
+        const { status: _st, ...restUpdates } = $set;
+        if (Object.keys(restUpdates).length > 0) {
+          await db.collection("orders").updateOne({ id: orderId }, { $set: restUpdates });
+        }
+        return res.json({ id: orderId, ...$set });
+      } else if (newStatus === "cancelled") {
+        await revertirVentaDeOrden(orderId);
+        console.log(`[orders] Orden ${oldOrder.orderNumber} (${oldOrder.id}) cancelada -> Ventas diarias revertidas.`);
+      } else if (newStatus === "processing") {
+        await transitionOrderAndNotify(oldOrder, newStatus, metodoPago);
         const { status: _st, ...restUpdates } = $set;
         if (Object.keys(restUpdates).length > 0) {
           await db.collection("orders").updateOne({ id: orderId }, { $set: restUpdates });
@@ -304934,6 +305130,7 @@ app.delete("/api/orders", async (req, res) => {
         }
       }
     }
+    await revertirVentaDeOrden(String(id));
     const result = await db.collection("orders").deleteOne({ id: String(id) });
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: "Order not found" });
@@ -306533,121 +306730,66 @@ app.post("/api/inventario/ventas", async (req, res) => {
     if (!orderId && telefono) {
       await scheduleInStoreWhatsApp(venta_record, pointsEarned, newPointsBalance);
     }
-    if (finalObsequioNombre) {
-      let giftItem = null;
-      if (finalObsequioInventarioId) {
-        giftItem = await db.collection("inventory").findOne({
-          id: finalObsequioInventarioId,
-          estado: "disponible",
-          cantidad: { $gte: 1 }
-        });
-        if (!giftItem) {
-          console.warn(`[obsequio] Item con id ${finalObsequioInventarioId} no encontrado o no disponible, intentando b\xFAsqueda por nombre`);
-        }
-      }
-      if (!giftItem) {
-        const escapedGift = makeMatchFriendlyPattern(finalObsequioNombre);
-        giftItem = await db.collection("inventory").findOne({
+    if (Boolean(esPropio) && tipo !== "servicio") {
+      const allAvailable = await db.collection("inventory").find({
+        estado: "disponible",
+        cantidad: { $gte: 1 }
+      }).toArray();
+      const { mainPart, giftPart } = parseCombo(producto);
+      const giftNameToSearch = finalObsequioNombre || giftPart;
+      let invPhone = null;
+      if (inventarioId) {
+        invPhone = await db.collection("inventory").findOne({ id: inventarioId });
+      } else if (imei && String(imei).trim()) {
+        invPhone = await db.collection("inventory").findOne({
           estado: "disponible",
           cantidad: { $gte: 1 },
-          producto: { $regex: escapedGift, $options: "i" }
+          imei: String(imei).trim()
         });
-        if (!giftItem) {
-          const giftKw = finalObsequioNombre.split(/[\s+(),\-]+/g).filter((w) => w.length > 2).map((w) => makeMatchFriendlyPattern(w));
-          if (giftKw.length > 0) {
-            const giftRegex = giftKw.map((w) => `(?=.*${w})`).join("");
-            giftItem = await db.collection("inventory").findOne({
-              estado: "disponible",
-              cantidad: { $gte: 1 },
-              producto: { $regex: giftRegex, $options: "i" }
-            });
-          }
-        }
       }
-      if (giftItem) {
-        const newQty = (giftItem.cantidad || 1) - 1;
-        if (newQty <= 0) {
-          await db.collection("inventory").updateOne({ id: giftItem.id }, { $set: { cantidad: 0, estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
-        } else {
-          await db.collection("inventory").updateOne({ id: giftItem.id }, { $set: { cantidad: newQty, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
-        }
-        console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
-      } else {
-        console.warn(`[obsequio] \u26A0\uFE0F No se encontr\xF3 "${finalObsequioNombre}" en inventario para descontar (id: ${finalObsequioInventarioId || "sin-id"})`);
+      if (!invPhone) {
+        invPhone = findBestInventoryMatch(allAvailable, mainPart, isPhone(mainPart) ? "phone" : "any");
       }
-    }
-    if (Boolean(esPropio) && tipo !== "servicio") {
-      if (inventarioId) {
-        const invItem = await db.collection("inventory").findOne({ id: inventarioId });
-        if (invItem) {
-          const newCant = (invItem.cantidad || 1) - 1;
-          if (newCant <= 0) {
-            await db.collection("inventory").updateOne({ id: inventarioId }, { $set: { cantidad: 0, estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
-          } else {
-            await db.collection("inventory").updateOne({ id: inventarioId }, { $set: { cantidad: newCant, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
-          }
-        }
-      } else {
-        let invItem = null;
-        if (imei && String(imei).trim()) {
-          invItem = await db.collection("inventory").findOne({
-            estado: "disponible",
-            cantidad: { $gte: 1 },
-            imei: String(imei).trim()
-          });
-        }
-        if (!invItem) {
-          const storageRegex = /\b\d+\s?(?:gb|tb)\b/i;
-          const stopWords2 = ["reloj", "celular", "telefono", "tablet", "obsequio", "regalo", "play", "con"];
-          const escapedName = makeMatchFriendlyPattern(producto);
-          invItem = await db.collection("inventory").findOne({
-            estado: "disponible",
-            cantidad: { $gte: 1 },
-            producto: { $regex: escapedName, $options: "i" }
-          });
-          if (!invItem) {
-            const allWords = producto.split(/[\s+(),\-]+/g).filter((w) => w.length > 0);
-            const storageWords = allWords.filter((w) => storageRegex.test(w));
-            const normalWords = allWords.filter((w) => !storageRegex.test(w)).filter((w) => w.length > 2 && !stopWords2.includes(w.toLowerCase())).map((w) => makeMatchFriendlyPattern(w));
-            const storagePatterns = storageWords.map((w) => makeMatchFriendlyPattern(w));
-            const buildRegex = (words) => [...words, ...storagePatterns].map((w) => `(?=.*${w})`).join("");
-            if (normalWords.length > 0 || storagePatterns.length > 0) {
-              let regexPattern = buildRegex(normalWords);
-              invItem = await db.collection("inventory").findOne({
-                estado: "disponible",
-                cantidad: { $gte: 1 },
-                producto: { $regex: regexPattern, $options: "i" }
-              });
-              if (!invItem && normalWords.length > 2) {
-                const coreKeys = normalWords.slice(0, 3);
-                regexPattern = buildRegex(coreKeys);
-                invItem = await db.collection("inventory").findOne({
-                  estado: "disponible",
-                  cantidad: { $gte: 1 },
-                  producto: { $regex: regexPattern, $options: "i" }
-                });
-              }
-            }
-          }
-        }
-        if (invItem) {
-          const newCant = (invItem.cantidad || 1) - 1;
-          const ventaUpdate = { inventarioId: invItem.id };
-          const compraBase = Number(precioCompra || 0);
-          if (compraBase === 0 && invItem.precioCompra > 0) {
-            ventaUpdate.precioCompra = invItem.precioCompra + costoObsequio;
-            ventaUpdate.ganancia = venta - (invItem.precioCompra + costoObsequio);
-          }
-          if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
-          if (Object.keys(ventaUpdate).length > 0) {
-            await db.collection("daily_sales").updateOne({ id: venta_record.id }, { $set: ventaUpdate });
-          }
-          if (newCant <= 0) {
-            await db.collection("inventory").updateOne({ id: invItem.id }, { $set: { cantidad: 0, estado: "vendido", ventaId: venta_record.id, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
-          } else {
-            await db.collection("inventory").updateOne({ id: invItem.id }, { $set: { cantidad: newCant, updatedAt: (/* @__PURE__ */ new Date()).toISOString() } });
-          }
-        }
+      let invGift = null;
+      if (finalObsequioInventarioId) {
+        invGift = await db.collection("inventory").findOne({ id: finalObsequioInventarioId });
+      } else if (giftNameToSearch) {
+        invGift = findBestInventoryMatch(allAvailable, giftNameToSearch, isAudio(giftNameToSearch) ? "audio" : "any", invPhone?.id || null);
+      }
+      const ventaUpdate = {};
+      let costoPhone = Number(precioCompra || 0);
+      if (costoPhone === 0 && invPhone?.precioCompra > 0) {
+        costoPhone = Number(invPhone.precioCompra);
+      }
+      let costoGift = finalCostoObsequio;
+      if (costoGift === 0 && invGift?.precioCompra > 0) {
+        costoGift = Number(invGift.precioCompra);
+      }
+      if (invPhone) {
+        ventaUpdate.inventarioId = invPhone.id;
+        if (!imei && invPhone.imei) ventaUpdate.imei = invPhone.imei;
+        await descontarItemInventario(db, invPhone.id, 1, venta_record.id);
+        await descontarStockCatalogo(db, invPhone.producto || mainPart, 1);
+        console.log(`[pos-venta] Descontado producto principal "${invPhone.producto}"`);
+      }
+      if (invGift) {
+        ventaUpdate.obsequioInventarioId = invGift.id;
+        ventaUpdate.obsequioNombre = invGift.producto;
+        ventaUpdate.obsequioCosto = costoGift;
+        await descontarItemInventario(db, invGift.id, 1, venta_record.id);
+        await descontarStockCatalogo(db, invGift.producto, 1);
+        console.log(`[pos-venta] Descontado combo/obsequio "${invGift.producto}"`);
+      } else if (giftNameToSearch && !finalObsequioNombre) {
+        ventaUpdate.obsequioNombre = giftNameToSearch;
+      }
+      const totalCompraReal = costoPhone + costoGift;
+      if (totalCompraReal > 0) {
+        ventaUpdate.precioCompra = totalCompraReal;
+        ventaUpdate.ganancia = venta - totalCompraReal;
+      }
+      if (Object.keys(ventaUpdate).length > 0) {
+        await db.collection("daily_sales").updateOne({ id: venta_record.id }, { $set: ventaUpdate });
+        Object.assign(venta_record, ventaUpdate);
       }
     }
     if (venta_record.estadoPago === "recibido") {

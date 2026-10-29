@@ -48,6 +48,15 @@ import { type ConfigBold, crearLinkDePago } from './bold-link';
 import { type DepsConciliador, conciliarPagos } from './conciliador';
 import { diasQueFaltan, tipoDeAviso } from './recordatorios';
 import { asegurarCodigoCorto, asegurarIndiceCodigo } from './codigo-corto';
+import {
+  parseCombo,
+  isPhone,
+  isAudio,
+  findBestInventoryMatch,
+  descontarItemInventario,
+  descontarStockCatalogo,
+  normalizeInventoryText,
+} from './inventory-matcher';
 
 dotenv.config();
 
@@ -2737,6 +2746,149 @@ app.get('/api/bold-checkout', async (req, res) => {
   res.status(200).send(html);
 });
 
+/** Registra una orden web en daily_sales y descuenta el inventario físico (celulares y combos de audífonos/obsequios). */
+async function registrarVentaDesdeOrden(order: any) {
+  if (!db || !order) return;
+
+  const existingSales = await db.collection('daily_sales').find({ orderId: order.id }).toArray();
+  if (existingSales.length > 0) {
+    for (const v of existingSales) {
+      if (v.estadoPago !== 'recibido') {
+        await db.collection('daily_sales').updateOne({ id: v.id }, { $set: { estadoPago: 'recibido' } });
+        await crearMovimientosCajaDesdeVenta(
+          v.metodoPago || order.paymentMethod || 'efectivo',
+          v.precioVenta,
+          `Venta web: ${v.producto} — ${v.cliente}`
+        );
+      }
+    }
+    return;
+  }
+
+  const items = order.items;
+  if (!items || !Array.isArray(items) || items.length === 0) return;
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  const allAvailableInventory = await db.collection('inventory').find({
+    estado: 'disponible',
+    cantidad: { $gte: 1 }
+  }).toArray();
+
+  for (const item of items) {
+    const precioVenta = Number(item.product?.price || item.price || item.total || 0);
+    const storage = item.selectedStorage ? ` ${item.selectedStorage}` : '';
+    const nombreCompleto = (item.product?.name || item.name || item.productName || 'Producto') + storage;
+    const qty = Number(item.quantity || 1);
+
+    // Desglosar combos (ej: Teléfono + Audífonos / Buds)
+    const { mainPart, giftPart } = parseCombo(nombreCompleto);
+
+    // 1. Emparejar producto principal (celular o producto base)
+    const mainKind = isPhone(mainPart) ? 'phone' : 'any';
+    const invPhone = findBestInventoryMatch(allAvailableInventory, mainPart, mainKind);
+
+    // 2. Emparejar combo / obsequio si aplica (ej. Redmi Buds 6 Play)
+    let invGift: any = null;
+    if (giftPart) {
+      const giftKind = isAudio(giftPart) ? 'audio' : 'any';
+      invGift = findBestInventoryMatch(allAvailableInventory, giftPart, giftKind, invPhone?.id || null);
+    }
+
+    const costoPrincipal = Number(invPhone?.precioCompra || 0);
+    const costoObsequio = Number(invGift?.precioCompra || 0);
+    const costoTotal = (costoPrincipal + costoObsequio) * qty;
+    const precioTotal = precioVenta * qty;
+
+    const ventaId = crypto.randomUUID();
+    const venta_record: Record<string, unknown> = {
+      id: ventaId,
+      fecha: hoy,
+      orderId: order.id,
+      inventarioId: invPhone?.id || null,
+      cliente: order.customerInfo?.name || 'Cliente web',
+      producto: nombreCompleto,
+      imei: invPhone?.imei || '',
+      esPropio: invPhone ? Boolean(invPhone.esPropio) : true,
+      proveedor: invPhone?.proveedor || '',
+      precioCompra: costoTotal,
+      precioVenta: precioTotal,
+      ganancia: precioTotal - costoTotal,
+      metodoPago: order.paymentMethod || 'efectivo',
+      estadoPago: 'recibido',
+      fechaEsperada: null,
+      notas: invPhone ? `Auto - Orden ${order.orderNumber} (inv: ${invPhone.producto})` : `Auto - Orden ${order.orderNumber}`,
+      creadoPor: 'web',
+      createdAt: new Date().toISOString(),
+      telefono: order.customerInfo?.phone || '',
+      cedula: order.customerInfo?.idNumber || order.customerInfo?.cedula || '',
+    };
+
+    if (invGift) {
+      venta_record.obsequioNombre = invGift.producto;
+      venta_record.obsequioCosto = costoObsequio;
+      venta_record.obsequioInventarioId = invGift.id;
+    } else if (giftPart) {
+      venta_record.obsequioNombre = giftPart;
+    }
+
+    await db.collection('daily_sales').insertOne(venta_record);
+
+    // Descontar celular / producto principal de inventario físico
+    if (invPhone) {
+      await descontarItemInventario(db, invPhone.id, qty, ventaId);
+      const idx = allAvailableInventory.findIndex((i: any) => i.id === invPhone.id);
+      if (idx !== -1) {
+        allAvailableInventory[idx].cantidad = Math.max(0, (allAvailableInventory[idx].cantidad || 1) - qty);
+      }
+      console.log(`[orden-completada] Descontado producto principal "${invPhone.producto}" (quedan ${Math.max(0, (invPhone.cantidad || 1) - qty)})`);
+    }
+
+    // Descontar audífonos / combo de inventario físico
+    if (invGift) {
+      await descontarItemInventario(db, invGift.id, qty, ventaId);
+      const gIdx = allAvailableInventory.findIndex((i: any) => i.id === invGift.id);
+      if (gIdx !== -1) {
+        allAvailableInventory[gIdx].cantidad = Math.max(0, (allAvailableInventory[gIdx].cantidad || 1) - qty);
+      }
+      console.log(`[orden-completada] Descontado combo/obsequio "${invGift.producto}" (quedan ${Math.max(0, (invGift.cantidad || 1) - qty)})`);
+    }
+
+    // Descontar catálogo web de productos
+    await descontarStockCatalogo(db, mainPart, qty);
+    if (invGift?.producto || giftPart) {
+      await descontarStockCatalogo(db, invGift?.producto || giftPart, qty);
+    }
+
+    // Registrar en caja
+    await crearMovimientosCajaDesdeVenta(
+      venta_record.metodoPago as string,
+      precioTotal,
+      `Venta web: ${nombreCompleto} — ${order.customerInfo?.name || 'Cliente web'}`
+    );
+  }
+}
+
+/** Revierte las ventas del día y restaura inventario si una orden es cancelada o eliminada. */
+async function revertirVentaDeOrden(orderId: string) {
+  if (!db || !orderId) return;
+  const ventas = await db.collection('daily_sales').find({ orderId }).toArray();
+  for (const v of ventas) {
+    if (v.inventarioId) {
+      await db.collection('inventory').updateOne(
+        { id: v.inventarioId },
+        { $inc: { cantidad: 1 }, $set: { estado: 'disponible', ventaId: null, updatedAt: new Date().toISOString() } }
+      );
+    }
+    if (v.obsequioInventarioId) {
+      await db.collection('inventory').updateOne(
+        { id: v.obsequioInventarioId },
+        { $inc: { cantidad: 1 }, $set: { estado: 'disponible', ventaId: null, updatedAt: new Date().toISOString() } }
+      );
+    }
+  }
+  await db.collection('daily_sales').deleteMany({ orderId });
+}
+
 /** Helper to transition a pending order to paid/processing/completed, and trigger notifications/accounting. */
 async function transitionOrderAndNotify(order: any, newStatus: string, metodoPago: string) {
   if (!db) return;
@@ -2750,7 +2902,10 @@ async function transitionOrderAndNotify(order: any, newStatus: string, metodoPag
   );
   console.log(`[transition-order] Estado de orden ${order.orderNumber} actualizado a ${newStatus}`);
 
-  // 2. Marcar ventas asociadas en daily_sales como recibidas y registrar movimientos de caja
+  // 2. Si pasa a completada o pagada, registrar venta en daily_sales y descontar inventario
+  if (newStatus === 'completed' || newStatus === 'paid') {
+    await registrarVentaDesdeOrden({ ...order, status: newStatus });
+  }
   const ventasOrden = await db.collection('daily_sales').find({ orderId: order.id }).toArray();
   for (const v of ventasOrden) {
     if (v.estadoPago !== 'recibido') {
@@ -3031,165 +3186,11 @@ app.post('/api/orders', limitarEscrituraPublica, async (req, res) => {
       }
     }
 
-    // Auto-agregar cada item a ventas del día con matching inteligente de inventario
-    const hoy = new Date().toISOString().slice(0, 10);
-    for (const item of items) {
-      // El cart envía { product: { name, price, ... }, quantity, selectedStorage }
-      console.log('[auto-venta] item keys:', Object.keys(item), 'product keys:', item.product ? Object.keys(item.product) : 'NO PRODUCT', 'name:', item.product?.name || item.name || 'NONE');
-      const precioVenta = Number(item.product?.price || item.price || item.total || 0);
-      const storage = item.selectedStorage ? ` ${item.selectedStorage}` : '';
-      const nombreProducto = (item.product?.name || item.name || item.productName || 'Producto') + storage;
-      const qty = Number(item.quantity || 1);
-
-      // Buscar item disponible en inventario que coincida con el producto
-      // Primero por productoId (match exacto), luego por nombre
-      const productId = item.product?.id || item.productId;
-      const stopWords = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con', 'pro', 'plus', 'max'];
-      let invItem = productId ? await db.collection('inventory').findOne({
-        estado: 'disponible',
-        cantidad: { $gte: 1 },
-        productoId: productId,
-      }) : null;
-      if (!invItem) {
-        const escapedName = nombreProducto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        invItem = await db.collection('inventory').findOne({
-          estado: 'disponible',
-          cantidad: { $gte: 1 },
-          producto: { $regex: escapedName, $options: 'i' },
-        });
-      }
-      if (!invItem) {
-        // Match por palabras clave significativas (>2 chars, no stop words)
-        const keywords = nombreProducto.split(/[\s+()]/g)
-          .filter((w: string) => w.length > 2 && !stopWords.includes(w.toLowerCase()))
-          .map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        if (keywords.length > 0) {
-          // Intentar con todas las keywords primero
-          let regexPattern = keywords.map((w: string) => `(?=.*${w})`).join('');
-          invItem = await db.collection('inventory').findOne({
-            estado: 'disponible',
-            cantidad: { $gte: 1 },
-            producto: { $regex: regexPattern, $options: 'i' },
-          });
-          // Si no, intentar con las 2-3 keywords más importantes (marca + modelo)
-          if (!invItem && keywords.length > 2) {
-            const coreKeys = keywords.slice(0, 3);
-            regexPattern = coreKeys.map((w: string) => `(?=.*${w})`).join('');
-            invItem = await db.collection('inventory').findOne({
-              estado: 'disponible',
-              cantidad: { $gte: 1 },
-              producto: { $regex: regexPattern, $options: 'i' },
-            });
-          }
-        }
-      }
-
-      const venta_auto: Record<string, unknown> = {
-        id: crypto.randomUUID(),
-        fecha: hoy,
-        orderId: id,
-        inventarioId: invItem?.id || null,
-        cliente: customerInfo?.name || 'Cliente web',
-        producto: nombreProducto,
-        imei: invItem?.imei || '',
-        esPropio: invItem ? Boolean(invItem.esPropio) : true,
-        proveedor: invItem?.proveedor || '',
-        precioCompra: invItem?.precioCompra || 0,
-        precioVenta: precioVenta * qty,
-        ganancia: (precioVenta - (invItem?.precioCompra || 0)) * qty,
-        metodoPago: paymentMethod || 'efectivo',
-        estadoPago: status === 'paid' ? 'recibido' : 'pendiente',
-        fechaEsperada: null,
-        notas: invItem ? `Auto - Orden ${orderNumber} (inv: ${invItem.producto})` : `Auto - Orden ${orderNumber}`,
-        creadoPor: 'web',
-        createdAt: new Date().toISOString(),
-      };
-      await db.collection('daily_sales').insertOne(venta_auto);
-
-      // Auto-registrar en caja si el pago ya fue recibido
-      if (venta_auto.estadoPago === 'recibido') {
-        await crearMovimientosCajaDesdeVenta(
-          venta_auto.metodoPago as string,
-          precioVenta * qty,
-          `Venta web: ${nombreProducto} — ${customerInfo?.name || 'Cliente web'}`,
-        );
-      }
-
-       // Descontar cantidad del inventario
-      if (invItem) {
-        const newCantidad = (invItem.cantidad || 1) - qty;
-        if (newCantidad <= 0) {
-          await db.collection('inventory').updateOne(
-            { id: invItem.id },
-            { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_auto.id, updatedAt: new Date().toISOString() } }
-          );
-        } else {
-          await db.collection('inventory').updateOne(
-            { id: invItem.id },
-            { $set: { cantidad: newCantidad, updatedAt: new Date().toISOString() } }
-          );
-        }
-      }
-
-      // Autodetectar y descontar obsequio para órdenes web si aplica
-      if (nombreProducto.includes('+')) {
-        const partes = nombreProducto.split('+');
-        if (partes.length > 1) {
-          let parteObsequio = partes[1].split('-')[0];
-          parteObsequio = parteObsequio.replace(/\((?:regalo|obsequio)\)/gi, '');
-          parteObsequio = parteObsequio.trim();
-
-          if (parteObsequio && parteObsequio.toLowerCase() !== 'obsequio') {
-            const escapedGift = makeMatchFriendlyPattern(parteObsequio);
-            let giftItem = await db.collection('inventory').findOne({
-              estado: 'disponible',
-              cantidad: { $gte: 1 },
-              producto: { $regex: escapedGift, $options: 'i' },
-            });
-
-            if (!giftItem) {
-              const giftKw = parteObsequio.split(/[\s+(),\-]+/g)
-                .filter((w: string) => w.length > 2)
-                .map((w: string) => makeMatchFriendlyPattern(w));
-              if (giftKw.length > 0) {
-                const giftRegex = giftKw.map((w: string) => `(?=.*${w})`).join('');
-                giftItem = await db.collection('inventory').findOne({
-                  estado: 'disponible',
-                  cantidad: { $gte: 1 },
-                  producto: { $regex: giftRegex, $options: 'i' },
-                });
-              }
-            }
-
-            if (giftItem) {
-              const newQty = (giftItem.cantidad || 1) - qty;
-              if (newQty <= 0) {
-                await db.collection('inventory').updateOne(
-                  { id: giftItem.id },
-                  { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_auto.id, updatedAt: new Date().toISOString() } }
-                );
-              } else {
-                await db.collection('inventory').updateOne(
-                  { id: giftItem.id },
-                  { $set: { cantidad: newQty, updatedAt: new Date().toISOString() } }
-                );
-              }
-              // También actualizar la venta_auto grabada para reflejar el obsequio descontado
-              await db.collection('daily_sales').updateOne(
-                { id: venta_auto.id },
-                {
-                  $set: {
-                    obsequioNombre: giftItem.producto,
-                    obsequioCosto: Number(giftItem.precioCompra || 0),
-                    obsequioInventarioId: giftItem.id
-                  }
-                }
-              );
-              console.log(`[auto-venta-obsequio] Descontado obsequio "${giftItem.producto}" para orden web ${orderNumber} (quedan ${newQty})`);
-            }
-          }
-        }
-      }
+    // Solo registrar en ventas del día y descontar inventario si la orden entra confirmada/completada
+    if (status === 'completed' || status === 'paid') {
+      await registrarVentaDesdeOrden(order);
+    } else {
+      console.log(`[orders] Orden ${orderNumber} creada en estado "${order.status}". Se registrará en ventas diarias e inventario únicamente al ser completada.`);
     }
 
     const notification = {
@@ -3279,18 +3280,28 @@ app.put('/api/orders', async (req, res) => {
     const oldOrder = await db.collection('orders').findOne({ id: orderId });
 
     if (oldOrder && updates.status && oldOrder.status !== updates.status) {
-      const isTransitioningFromPending = oldOrder.status?.startsWith('pending_');
-      const isNewStatusActive = updates.status === 'paid' || updates.status === 'processing' || updates.status === 'completed';
-      
-      if (isTransitioningFromPending && isNewStatusActive) {
-        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || 'tarjeta';
-        await transitionOrderAndNotify(oldOrder, updates.status, metodoPago);
+      const newStatus = updates.status;
+      const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || 'tarjeta';
+
+      if (newStatus === 'completed' || newStatus === 'paid') {
+        await transitionOrderAndNotify(oldOrder, newStatus, metodoPago);
+        await registrarVentaDesdeOrden({ ...oldOrder, ...updates, status: newStatus });
+        console.log(`[orders] Orden ${oldOrder.orderNumber} (${oldOrder.id}) marcada como ${newStatus} -> Registrada en ventas diarias e inventario.`);
         
         const { status: _st, ...restUpdates } = $set;
         if (Object.keys(restUpdates).length > 0) {
           await db.collection('orders').updateOne({ id: orderId }, { $set: restUpdates });
         }
-        
+        return res.json({ id: orderId, ...$set });
+      } else if (newStatus === 'cancelled') {
+        await revertirVentaDeOrden(orderId);
+        console.log(`[orders] Orden ${oldOrder.orderNumber} (${oldOrder.id}) cancelada -> Ventas diarias revertidas.`);
+      } else if (newStatus === 'processing') {
+        await transitionOrderAndNotify(oldOrder, newStatus, metodoPago);
+        const { status: _st, ...restUpdates } = $set;
+        if (Object.keys(restUpdates).length > 0) {
+          await db.collection('orders').updateOne({ id: orderId }, { $set: restUpdates });
+        }
         return res.json({ id: orderId, ...$set });
       }
     }
@@ -3330,6 +3341,7 @@ app.delete('/api/orders', async (req, res) => {
       }
     }
 
+    await revertirVentaDeOrden(String(id));
     const result = await db.collection('orders').deleteOne({ id: String(id) });
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Order not found' });
@@ -5554,143 +5566,80 @@ app.post('/api/inventario/ventas', async (req, res) => {
       await scheduleInStoreWhatsApp(venta_record, pointsEarned, newPointsBalance);
     }
 
-    // Descontar obsequio del inventario si existe
-    if (finalObsequioNombre) {
-      let giftItem = null;
-      if (finalObsequioInventarioId) {
-        giftItem = await db.collection('inventory').findOne({
-          id: finalObsequioInventarioId,
-          estado: 'disponible',
-          cantidad: { $gte: 1 },
-        });
-        if (!giftItem) {
-          console.warn(`[obsequio] Item con id ${finalObsequioInventarioId} no encontrado o no disponible, intentando búsqueda por nombre`);
-        }
-      }
-
-      if (!giftItem) {
-        const escapedGift = makeMatchFriendlyPattern(finalObsequioNombre);
-        giftItem = await db.collection('inventory').findOne({
-          estado: 'disponible',
-          cantidad: { $gte: 1 },
-          producto: { $regex: escapedGift, $options: 'i' },
-        });
-        if (!giftItem) {
-          const giftKw = finalObsequioNombre.split(/[\s+(),\-]+/g)
-            .filter((w: string) => w.length > 2)
-            .map((w: string) => makeMatchFriendlyPattern(w));
-          if (giftKw.length > 0) {
-            const giftRegex = giftKw.map((w: string) => `(?=.*${w})`).join('');
-            giftItem = await db.collection('inventory').findOne({
-              estado: 'disponible',
-              cantidad: { $gte: 1 },
-              producto: { $regex: giftRegex, $options: 'i' },
-            });
-          }
-        }
-      }
-
-      if (giftItem) {
-        const newQty = (giftItem.cantidad || 1) - 1;
-        if (newQty <= 0) {
-          await db.collection('inventory').updateOne({ id: giftItem.id }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
-        } else {
-          await db.collection('inventory').updateOne({ id: giftItem.id }, { $set: { cantidad: newQty, updatedAt: new Date().toISOString() } });
-        }
-        console.log(`[obsequio] Descontado "${giftItem.producto}" del inventario (quedan ${newQty})`);
-      } else {
-        console.warn(`[obsequio] ⚠️ No se encontró "${finalObsequioNombre}" en inventario para descontar (id: ${finalObsequioInventarioId || 'sin-id'})`);
-      }
-    }
-
-    // Solo descontar del inventario si es producto PROPIO
+    // Descontar inventario si es producto propio (o si incluye combo/obsequio)
     if (Boolean(esPropio) && tipo !== 'servicio') {
-      if (inventarioId) {
-        // Link directo a un item de inventario
-        const invItem = await db.collection('inventory').findOne({ id: inventarioId });
-        if (invItem) {
-          const newCant = (invItem.cantidad || 1) - 1;
-          if (newCant <= 0) {
-            await db.collection('inventory').updateOne({ id: inventarioId }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
-          } else {
-            await db.collection('inventory').updateOne({ id: inventarioId }, { $set: { cantidad: newCant, updatedAt: new Date().toISOString() } });
-          }
-        }
-      } else {
-        // Buscar match automático por nombre de producto
-        // Primero intentar por IMEI si fue proporcionado
-        let invItem: any = null;
-        if (imei && String(imei).trim()) {
-          invItem = await db.collection('inventory').findOne({
-            estado: 'disponible',
-            cantidad: { $gte: 1 },
-            imei: String(imei).trim(),
-          });
-        }
+      const allAvailable = await db.collection('inventory').find({
+        estado: 'disponible',
+        cantidad: { $gte: 1 }
+      }).toArray();
 
-        if (!invItem) {
-          // Separar storage keywords (128GB, 256GB, etc.) de las demás
-          const storageRegex = /\b\d+\s?(?:gb|tb)\b/i;
-          const stopWords2 = ['reloj', 'celular', 'telefono', 'tablet', 'obsequio', 'regalo', 'play', 'con'];
-          
-          const escapedName = makeMatchFriendlyPattern(producto);
-          invItem = await db.collection('inventory').findOne({
-            estado: 'disponible',
-            cantidad: { $gte: 1 },
-            producto: { $regex: escapedName, $options: 'i' },
-          });
-          
-          if (!invItem) {
-            const allWords = producto.split(/[\s+(),\-]+/g).filter((w: string) => w.length > 0);
-            const storageWords = allWords.filter((w: string) => storageRegex.test(w));
-            const normalWords = allWords
-              .filter((w: string) => !storageRegex.test(w))
-              .filter((w: string) => w.length > 2 && !stopWords2.includes(w.toLowerCase()))
-              .map((w: string) => makeMatchFriendlyPattern(w));
-            const storagePatterns = storageWords.map((w: string) => makeMatchFriendlyPattern(w));
-            
-            // Los keywords de storage SIEMPRE deben estar en el regex
-            const buildRegex = (words: string[]) => [...words, ...storagePatterns].map((w: string) => `(?=.*${w})`).join('');
-            
-            if (normalWords.length > 0 || storagePatterns.length > 0) {
-              let regexPattern = buildRegex(normalWords);
-              invItem = await db.collection('inventory').findOne({
-                estado: 'disponible',
-                cantidad: { $gte: 1 },
-                producto: { $regex: regexPattern, $options: 'i' },
-              });
-              // Fallback: usar solo las primeras 3 palabras normales + storage
-              if (!invItem && normalWords.length > 2) {
-                const coreKeys = normalWords.slice(0, 3);
-                regexPattern = buildRegex(coreKeys);
-                invItem = await db.collection('inventory').findOne({
-                  estado: 'disponible',
-                  cantidad: { $gte: 1 },
-                  producto: { $regex: regexPattern, $options: 'i' },
-                });
-              }
-            }
-          }
-        }
-        if (invItem) {
-          const newCant = (invItem.cantidad || 1) - 1;
-          const ventaUpdate: Record<string, unknown> = { inventarioId: invItem.id };
-          // Auto-llenar precioCompra desde inventario si no se envió (compra base = compra sin obsequio)
-          const compraBase = Number(precioCompra || 0);
-          if (compraBase === 0 && invItem.precioCompra > 0) {
-            ventaUpdate.precioCompra = invItem.precioCompra + costoObsequio;
-            ventaUpdate.ganancia = venta - (invItem.precioCompra + costoObsequio);
-          }
-          if (!imei && invItem.imei) ventaUpdate.imei = invItem.imei;
-          if (Object.keys(ventaUpdate).length > 0) {
-            await db.collection('daily_sales').updateOne({ id: venta_record.id }, { $set: ventaUpdate });
-          }
-          if (newCant <= 0) {
-            await db.collection('inventory').updateOne({ id: invItem.id }, { $set: { cantidad: 0, estado: 'vendido', ventaId: venta_record.id, updatedAt: new Date().toISOString() } });
-          } else {
-            await db.collection('inventory').updateOne({ id: invItem.id }, { $set: { cantidad: newCant, updatedAt: new Date().toISOString() } });
-          }
-        }
+      const { mainPart, giftPart } = parseCombo(producto);
+      const giftNameToSearch = finalObsequioNombre || giftPart;
+
+      // 1. Producto principal (celular o producto)
+      let invPhone: any = null;
+      if (inventarioId) {
+        invPhone = await db.collection('inventory').findOne({ id: inventarioId });
+      } else if (imei && String(imei).trim()) {
+        invPhone = await db.collection('inventory').findOne({
+          estado: 'disponible',
+          cantidad: { $gte: 1 },
+          imei: String(imei).trim(),
+        });
+      }
+
+      if (!invPhone) {
+        invPhone = findBestInventoryMatch(allAvailable, mainPart, isPhone(mainPart) ? 'phone' : 'any');
+      }
+
+      // 2. Combo / Obsequio (audífonos, etc.)
+      let invGift: any = null;
+      if (finalObsequioInventarioId) {
+        invGift = await db.collection('inventory').findOne({ id: finalObsequioInventarioId });
+      } else if (giftNameToSearch) {
+        invGift = findBestInventoryMatch(allAvailable, giftNameToSearch, isAudio(giftNameToSearch) ? 'audio' : 'any', invPhone?.id || null);
+      }
+
+      // Actualizar registro de venta con costos e IDs encontrados
+      const ventaUpdate: Record<string, unknown> = {};
+      let costoPhone = Number(precioCompra || 0);
+      if (costoPhone === 0 && invPhone?.precioCompra > 0) {
+        costoPhone = Number(invPhone.precioCompra);
+      }
+
+      let costoGift = finalCostoObsequio;
+      if (costoGift === 0 && invGift?.precioCompra > 0) {
+        costoGift = Number(invGift.precioCompra);
+      }
+
+      if (invPhone) {
+        ventaUpdate.inventarioId = invPhone.id;
+        if (!imei && invPhone.imei) ventaUpdate.imei = invPhone.imei;
+        await descontarItemInventario(db, invPhone.id, 1, venta_record.id as string);
+        await descontarStockCatalogo(db, invPhone.producto || mainPart, 1);
+        console.log(`[pos-venta] Descontado producto principal "${invPhone.producto}"`);
+      }
+
+      if (invGift) {
+        ventaUpdate.obsequioInventarioId = invGift.id;
+        ventaUpdate.obsequioNombre = invGift.producto;
+        ventaUpdate.obsequioCosto = costoGift;
+        await descontarItemInventario(db, invGift.id, 1, venta_record.id as string);
+        await descontarStockCatalogo(db, invGift.producto, 1);
+        console.log(`[pos-venta] Descontado combo/obsequio "${invGift.producto}"`);
+      } else if (giftNameToSearch && !finalObsequioNombre) {
+        ventaUpdate.obsequioNombre = giftNameToSearch;
+      }
+
+      const totalCompraReal = costoPhone + costoGift;
+      if (totalCompraReal > 0) {
+        ventaUpdate.precioCompra = totalCompraReal;
+        ventaUpdate.ganancia = venta - totalCompraReal;
+      }
+
+      if (Object.keys(ventaUpdate).length > 0) {
+        await db.collection('daily_sales').updateOne({ id: venta_record.id }, { $set: ventaUpdate });
+        Object.assign(venta_record, ventaUpdate);
       }
     }
 
