@@ -299144,7 +299144,7 @@ var COL_HISTORIAL = "blocking_history";
 var COL_CONFIG = "blocking_config";
 var COL_ALERTAS = "blocking_alerts";
 var COL_PAGOS = "blocking_payments";
-var TELEFONO_TIENDA = "302 287 5280";
+var TELEFONO_TIENDA = "302 124 4959";
 var EQUIPOS_POR_VUELTA = 10;
 var HORAS_PARA_DAR_POR_INCOMUNICADO = 48;
 var CONFIG_POR_DEFECTO = {
@@ -300751,8 +300751,8 @@ function pesos2(valor) {
 function nombreBonito(nombre) {
   return String(nombre || "").trim().replace(/\s+/g, " ").replace(/(^|\s)(\p{Ll})/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase("es-CO"));
 }
-var TELEFONO_TIENDA2 = "302 287 5280";
-var WHATSAPP_TIENDA = "573022875280";
+var TELEFONO_TIENDA2 = "302 124 4959";
+var WHATSAPP_TIENDA = "573021244959";
 var LOGO = `<svg class="logo" viewBox="0 0 1000 1000" role="img" aria-label="Xiaomi">
 <path fill="#ff6700" d="M0 401.7v196.6c0 221.9 179.8 401.7 401.7 401.7h196.6c221.9 0 401.7-179.8 401.7-401.7V401.7C1000 179.8 820.2 0 598.3 0H401.7C179.8 0 0 179.8 0 401.7z"/>
 <path fill="#fff" d="M473.1 366.1v401.6H335.7V440.8h-74.8v326.9H123.5V366.1h349.6zm132.8 0h137.4v401.6H605.9V366.1z"/>
@@ -301009,27 +301009,29 @@ function tablaCuotas(r) {
     <tbody>${filas}</tbody></table></div>
     ${r.cuotas.some((c) => c.vencePactada) ? '<p class="nota">La fecha tachada es la que estaba pactada; la de arriba es el plazo que se te dio.</p>' : ""}</div></details>`;
 }
-function botonesPago(r, pagoActivo) {
+function botonesPago(r, _pagoActivo) {
+  if (r.liquidado) return "";
   if (!r.proxima) return "";
-  if (!pagoActivo) {
-    return `<div class="card"><div class="h">Pagar</div>
-      <p style="font-size:.88rem;color:#a9a9b2">El pago en l\xEDnea todav\xEDa no est\xE1 habilitado. Para pagar tu cuota de
-      <span class="monto">${pesos2(r.valorCuota)}</span>, escr\xEDbenos por WhatsApp al ${TELEFONO_TIENDA2}.</p>
-      <a class="btn p" href="https://wa.me/${WHATSAPP_TIENDA}?text=${encodeURIComponent(
-      `Hola, quiero pagar mi cuota #${r.proxima.numero}`
-    )}">Escribir por WhatsApp</a></div>`;
-  }
-  const botones = r.opcionesPago.map(
-    (o, i) => `<button class="${i === 0 ? "p" : "s"}" data-pagar="${esc(o.alcance)}">${esc(
-      o.etiqueta
-    )} \xB7 <span class="monto">${pesos2(o.monto)}</span></button>`
-  ).join("");
-  const medios = ["PSE", "Nequi", "Bot\xF3n Bancolombia"].map((m) => `<span class="medio">${m}</span>`).join("");
-  return `<div class="card"><div class="h">Pagar en l\xEDnea</div>
-    ${botones}
-    <div class="medios">${medios}</div>
-    <p class="nota">El pago queda registrado al instante${r.equipo.bloqueado ? " y el equipo se desbloquea solo" : ""}; no tienes que mandar comprobante.</p>
-    <div id="msg-pago" class="msg"></div></div>`;
+  return `<div class="card"><div class="h">C\xF3mo pagar tu cuota</div>
+    <p style="font-size:.88rem;color:var(--tx2);margin-bottom:.75rem">
+      Para pagar tu cuota #${r.proxima.numero} de <span class="monto" style="color:var(--tx);font-weight:700">${pesos2(r.valorCuota)}</span>, realiza tu pago mediante la <b>llave Bre-B</b>:
+    </p>
+    <div style="background:var(--card2);border:1px dashed var(--line2);border-radius:12px;padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.85rem">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)">Llave Bre-B</div>
+        <div style="font-size:1.3rem;font-weight:800;letter-spacing:.02em;color:#ff9143">@credilock</div>
+      </div>
+      <button type="button" onclick="navigator.clipboard.writeText('@credilock');this.textContent='\xA1Copiada!';setTimeout(()=>this.textContent='Copiar',2000)" style="width:auto;padding:.45rem .85rem;font-size:.75rem;background:#26262e;border:1px solid #3a3a46;color:#fff;border-radius:8px">Copiar</button>
+    </div>
+    <p style="font-size:.84rem;color:var(--tx2);margin-bottom:.9rem">
+      Al realizar el pago, env\xEDa el comprobante por WhatsApp al <b>${TELEFONO_TIENDA2}</b> para registrarlo en el sistema${r.equipo.bloqueado ? " y desbloquear tu equipo" : ""}.
+    </p>
+    <a class="btn" style="background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none;font-weight:700" href="https://wa.me/${WHATSAPP_TIENDA}?text=${encodeURIComponent(
+    `Hola, adjunto comprobante de pago de mi cuota #${r.proxima.numero} (${r.producto ? r.producto + " - " : ""}${r.nombre})`
+  )}" target="_blank" rel="noopener">
+      Enviar comprobante por WhatsApp
+    </a>
+  </div>`;
 }
 function subirComprobante(r) {
   if (!r.proxima) return "";
@@ -302000,7 +302002,7 @@ Hola *${deps.nombreBonito(registro.nombre)}*, revisamos tu solicitud para la cuo
 
 ${nota}` : ""}
 
-Escr\xEDbenos al 302 287 5280 y buscamos una soluci\xF3n juntos.
+Escr\xEDbenos al 302 124 4959 y buscamos una soluci\xF3n juntos.
 
 _CREDILOCK \u2014 Sistema de financiamiento_`
       );
@@ -302359,7 +302361,7 @@ async function conciliarPagos(deps) {
 }
 
 // server/recordatorios.ts
-var DIAS_DE_ANTICIPO = [7, 3];
+var DIAS_DE_ANTICIPO = [];
 function tipoDeAviso(diasVencido) {
   if (!Number.isFinite(diasVencido)) return null;
   if (diasVencido >= 1) return "mora";
@@ -305791,7 +305793,7 @@ Hola *${nombreBonito2(record.nombre)}*, te recordamos que tienes plazo hasta el 
 Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
     } else if (isOverdue) {
@@ -305806,7 +305808,7 @@ Evita el bloqueo realizando tu pago lo antes posible.
 
 \u{1F4F1} IMEI: ${record.imei}
 Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
     } else {
@@ -305819,7 +305821,7 @@ Hola *${nombreBonito2(record.nombre)}*, te recordamos que tu cuota #${nextPendin
 Cuotas pagadas: ${paidCountStr}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
     }
@@ -305929,7 +305931,7 @@ Hola *${nombreBonito2(record.nombre)}*, hoy *${fechaStr}* se cumple el plazo que
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_` : tipoAviso === "previo" ? `\u23F3 *CREDILOCK \u2014 Tienes plazo hasta ma\xF1ana*
 
@@ -305940,7 +305942,7 @@ Hola *${nombreBonito2(record.nombre)}*, te recordamos que tienes plazo hasta ma\
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_` : `\u23F3 *Xiaomi Cartagena*
 
@@ -305948,7 +305950,7 @@ Hola *${nombreBonito2(record.nombre)}*, te recordamos que el plazo que acordamos
 
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
       } else if (tipoAviso === "anticipo") {
@@ -305960,7 +305962,7 @@ Si ya la tienes lista puedes pagarla desde ahora y queda registrada al instante.
 
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
       } else if (tipoAviso === "hoy") {
@@ -305973,7 +305975,7 @@ Hola *${nombreBonito2(record.nombre)}*, hoy vence tu cuota #${nextPending.number
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
       } else if (tipoAviso === "previo") {
@@ -305986,7 +305988,7 @@ Hola *${nombreBonito2(record.nombre)}*, ma\xF1ana *${fechaStr}* vence tu cuota #
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
 \u{1F4F1} IMEI: ${record.imei}
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
       } else {
@@ -306006,7 +306008,7 @@ Hola *${nombreBonito2(record.nombre)}*, seg\xFAn nuestros registros ${detalle}.
 
 Cuotas pagadas: ${paidCount}/${record.numeroCuotas}
 
-\u{1F4DE} Contacto: 302 287 5280
+\u{1F4DE} Contacto: 302 124 4959
 
 _CREDILOCK \u2014 Sistema de financiamiento_`;
       }

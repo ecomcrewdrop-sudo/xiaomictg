@@ -11,26 +11,17 @@
 
 /**
  * Días ANTES del vencimiento en los que sale un aviso de cortesía.
- *
- * Van de más lejano a más cercano porque así se leen en los tests y en los logs.
- * Cambiar esta lista cambia el calendario completo: no hay nada más que tocar.
- *
- * Por qué 7 y 3 y no otros: 7 da tiempo a organizar la plata antes de que la
- * fecha apriete, y 3 cae en fin de semana con la frecuencia suficiente para que
- * quien cobra quincenal alcance a moverse. Juntos con el de la víspera (-1) y el
- * del día (0) suman cuatro toques por cuota, que es el techo de lo tolerable:
- * pasarse de ahí es como el número termina reportado por spam.
+ * Lista vacía para no enviar avisos con días de anticipación (solo día previo y día de vencimiento).
  */
-export const DIAS_DE_ANTICIPO: readonly number[] = [7, 3];
+export const DIAS_DE_ANTICIPO: readonly number[] = [];
 
 export type TipoAviso = 'anticipo' | 'previo' | 'hoy' | 'mora' | null;
 
 /**
  * `diasVencido` es la distancia a la fecha límite: negativo = aún no vence
- * (-7 = faltan siete días), 0 = vence hoy, positivo = ya está en mora.
+ * (-1 = vence mañana), 0 = vence hoy, positivo = ya está en mora.
  *
- * Devuelve `null` cuando no toca escribir, que es el caso más común: un cliente
- * cuya cuota vence en 20 días no debe recibir nada.
+ * Devuelve `null` cuando no toca escribir. Solo se envía aviso el día previo (-1) y el día de pago (0).
  */
 export function tipoDeAviso(diasVencido: number): TipoAviso {
   if (!Number.isFinite(diasVencido)) return null;

@@ -1068,7 +1068,7 @@ export function registrarPortal(app: Express, deps: DepsPortal): void {
         `⏳ *Sobre tu solicitud de plazo*\n\nHola *${deps.nombreBonito(registro.nombre)}*, revisamos tu solicitud ` +
           `para la cuota #${solicitud.cuotaNumber} y por ahora no podemos darte plazo hasta el ${fechaLarga(
             solicitud.hasta
-          )}.${nota ? `\n\n${nota}` : ''}\n\nEscríbenos al 302 287 5280 y buscamos una solución juntos.\n\n` +
+          )}.${nota ? `\n\n${nota}` : ''}\n\nEscríbenos al 302 124 4959 y buscamos una solución juntos.\n\n` +
           `_CREDILOCK — Sistema de financiamiento_`
       );
 

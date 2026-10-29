@@ -65,8 +65,8 @@ function nombreBonito(nombre: string): string {
     .replace(/(^|\s)(\p{Ll})/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase('es-CO'));
 }
 
-const TELEFONO_TIENDA = '302 287 5280';
-const WHATSAPP_TIENDA = '573022875280';
+const TELEFONO_TIENDA = '302 124 4959';
+const WHATSAPP_TIENDA = '573021244959';
 
 /**
  * El logo de Xiaomi, incrustado como SVG en vez de enlazado.
@@ -369,37 +369,32 @@ function tablaCuotas(r: ResumenPortal): string {
     }</div></details>`;
 }
 
-function botonesPago(r: ResumenPortal, pagoActivo: boolean): string {
+function botonesPago(r: ResumenPortal, _pagoActivo: boolean): string {
+  if (r.liquidado) return '';
   if (!r.proxima) return '';
-  if (!pagoActivo) {
-    return `<div class="card"><div class="h">Pagar</div>
-      <p style="font-size:.88rem;color:#a9a9b2">El pago en línea todavía no está habilitado. Para pagar tu cuota de
-      <span class="monto">${pesos(r.valorCuota)}</span>, escríbenos por WhatsApp al ${TELEFONO_TIENDA}.</p>
-      <a class="btn p" href="https://wa.me/${WHATSAPP_TIENDA}?text=${encodeURIComponent(
-        `Hola, quiero pagar mi cuota #${r.proxima.numero}`
-      )}">Escribir por WhatsApp</a></div>`;
-  }
-  const botones = r.opcionesPago
-    .map(
-      (o, i) =>
-        `<button class="${i === 0 ? 'p' : 's'}" data-pagar="${esc(o.alcance)}">${esc(
-          o.etiqueta
-        )} · <span class="monto">${pesos(o.monto)}</span></button>`
-    )
-    .join('');
-  // Nombrar los medios antes de salir a la pasarela, y no después, evita el
-  // abandono de quien no sabe si su banco estará. Esta lista es la misma que
-  // METODOS_CUOTA en bold-link.ts: si allí cambia, aquí cambia.
-  const medios = ['PSE', 'Nequi', 'Botón Bancolombia']
-    .map((m) => `<span class="medio">${m}</span>`)
-    .join('');
-  return `<div class="card"><div class="h">Pagar en línea</div>
-    ${botones}
-    <div class="medios">${medios}</div>
-    <p class="nota">El pago queda registrado al instante${
-      r.equipo.bloqueado ? ' y el equipo se desbloquea solo' : ''
-    }; no tienes que mandar comprobante.</p>
-    <div id="msg-pago" class="msg"></div></div>`;
+
+  return `<div class="card"><div class="h">Cómo pagar tu cuota</div>
+    <p style="font-size:.88rem;color:var(--tx2);margin-bottom:.75rem">
+      Para pagar tu cuota #${r.proxima.numero} de <span class="monto" style="color:var(--tx);font-weight:700">${pesos(r.valorCuota)}</span>, realiza tu pago mediante la <b>llave Bre-B</b>:
+    </p>
+    <div style="background:var(--card2);border:1px dashed var(--line2);border-radius:12px;padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.85rem">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)">Llave Bre-B</div>
+        <div style="font-size:1.3rem;font-weight:800;letter-spacing:.02em;color:#ff9143">@credilock</div>
+      </div>
+      <button type="button" onclick="navigator.clipboard.writeText('@credilock');this.textContent='¡Copiada!';setTimeout(()=>this.textContent='Copiar',2000)" style="width:auto;padding:.45rem .85rem;font-size:.75rem;background:#26262e;border:1px solid #3a3a46;color:#fff;border-radius:8px">Copiar</button>
+    </div>
+    <p style="font-size:.84rem;color:var(--tx2);margin-bottom:.9rem">
+      Al realizar el pago, envía el comprobante por WhatsApp al <b>${TELEFONO_TIENDA}</b> para registrarlo en el sistema${
+        r.equipo.bloqueado ? ' y desbloquear tu equipo' : ''
+      }.
+    </p>
+    <a class="btn" style="background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none;font-weight:700" href="https://wa.me/${WHATSAPP_TIENDA}?text=${encodeURIComponent(
+      `Hola, adjunto comprobante de pago de mi cuota #${r.proxima.numero} (${r.producto ? r.producto + ' - ' : ''}${r.nombre})`
+    )}" target="_blank" rel="noopener">
+      Enviar comprobante por WhatsApp
+    </a>
+  </div>`;
 }
 
 function subirComprobante(r: ResumenPortal): string {

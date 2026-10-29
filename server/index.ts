@@ -4612,14 +4612,14 @@ app.post('/api/financing/:id/remind', async (req, res) => {
     if (prorroga) {
       // Tiene plazo abierto: no se le puede decir "venció" ni "vence el", porque
       // su fecha pactada ya pasó y lo que corre es el acuerdo.
-      msg = `⏳ *CREDILOCK — Tienes plazo*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tienes plazo hasta el *${fechaStr}* para pagar tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      msg = `⏳ *CREDILOCK — Tienes plazo*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tienes plazo hasta el *${fechaStr}* para pagar tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
     } else if (isOverdue) {
       const queVencio = tieneProrroga(nextPending)
         ? `el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* se cumplió el *${fechaStr}*`
         : `tu cuota #${nextPending.number} de *$${valorStr} COP* venció el *${fechaStr}*`;
-      msg = `🔒 *CREDILOCK — Pago Vencido*\n\nHola *${nombreBonito(record.nombre)}*, ${queVencio}.\n\n⚠️ *Tu equipo será bloqueado a las ${hora} si no realizas el pago.*\n\nEvita el bloqueo realizando tu pago lo antes posible.\n\n📱 IMEI: ${record.imei}\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      msg = `🔒 *CREDILOCK — Pago Vencido*\n\nHola *${nombreBonito(record.nombre)}*, ${queVencio}.\n\n⚠️ *Tu equipo será bloqueado a las ${hora} si no realizas el pago.*\n\nEvita el bloqueo realizando tu pago lo antes posible.\n\n📱 IMEI: ${record.imei}\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
     } else {
-      msg = `📅 *CREDILOCK — Recordatorio de Pago*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+      msg = `📅 *CREDILOCK — Recordatorio de Pago*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCountStr}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
     }
 
     const success = await credilockService.sendMessage(record.telefono, conLinkDelPortal(msg, record));
@@ -4832,14 +4832,14 @@ async function checkFinancingReminders() {
          * devuelve null y cae en los avisos normales de mora.
          */
         msg = tipoAviso === 'hoy'
-          ? `⏳ *CREDILOCK — Hoy vence tu plazo*\n\nHola *${nombreBonito(record.nombre)}*, hoy *${fechaStr}* se cumple el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, el equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
+          ? `⏳ *CREDILOCK — Hoy vence tu plazo*\n\nHola *${nombreBonito(record.nombre)}*, hoy *${fechaStr}* se cumple el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, el equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`
           : tipoAviso === 'previo'
-          ? `⏳ *CREDILOCK — Tienes plazo hasta mañana*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tienes plazo hasta mañana *${fechaStr}* para tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`
+          ? `⏳ *CREDILOCK — Tienes plazo hasta mañana*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que tienes plazo hasta mañana *${fechaStr}* para tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`
           // Anticipo con plazo acordado. No nombra bloqueo: a este cliente ya se
           // le dio una fecha nueva y todavía faltan días para ella; amenazarlo
           // dentro del acuerdo que él mismo pidió es la forma más rápida de que
           // no vuelva a avisar cuando tenga un problema.
-          : `⏳ *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} días.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+          : `⏳ *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, te recordamos que el plazo que acordamos para tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} días.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
       } else if (tipoAviso === 'anticipo') {
         /**
          * Aviso de cortesía, varios días antes de que venza. A propósito NO
@@ -4854,11 +4854,11 @@ async function checkFinancingReminders() {
          * Los avisos de la víspera y del día sí lo nombran, y ahí sí corresponde:
          * la fecha está encima y el dueño bloquea a mano.
          */
-        msg = `💚 *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, te contamos con tiempo: tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} días.\n\nSi ya la tienes lista puedes pagarla desde ahora y queda registrada al instante.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+        msg = `💚 *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, te contamos con tiempo: tu cuota #${nextPending.number} de *$${valorStr} COP* vence el *${fechaStr}*. Faltan ${faltan} días.\n\nSi ya la tienes lista puedes pagarla desde ahora y queda registrada al instante.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
       } else if (tipoAviso === 'hoy') {
-        msg = `🔒 *CREDILOCK — ¡Hoy vence tu cuota!*\n\nHola *${nombreBonito(record.nombre)}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, tu equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+        msg = `🔒 *CREDILOCK — ¡Hoy vence tu cuota!*\n\nHola *${nombreBonito(record.nombre)}*, hoy vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⚠️ *Si no pagas antes de las ${hora}, tu equipo será bloqueado.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
       } else if (tipoAviso === 'previo') {
-        msg = `🔔 *CREDILOCK — Recordatorio de Pago*\n\nHola *${nombreBonito(record.nombre)}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+        msg = `🔔 *CREDILOCK — Recordatorio de Pago*\n\nHola *${nombreBonito(record.nombre)}*, mañana *${fechaStr}* vence tu cuota #${nextPending.number} de *$${valorStr} COP*.\n\n⏰ *Si no se realiza el pago, el equipo será bloqueado a las ${hora}.*\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📱 IMEI: ${record.imei}\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
       } else {
         // AVISO DE MORA. A propósito no lleva 🔒 ni amenaza de bloqueo ni hora
         // límite: quien está vencido normalmente ya fue bloqueado o ya habló con la
@@ -4883,7 +4883,7 @@ async function checkFinancingReminders() {
             ? `tienes pendiente la cuota #${nextPending.number} de *$${valorStr} COP*. El plazo que acordamos se cumplió ${cuantoHace} (${fechaStr})`
             : `tienes pendiente la cuota #${nextPending.number} de *$${valorStr} COP*, que venció ${cuantoHace} (${fechaStr})`;
 
-        msg = `👋 *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, según nuestros registros ${detalle}.\n\n✅ Si ya realizaste el pago, avísanos y lo verificamos de inmediato.\n🤝 Si aún no has podido, escríbenos y buscamos una solución juntos.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 287 5280\n\n_CREDILOCK — Sistema de financiamiento_`;
+        msg = `👋 *Xiaomi Cartagena*\n\nHola *${nombreBonito(record.nombre)}*, según nuestros registros ${detalle}.\n\n✅ Si ya realizaste el pago, avísanos y lo verificamos de inmediato.\n🤝 Si aún no has podido, escríbenos y buscamos una solución juntos.\n\nCuotas pagadas: ${paidCount}/${record.numeroCuotas}\n\n📞 Contacto: 302 124 4959\n\n_CREDILOCK — Sistema de financiamiento_`;
       }
 
       let success = false;

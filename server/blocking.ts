@@ -118,7 +118,7 @@ const COL_CONFIG = 'blocking_config';
 const COL_ALERTAS = 'blocking_alerts';
 const COL_PAGOS = 'blocking_payments';
 
-const TELEFONO_TIENDA = '302 287 5280';
+const TELEFONO_TIENDA = '302 124 4959';
 
 /** Cuántos equipos se consultan por vuelta del reconciliador. Ver CADENCIA. */
 const EQUIPOS_POR_VUELTA = 10;

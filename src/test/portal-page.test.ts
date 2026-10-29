@@ -253,16 +253,18 @@ describe('el primer renglón dice lo que pasa', () => {
    ══════════════════════════════════════════════════════════════════════════ */
 
 describe('botones', () => {
-  it('con la pasarela activa ofrece pagar', () => {
+  it('ofrece pagar mediante llave Bre-B @credilock y enviar comprobante', () => {
     const html = render();
-    expect(html).toContain('data-pagar="proxima"');
+    expect(html).toContain('@credilock');
+    expect(html).toContain('Bre-B');
+    expect(html).toMatch(/wa\.me|whatsapp/i);
+    expect(html).toContain('302 124 4959');
   });
 
-  it('sin la pasarela ofrece WhatsApp y no un botón muerto', () => {
-    // Un botón de pagar que no hace nada es peor que no tener botón: el cliente
-    // lo pulsa tres veces y después llama.
+  it('sin pasarela mantiene la indicación de pago por llave Bre-B y WhatsApp', () => {
     const html = render(contrato(), null, { pagoActivo: false });
     expect(html).not.toContain('data-pagar="');
+    expect(html).toContain('@credilock');
     expect(html).toMatch(/wa\.me|whatsapp/i);
   });
 
@@ -329,7 +331,7 @@ describe('paginaErrorPortal', () => {
 
   it('deja una salida: el teléfono de la tienda', () => {
     const { html } = paginaErrorPortal('Este link no funciona', 'Escríbenos.');
-    expect(html).toMatch(/302\s?287\s?5280|wa\.me/);
+    expect(html).toMatch(/302\s?124\s?4959|wa\.me/);
   });
 });
 
