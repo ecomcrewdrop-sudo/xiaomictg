@@ -45,7 +45,7 @@ export function StockManager() {
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterEstado, setFilterEstado] = useState<string>('todos');
+  const [filterEstado, setFilterEstado] = useState<string>('disponible');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [saving, setSaving] = useState(false);

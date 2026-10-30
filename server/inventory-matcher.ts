@@ -21,6 +21,13 @@ export const PHONE_SERIES = [
 ];
 
 /**
+ * Devuelve la fecha actual en zona horaria de Colombia (America/Bogota) en formato YYYY-MM-DD.
+ */
+export function getFechaColombia(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(date);
+}
+
+/**
  * Normaliza texto para búsqueda tolerante a mayúsculas, tildes, espacios y variantes de almacenamiento.
  * Ej: "REDMI 15 C 256 GB 8 RAM " -> "redmi 15c 256gb 8ram"
  * Ej: "Redmi 15C 256GB/8RAM" -> "redmi 15c 256gb 8ram"
@@ -208,17 +215,8 @@ export async function descontarItemInventario(
   const newCant = Math.max(0, currentCant - qty);
 
   if (newCant <= 0) {
-    await db.collection('inventory').updateOne(
-      { id: invItemId },
-      {
-        $set: {
-          cantidad: 0,
-          estado: 'vendido',
-          ventaId: ventaId || item.ventaId || null,
-          updatedAt: new Date().toISOString()
-        }
-      }
-    );
+    // Si la cantidad llega a 0 se elimina directamente del inventario (pedido explícito del dueño)
+    await db.collection('inventory').deleteOne({ id: invItemId });
   } else {
     await db.collection('inventory').updateOne(
       { id: invItemId },

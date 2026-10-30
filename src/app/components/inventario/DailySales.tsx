@@ -72,7 +72,13 @@ export function DailySales() {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [summary, setSummary] = useState<DaySummary | null>(null);
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(() => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+    } catch {
+      return new Date().toISOString().slice(0, 10);
+    }
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
   const [saving, setSaving] = useState(false);

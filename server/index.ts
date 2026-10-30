@@ -56,6 +56,7 @@ import {
   descontarItemInventario,
   descontarStockCatalogo,
   normalizeInventoryText,
+  getFechaColombia,
 } from './inventory-matcher';
 
 dotenv.config();
@@ -2750,11 +2751,16 @@ app.get('/api/bold-checkout', async (req, res) => {
 async function registrarVentaDesdeOrden(order: any) {
   if (!db || !order) return;
 
+  const hoy = getFechaColombia();
+
   const existingSales = await db.collection('daily_sales').find({ orderId: order.id }).toArray();
   if (existingSales.length > 0) {
     for (const v of existingSales) {
-      if (v.estadoPago !== 'recibido') {
-        await db.collection('daily_sales').updateOne({ id: v.id }, { $set: { estadoPago: 'recibido' } });
+      if (v.estadoPago !== 'recibido' || v.fecha !== hoy) {
+        await db.collection('daily_sales').updateOne(
+          { id: v.id },
+          { $set: { estadoPago: 'recibido', fecha: hoy } }
+        );
         await crearMovimientosCajaDesdeVenta(
           v.metodoPago || order.paymentMethod || 'efectivo',
           v.precioVenta,
@@ -2768,7 +2774,6 @@ async function registrarVentaDesdeOrden(order: any) {
   const items = order.items;
   if (!items || !Array.isArray(items) || items.length === 0) return;
 
-  const hoy = new Date().toISOString().slice(0, 10);
   const allAvailableInventory = await db.collection('inventory').find({
     estado: 'disponible',
     cantidad: { $gte: 1 }
@@ -3221,51 +3226,8 @@ app.post('/api/orders', limitarEscrituraPublica, async (req, res) => {
   }
 });
 
-app.put('/api/orders/:id', async (req, res) => {
+async function handleUpdateOrder(orderId: string, updates: any, res: express.Response) {
   try {
-    const { status, items, customerInfo, total } = req.body;
-    const $set: Record<string, unknown> = {};
-    if (status !== undefined) $set.status = status;
-    if (items !== undefined) $set.items = items;
-    if (customerInfo !== undefined) $set.customerInfo = customerInfo;
-    if (total !== undefined) $set.total = total;
-
-    if (Object.keys($set).length === 0) {
-      return res.status(400).json({ error: 'No hay campos para actualizar' });
-    }
-
-    const orderId = req.params.id;
-    const oldOrder = await db.collection('orders').findOne({ id: orderId });
-
-    if (oldOrder && status && oldOrder.status !== status) {
-      const isTransitioningFromPending = oldOrder.status?.startsWith('pending_');
-      const isNewStatusActive = status === 'paid' || status === 'processing' || status === 'completed';
-      
-      if (isTransitioningFromPending && isNewStatusActive) {
-        const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || 'tarjeta';
-        await transitionOrderAndNotify(oldOrder, status, metodoPago);
-        
-        const { status: _st, ...restUpdates } = $set;
-        if (Object.keys(restUpdates).length > 0) {
-          await db.collection('orders').updateOne({ id: orderId }, { $set: restUpdates });
-        }
-        
-        return res.json({ id: orderId, ...$set });
-      }
-    }
-
-    await db.collection('orders').updateOne({ id: orderId }, { $set });
-    res.json({ id: orderId, ...$set });
-  } catch (error) {
-    res.status(500).json({ error: 'Error updating order' });
-  }
-});
-
-app.put('/api/orders', async (req, res) => {
-  try {
-    const id = req.body?.id;
-    if (!id) return res.status(400).json({ error: 'id requerido' });
-    const { id: _removed, ...updates } = req.body;
     const $set: Record<string, unknown> = {};
     if (updates.status !== undefined) $set.status = updates.status;
     if (updates.items !== undefined) $set.items = updates.items;
@@ -3276,11 +3238,13 @@ app.put('/api/orders', async (req, res) => {
       return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
 
-    const orderId = String(id);
     const oldOrder = await db.collection('orders').findOne({ id: orderId });
+    if (!oldOrder) {
+      return res.status(404).json({ error: 'Orden no encontrada' });
+    }
 
-    if (oldOrder && updates.status && oldOrder.status !== updates.status) {
-      const newStatus = updates.status;
+    const newStatus = updates.status;
+    if (newStatus && oldOrder.status !== newStatus) {
       const metodoPago = oldOrder.paymentMethod || oldOrder.customerInfo?.paymentMethod || 'tarjeta';
 
       if (newStatus === 'completed' || newStatus === 'paid') {
@@ -3309,8 +3273,20 @@ app.put('/api/orders', async (req, res) => {
     await db.collection('orders').updateOne({ id: orderId }, { $set });
     res.json({ id: orderId, ...$set });
   } catch (error) {
+    console.error('[orders] Error updating order:', error);
     res.status(500).json({ error: 'Error updating order' });
   }
+}
+
+app.put('/api/orders/:id', async (req, res) => {
+  await handleUpdateOrder(req.params.id, req.body, res);
+});
+
+app.put('/api/orders', async (req, res) => {
+  const id = req.body?.id;
+  if (!id) return res.status(400).json({ error: 'id requerido' });
+  const { id: _removed, ...updates } = req.body;
+  await handleUpdateOrder(String(id), updates, res);
 });
 
 app.delete('/api/orders', async (req, res) => {
@@ -5329,7 +5305,12 @@ app.delete('/api/inventario/metodos-pago/:id', async (req, res) => {
 app.get('/api/inventario/items', async (req, res) => {
   try {
     const filter: Record<string, unknown> = {};
-    if (req.query.estado) filter.estado = req.query.estado;
+    if (req.query.estado) {
+      filter.estado = req.query.estado;
+    } else {
+      filter.cantidad = { $gt: 0 };
+      filter.estado = { $ne: 'vendido' };
+    }
     if (req.query.proveedor) filter.proveedor = req.query.proveedor;
     const items = await db.collection('inventory').find(filter).sort({ fechaIngreso: -1 }).toArray();
     res.json(items);
@@ -5389,6 +5370,12 @@ app.put('/api/inventario/items/:id', async (req, res) => {
     if (esPropio !== undefined) $set.esPropio = Boolean(esPropio);
     if (estado !== undefined) $set.estado = estado;
     if (notas !== undefined) $set.notas = notas;
+
+    // Si la cantidad llega a 0 o el estado es vendido, eliminar directamente del inventario (pedido del dueño)
+    if ((cantidad !== undefined && Number(cantidad) <= 0) || estado === 'vendido') {
+      await db.collection('inventory').deleteOne({ id: req.params.id });
+      return res.json({ id: req.params.id, deleted: true });
+    }
 
     await db.collection('inventory').updateOne({ id: req.params.id }, { $set });
     const updated = await db.collection('inventory').findOne({ id: req.params.id });
