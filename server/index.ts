@@ -4626,6 +4626,21 @@ app.post('/api/financing/:id/remind', async (req, res) => {
   }
 });
 
+// --- Disparar recordatorios de financiamiento en lote ---
+app.post('/api/financing/reminders/run', async (_req, res) => {
+  try {
+    if (credilockService.getStatus() !== 'connected') {
+      return res.status(400).json({ error: 'El WhatsApp de CREDILOCK no está conectado. Escanea el QR.' });
+    }
+    // Ejecutar recordatorios forzando la ventana de hora
+    checkFinancingReminders(true).catch(err => console.error('[financing] Error en checkFinancingReminders forzado:', err));
+    res.json({ success: true, message: 'Recordatorios de cuotas iniciados correctamente' });
+  } catch (error) {
+    console.error('[financing] Error triggering reminders batch:', error);
+    res.status(500).json({ error: 'Error al iniciar recordatorios' });
+  }
+});
+
 // --- Cron de recordatorios automáticos (se ejecuta cada hora) ---
 let financingReminderInterval: NodeJS.Timeout | null = null;
 
@@ -4706,12 +4721,12 @@ function nombreBonito(nombre: unknown): string {
  */
 let ultimoAvisoCredilockCaido = 0;
 
-async function checkFinancingReminders() {
+async function checkFinancingReminders(force = false) {
   if (!db) return;
 
-  // Solo enviar recordatorios entre 11:30 AM y 12:30 PM Colombia (ventana del mediodía)
+  // Horario de recordatorios Colombia (9:00 AM a 5:00 PM) o forzado por acción manual
   const colombia = getColombiaDate();
-  if (colombia.hour < 11 || colombia.hour > 13) return;
+  if (!force && (colombia.hour < 9 || colombia.hour > 17)) return;
 
   // Los recordatorios salen por el número de CREDILOCK, no por el de la tienda.
   //
@@ -4884,26 +4899,22 @@ async function checkFinancingReminders() {
         console.error(`[financing] Error enviando a ${record.nombre}:`, e);
       }
 
-      // OJO: marcamos el día SIEMPRE, se confirme o no el envío.
-      // Antes solo se marcaba con success=true, y como un envío colgado devuelve
-      // false, el mismo cliente volvía a recibir el aviso en el tick siguiente
-      // (la ventana abarca las 11, 12 y 13 h → hasta 3 copias del mismo mensaje).
-      // Baileys suele entregarlo igual, así que preferimos no repetir: este mensaje
-      // dice "tu equipo será bloqueado" y recibirlo varias veces alarma al cliente.
-      await db.collection('financing').updateOne(
-        { id: record.id },
-        {
-          $set: {
-            lastReminderSent: todayStr,
-            // Campo aparte para el tope de 3 días: si reusáramos lastReminderSent
-            // no podríamos distinguir "ya le escribí hoy" de "ya le insistí por mora".
-            ...(tipoAviso === 'mora' ? { lastOverdueReminderSent: todayStr } : {}),
-            ...(success ? {} : { ultimoAvisoSinConfirmar: true }),
-          },
-        }
-      );
-      if (tipoAviso === 'mora') avisosMoraEnviados++;
-      console.log(`[financing] Aviso (${tipoAviso}) ${success ? 'enviado' : 'despachado SIN confirmar'} a ${record.nombre} (${record.telefono})`);
+      if (success) {
+        await db.collection('financing').updateOne(
+          { id: record.id },
+          {
+            $set: {
+              lastReminderSent: todayStr,
+              ...(tipoAviso === 'mora' ? { lastOverdueReminderSent: todayStr } : {}),
+            },
+            $unset: { ultimoAvisoSinConfirmar: "" }
+          }
+        );
+        if (tipoAviso === 'mora') avisosMoraEnviados++;
+        console.log(`[financing] Aviso (${tipoAviso}) ENVIADO a ${record.nombre} (${record.telefono})`);
+      } else {
+        console.warn(`[financing] Aviso (${tipoAviso}) NO se pudo enviar a ${record.nombre} (${record.telefono}). Queda pendiente para reintento.`);
+      }
 
       // Delay entre mensajes para no ser bloqueado
       await new Promise(resolve => setTimeout(resolve, 3000));

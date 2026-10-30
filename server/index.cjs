@@ -306009,6 +306009,18 @@ _CREDILOCK \u2014 Sistema de financiamiento_`;
     res.status(500).json({ error: "Error al enviar recordatorio" });
   }
 });
+app.post("/api/financing/reminders/run", async (_req, res) => {
+  try {
+    if (credilockService.getStatus() !== "connected") {
+      return res.status(400).json({ error: "El WhatsApp de CREDILOCK no est\xE1 conectado. Escanea el QR." });
+    }
+    checkFinancingReminders(true).catch((err) => console.error("[financing] Error en checkFinancingReminders forzado:", err));
+    res.json({ success: true, message: "Recordatorios de cuotas iniciados correctamente" });
+  } catch (error) {
+    console.error("[financing] Error triggering reminders batch:", error);
+    res.status(500).json({ error: "Error al iniciar recordatorios" });
+  }
+});
 var financingReminderInterval = null;
 function getColombiaDate() {
   const now = /* @__PURE__ */ new Date();
@@ -306032,10 +306044,10 @@ function nombreBonito2(nombre) {
   return String(nombre ?? "").trim().replace(/\s+/g, " ").replace(/(^|\s)(\p{Ll})/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase("es-CO"));
 }
 var ultimoAvisoCredilockCaido = 0;
-async function checkFinancingReminders() {
+async function checkFinancingReminders(force = false) {
   if (!db) return;
   const colombia = getColombiaDate();
-  if (colombia.hour < 11 || colombia.hour > 13) return;
+  if (!force && (colombia.hour < 9 || colombia.hour > 17)) return;
   if (credilockService.getStatus() !== "connected") {
     if (Date.now() - ultimoAvisoCredilockCaido > 36e5) {
       ultimoAvisoCredilockCaido = Date.now();
@@ -306191,20 +306203,22 @@ _CREDILOCK \u2014 Sistema de financiamiento_`;
       } catch (e) {
         console.error(`[financing] Error enviando a ${record.nombre}:`, e);
       }
-      await db.collection("financing").updateOne(
-        { id: record.id },
-        {
-          $set: {
-            lastReminderSent: todayStr,
-            // Campo aparte para el tope de 3 días: si reusáramos lastReminderSent
-            // no podríamos distinguir "ya le escribí hoy" de "ya le insistí por mora".
-            ...tipoAviso === "mora" ? { lastOverdueReminderSent: todayStr } : {},
-            ...success ? {} : { ultimoAvisoSinConfirmar: true }
+      if (success) {
+        await db.collection("financing").updateOne(
+          { id: record.id },
+          {
+            $set: {
+              lastReminderSent: todayStr,
+              ...tipoAviso === "mora" ? { lastOverdueReminderSent: todayStr } : {}
+            },
+            $unset: { ultimoAvisoSinConfirmar: "" }
           }
-        }
-      );
-      if (tipoAviso === "mora") avisosMoraEnviados++;
-      console.log(`[financing] Aviso (${tipoAviso}) ${success ? "enviado" : "despachado SIN confirmar"} a ${record.nombre} (${record.telefono})`);
+        );
+        if (tipoAviso === "mora") avisosMoraEnviados++;
+        console.log(`[financing] Aviso (${tipoAviso}) ENVIADO a ${record.nombre} (${record.telefono})`);
+      } else {
+        console.warn(`[financing] Aviso (${tipoAviso}) NO se pudo enviar a ${record.nombre} (${record.telefono}). Queda pendiente para reintento.`);
+      }
       await new Promise((resolve) => setTimeout(resolve, 3e3));
     }
   } catch (err) {

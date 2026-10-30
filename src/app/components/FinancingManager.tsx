@@ -13,7 +13,7 @@ import {
   Plus, Search, Trash2, Pencil, Send, CheckCircle, Clock, AlertTriangle,
   DollarSign, Users, Smartphone, CalendarDays, ChevronDown, ChevronUp,
   X, RotateCcw, Phone, CreditCard, Lock, LockOpen, Loader2, Minus, WifiOff,
-  Activity, ShieldOff, Upload, Eye, ImageOff, CalendarClock, Hourglass
+  Activity, ShieldOff, Upload, Eye, ImageOff, CalendarClock, Hourglass, Bell
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -282,6 +282,7 @@ export function FinancingManager() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [runningReminders, setRunningReminders] = useState(false);
 
   /**
    * Estado real de cada equipo, indexado por IMEI.
@@ -1012,6 +1013,27 @@ export function FinancingManager() {
     }
   };
 
+  const handleRunAllReminders = async () => {
+    if (!confirm('¿Deseas enviar los recordatorios de cuotas de hoy por WhatsApp a todos los clientes que les corresponde pagar?')) return;
+    setRunningReminders(true);
+    try {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/financing/reminders/run`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success('Envío de recordatorios iniciado por WhatsApp 🚀');
+        await loadRecords();
+      } else {
+        toast.error(data.error || 'Error al iniciar recordatorios');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    } finally {
+      setRunningReminders(false);
+    }
+  };
+
   const handlePayXiaomi = async () => {
     const amount = Number(payXiaomiAmount);
     if (!amount || amount <= 0) { toast.error('Monto inválido'); return; }
@@ -1250,9 +1272,19 @@ export function FinancingManager() {
           </h2>
           <p className="text-sm text-gray-500 mt-1">Control de cuotas quincenales con recordatorios automáticos por WhatsApp</p>
         </div>
-        <Button onClick={openCreate} className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white gap-2">
-          <Plus className="w-4 h-4" /> Nuevo Financiamiento
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleRunAllReminders}
+            disabled={runningReminders}
+            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white gap-2 font-semibold shadow-sm"
+          >
+            <Bell className="w-4 h-4" />
+            {runningReminders ? 'Iniciando...' : 'Enviar Recordatorios de Hoy'}
+          </Button>
+          <Button onClick={openCreate} className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white gap-2">
+            <Plus className="w-4 h-4" /> Nuevo Financiamiento
+          </Button>
+        </div>
       </div>
 
       {/* ── 📱 Estado del WhatsApp de cobranza ──────────────────────────
